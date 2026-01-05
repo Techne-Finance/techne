@@ -891,13 +891,14 @@ function renderPools(pools) {
         return;
     }
 
-    // Check if user has paid - pools are blurred by default
+    // Check if user has paid - FIRST 15 POOLS ARE FREE, rest are blurred
+    const FREE_POOL_LIMIT = 15;
     const userHasPaid = window.unlockedPools || localStorage.getItem('techne_pools_unlocked');
 
-    poolGrid.innerHTML = pools.map((pool, index) => createPoolCard(pool, userHasPaid, index)).join('');
+    poolGrid.innerHTML = pools.map((pool, index) => createPoolCard(pool, userHasPaid, index, FREE_POOL_LIMIT)).join('');
 
-    // If not paid, add the unlock overlay
-    if (!userHasPaid) {
+    // If not paid and there are more than 15 pools, show unlock overlay
+    if (!userHasPaid && pools.length > FREE_POOL_LIMIT) {
         addUnlockOverlay(poolGrid);
     }
 }
@@ -906,7 +907,10 @@ function renderPools(pools) {
 window.unlockedPools = localStorage.getItem('techne_pools_unlocked') ? true : false;
 window.verifiedPoolsData = null;
 
-function createPoolCard(pool, isUnlocked, index) {
+// FREE_POOL_LIMIT constant for other uses
+window.FREE_POOL_LIMIT = 15;
+
+function createPoolCard(pool, isUnlocked, index, freeLimit = 15) {
     const protocolIcon = getProtocolIconUrl(pool.project);
     const chainIcon = getChainIconUrl(pool.chain);
 
@@ -920,9 +924,12 @@ function createPoolCard(pool, isUnlocked, index) {
     const isVerified = pool.verified || pool.agent_verified;
     const poolData = JSON.stringify(pool).replace(/"/g, '&quot;');
 
-    // Blurred class for locked pools
-    const blurredClass = isUnlocked ? '' : 'pool-blurred';
-    const lockedOverlay = isUnlocked ? '' : `
+    // FREE first 15 pools, blur the rest (unless user paid)
+    const isFreePool = index < freeLimit;
+    const shouldShowPool = isFreePool || isUnlocked;
+
+    const blurredClass = shouldShowPool ? '' : 'pool-blurred';
+    const lockedOverlay = shouldShowPool ? '' : `
         <div class="pool-locked-overlay">
             <span class="lock-icon">🔒</span>
         </div>
