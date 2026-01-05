@@ -1,49 +1,55 @@
 ---
-description: Techne Finance project knowledge base
+description: Techne Finance - pełna baza wiedzy projektu
 ---
 
 # Techne Finance - Knowledge Base
 
-## Project Overview
-AI-powered DeFi yield optimizer on **Base chain only** (for now).
+## 📍 Adresy & Linki
+- **GitHub**: https://github.com/benjaminsmithx65-commits/techne
+- **Vercel**: (ustaw po połączeniu)
+- **Contract**: `0x567D1Fc55459224132aB5148c6140E8900f9a607` (Base Mainnet)
+- **USDC Base**: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
+- **Aerodrome Router**: `0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43`
+- **Agent/Treasury**: `0x542c3b6cb5c93c4e4b4c20de48ee87dd79efdfec`
+- **Alchemy RPC**: `https://base-mainnet.g.alchemy.com/v2/Cts9SUVykfnWx2pW5qWWS`
 
-**GitHub**: https://github.com/benjaminsmithx65-commits/techne
-**Description**: AI powered personal hedgefund to grow your stablecoins
-
-## Architecture
+## 🏗️ Struktura
 
 ### Frontend (`frontend/`)
-- Pure HTML/JS/CSS - no framework
-- Key files:
-  - `app.js` - Main pool explorer logic
-  - `agent-builder-ui.js` - Agent configuration
-  - `agent-wallet-ui.js` - NeoX-inspired wallet UI
-  - `portfolio.js` - Portfolio dashboard
-  - `credits.js` - Credit system with x402 payments
+- `index.html` - Główna strona
+- `app.js` - Pool explorer z filtrami
+- `agent-builder-ui.js` - Konfiguracja agenta (chain/pool type selectors)
+- `agent-wallet-ui.js` - NeoX-inspired deposit/withdraw UI
+- `portfolio.js` - Dashboard portfolio
+- `credits.js` - System kredytów (x402 USDC płatności)
 
 ### Backend (`backend/`)
-- FastAPI (Python)
-- Key files:
-  - `main.py` - API endpoints
-  - `artisan/data_sources.py` - DefiLlama, pool data
-  - `agent_wallet.py` - Agent rebalancing logic
+- `main.py` - FastAPI endpoints
+- `artisan/data_sources.py` - DefiLlama API, whitelist protokołów
+- `agent_wallet.py` - Logika rebalansu agenta
+- `x402/` - Płatności Meridian/x402
 
 ### Smart Contract (`contracts/`)
-- `TechneAgentWallet.sol` - Main vault contract
-- Deployed: `0x567D1Fc55459224132aB5148c6140E8900f9a607`
-- Features: deposit, withdraw, LP entry via Aerodrome
+- `TechneAgentWallet.sol` - Vault z LP support (Aerodrome)
 
-## Key Decisions
-1. **Base-only**: All protocols must be on Base chain
-2. **Single/Dual-sided**: User can choose pool type in Build section
-3. **Credits system**: 1 credit per filter use, 5 credits = 0.1 USDC
-4. **NeoX-inspired**: Agent Wallet UI inspired by NeoX Agent Vaults
+## ⚙️ Konfiguracja
 
-## Protocols Supported
-- Morpho, Aave, Moonwell, Compound (lending)
-- Aerodrome, Beefy (LP/vaults)
+### Base-Only Mode
+- Tylko protokoły Base: Morpho, Aave, Moonwell, Compound, Aerodrome, Beefy
+- default chain = "base" w API
 
-## Deployment
-- **Staging**: Vercel (auto-deploy from GitHub)
-- **Backend**: VPS or Railway
-- **Contract**: Base Mainnet
+### Pool Types
+- Single-sided: lending (no IL)
+- Dual-sided: LP z auto-swap przez Aerodrome
+
+### Zmienne środowiskowe (Vercel/VPS)
+```
+TELEGRAM_BOT_TOKEN=xxx
+AGENT_PRIVATE_KEY=xxx
+WALLET_PRIVATE_KEY=xxx
+```
+
+## 🚀 Deploy Workflow
+1. Push do GitHub
+2. Vercel auto-deploy frontend
+3. Backend: VPS lub Railway
