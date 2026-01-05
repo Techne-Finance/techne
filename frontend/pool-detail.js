@@ -18,6 +18,20 @@ const PoolIcons = {
 const PoolDetailModal = {
     currentPool: null,
 
+    // Calculate time until next Aerodrome epoch (Wednesday 00:00 UTC)
+    getEpochCountdown() {
+        const now = new Date();
+        const nextWed = new Date(now);
+        nextWed.setUTCHours(0, 0, 0, 0);
+        const currentDay = now.getUTCDay();
+        const daysUntilWed = (3 - currentDay + 7) % 7 || 7;
+        nextWed.setUTCDate(now.getUTCDate() + daysUntilWed);
+        const diff = nextWed - now;
+        const days = Math.floor(diff / 86400000);
+        const hours = Math.floor((diff % 86400000) / 3600000);
+        return { days, hours, display: `${days}d ${hours}h` };
+    },
+
     // Keydown handler
     handleKeydown(e) {
         if (e.key === 'Escape') {
@@ -63,9 +77,17 @@ const PoolDetailModal = {
         const isNiche = window.NicheProtocols?.isNiche(pool.project);
         const nicheCategory = isNiche ? NicheProtocols.getCategory(pool.project) : null;
 
+        const epoch = this.getEpochCountdown();
+
         modal.innerHTML = `
             <div class="pool-detail-modal">
                 <button class="modal-close" onclick="PoolDetailModal.close()" title="Close (ESC)">${PoolIcons.close}</button>
+                
+                <!-- Trust Links -->
+                <div class="trust-links">
+                    ${pool.explorer_link ? `<a href="${pool.explorer_link}" target="_blank" title="View Contract on Explorer">📜 Contract</a>` : ''}
+                    ${pool.pool_link ? `<a href="${pool.pool_link}" target="_blank" title="View on ${pool.project}">🏊 Pool</a>` : ''}
+                </div>
                 
                 <div class="pool-detail-header">
                     <div class="pool-detail-icon">
@@ -97,21 +119,30 @@ const PoolDetailModal = {
                         <div class="detail-icon-bg">${PoolIcons.risk}</div>
                         <span class="risk-badge ${(pool.risk_level || 'medium').toLowerCase()}">${pool.risk_level || 'Medium'}</span>
                     </div>
-                    <div class="detail-card">
+                    <div class="detail-card ${pool.il_risk === 'yes' ? 'il-high' : 'il-none'}">
                         <div class="detail-label">IL Risk</div>
                         <div class="detail-icon-bg">${PoolIcons.shield}</div>
-                        <div class="detail-value">${pool.il_risk === 'yes' ? '<span class="warn">Yes</span>' : '<span class="good">No</span>'}</div>
+                        <div class="detail-value ${pool.il_risk === 'yes' ? 'il-danger' : 'il-safe'}">
+                            ${pool.il_risk === 'yes'
+                ? '<span class="warn">🛡️ High</span>'
+                : '<span class="good">🛡️ None</span>'}
+                        </div>
                     </div>
                     <div class="detail-card">
                         <div class="detail-label">Type</div>
                         <div class="detail-icon-bg">${PoolIcons.coins}</div>
-                        <div class="detail-value">${pool.stablecoin ? 'Stable' : 'Volatile'}</div>
+                        <div class="detail-value">${pool.pool_type === 'stable' ? '🟢 Stable' : '🟠 Volatile'}</div>
                     </div>
                 </div>
                 
                 <div class="detail-section premium-analysis">
                     <div class="section-header">
                         <h3>📊 Market Dynamics</h3>
+                        ${pool.project?.includes('aerodrome') ? `
+                            <div class="epoch-timer" title="Aerodrome rewards reset each epoch">
+                                ⏱️ Epoch ends: ${epoch.display}
+                            </div>
+                        ` : ''}
                     </div>
                     
                     ${pool.premium_insights?.length > 0 ? `
@@ -119,9 +150,9 @@ const PoolDetailModal = {
                             ${pool.premium_insights.map(insight => `
                                 <div class="insight-item ${insight.type}">
                                     <span class="insight-icon">${insight.icon === '🟢' || insight.icon === '✅' ? PoolIcons.check :
-                insight.icon === '🔴' || insight.icon === '⚠️' ? PoolIcons.risk :
-                    PoolIcons.activity
-            }</span>
+                        insight.icon === '🔴' || insight.icon === '⚠️' ? PoolIcons.risk :
+                            PoolIcons.activity
+                    }</span>
                                     <span class="insight-text">${insight.text}</span>
                                 </div>
                             `).join('')}
@@ -136,8 +167,9 @@ const PoolDetailModal = {
                                     <div class="apy-part base" title="Base Yield">
                                         <span class="dot"></span> Base: ${pool.apy_base}%
                                     </div>
-                                    <div class="apy-part reward" title="Reward Yield">
-                                        <span class="dot"></span> Reward: ${pool.apy_reward}%
+                                    <div class="apy-part reward" title="Reward Yield - paid in ${pool.reward_token || 'TOKEN'}">
+                                        <span class="dot"></span> Reward (${pool.reward_token || 'TOKEN'}): ${pool.apy_reward}%
+                                        ${pool.pool_type !== 'stable' ? '<span class="reward-warning" title="Rewards paid in volatile token">⚠️</span>' : ''}
                                     </div>
                                 </div>
                             </div>
@@ -198,8 +230,8 @@ const PoolDetailModal = {
                 ` : ''}
                 
                 <div class="pool-detail-actions">
-                    <a href="${pool.pool_link || (getPoolUrl ? getPoolUrl(pool) : '#')}" target="_blank" class="btn-primary-large" onclick="event.stopPropagation();">
-                        💰 Deposit on ${pool.project}
+                    <a href="${pool.pool_link || (getPoolUrl ? getPoolUrl(pool) : '#')}" target="_blank" class="btn-primary-large" onclick="event.stopPropagation();" title="Techne will auto-swap your assets to match pool ratio">
+                        ⚡ Zap & Deposit
                     </a>
                     <button class="btn-secondary-large" onclick="PoolDetailModal.addToStrategy()">
                         + Add to Strategy
@@ -261,6 +293,66 @@ detailStyles.textContent = `
         overflow-y: auto;
         padding: var(--space-6);
         position: relative;
+    }
+    
+    /* Trust Links */
+    .trust-links {
+        position: absolute;
+        top: var(--space-4);
+        right: 50px;
+        display: flex;
+        gap: var(--space-3);
+    }
+    
+    .trust-links a {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        padding: 4px 8px;
+        background: var(--bg-elevated);
+        border-radius: var(--radius-sm);
+        transition: var(--transition-base);
+    }
+    
+    .trust-links a:hover {
+        color: var(--gold);
+        background: rgba(234, 179, 8, 0.1);
+    }
+    
+    /* Epoch Timer */
+    .epoch-timer {
+        font-size: 0.75rem;
+        color: #FBBF24;
+        background: rgba(251, 191, 36, 0.1);
+        padding: 4px 10px;
+        border-radius: var(--radius-sm);
+        margin-left: auto;
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+    }
+    
+    /* IL Risk Colors */
+    .detail-card.il-high {
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.05);
+    }
+    
+    .detail-card.il-none {
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        background: rgba(16, 185, 129, 0.05);
+    }
+    
+    .detail-value.il-danger { color: #EF4444; }
+    .detail-value.il-safe { color: #10B981; }
+    
+    /* Reward Warning */
+    .reward-warning {
+        margin-left: 4px;
+        cursor: help;
     }
     
     .pool-detail-header {

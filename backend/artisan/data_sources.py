@@ -80,7 +80,55 @@ APIS = {
 }
 
 # ============================================
-# CACHE - Using advanced infrastructure cache
+# STABLECOIN WHITELIST - For accurate IL risk
+# ============================================
+
+STABLE_WHITELIST = {
+    'USDC', 'USDT', 'DAI', 'USDbC', 'FRAX', 'USDe', 'crvUSD', 
+    'LUSD', 'sUSD', 'BUSD', 'TUSD', 'GUSD', 'USDP', 'PYUSD',
+    'USD+', 'DOLA', 'MIM', 'alUSD', 'USDD', 'USDN', 'USDX'
+}
+
+def is_stablecoin(token: str) -> bool:
+    """Check if token symbol is a known stablecoin"""
+    if not token:
+        return False
+    token_clean = token.upper().strip()
+    # Direct match
+    if token_clean in STABLE_WHITELIST:
+        return True
+    # Partial match (e.g., USDC.e, axlUSDC)
+    for stable in STABLE_WHITELIST:
+        if stable in token_clean:
+            return True
+    return False
+
+def classify_pool_type(symbol: str) -> dict:
+    """
+    Classify pool as stable/volatile and calculate IL risk.
+    Both tokens must be stable for pool to be 'stable' type.
+    """
+    if not symbol:
+        return {"pool_type": "volatile", "il_risk": "yes", "il_risk_level": "High"}
+    
+    # Parse tokens from symbol (e.g., "USDC-AVAIL" or "USDC/WETH")
+    tokens = [t.strip() for t in symbol.replace('-', '/').split('/')]
+    tokens = [t.split(' ')[0] for t in tokens if t]  # Remove % parts like "0.05%"
+    
+    if len(tokens) < 2:
+        return {"pool_type": "volatile", "il_risk": "yes", "il_risk_level": "High"}
+    
+    all_stable = all(is_stablecoin(t) for t in tokens)
+    
+    return {
+        "pool_type": "stable" if all_stable else "volatile",
+        "il_risk": "no" if all_stable else "yes",
+        "il_risk_level": "None" if all_stable else "High",
+        "tokens": tokens,
+        "token_stability": {t: is_stablecoin(t) for t in tokens}
+    }
+
+
 # ============================================
 
 # Import advanced caching infrastructure
@@ -301,11 +349,22 @@ def format_defillama_pool(pool: Dict[str, Any], blur: bool = True) -> Dict[str, 
     elif volume_1d > 100000:
         premium_insights.append({"type": "neutral", "text": f"📊 Active pool (${volume_1d/1000:.0f}K/day)", "icon": "🟡"})
     
+    # FIXED: Use classify_pool_type for accurate IL risk
+    classification = classify_pool_type(pool.get("symbol", ""))
+    
+    # Extract reward token from project name or symbol
+    reward_token = pool.get("rewardTokens", ["TOKEN"])[0] if pool.get("rewardTokens") else "TOKEN"
+    
+    # Build explorer link
+    pool_address = pool.get("pool", "").split("_")[-1] if "_" in pool.get("pool", "") else ""
+    explorer_link = f"{chain_config.get('explorer')}/address/{pool_address}" if pool_address and chain_config.get('explorer') else None
+    
     return {
         "id": pool.get("pool"),
         "chain": chain_name,
         "chain_icon": chain_config.get("icon", ""),
         "explorer": chain_config.get("explorer"),
+        "explorer_link": explorer_link,
         "pool_link": pool_link,
         "project": "***" if blur else pool.get("project", "Unknown"),
         "symbol": pool.get("symbol", "???"),
@@ -315,10 +374,13 @@ def format_defillama_pool(pool: Dict[str, Any], blur: bool = True) -> Dict[str, 
         "volume_24h": round(volume_1d),
         "volume_24h_formatted": f"${volume_1d:,.0f}" if volume_1d else None,
         "volume_7d": round(volume_7d),
-        "stablecoin": pool.get("stablecoin", False),
+        "stablecoin": classification["pool_type"] == "stable",  # FIXED
+        "pool_type": classification["pool_type"],  # NEW: "stable" or "volatile"
         "risk_score": risk,
         "risk_reasons": risk_reasons,
-        "il_risk": pool.get("ilRisk", "no"),
+        "il_risk": classification["il_risk"],  # FIXED: Uses token analysis
+        "il_risk_level": classification["il_risk_level"],  # NEW: "None" or "High"
+        "reward_token": reward_token,  # NEW: Token symbol for rewards
         "source": "defillama",
         "source_badge": "",
         "source_name": "DefiLlama",
