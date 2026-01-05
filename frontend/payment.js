@@ -349,14 +349,49 @@ const UnlockModal = {
     }
 };
 
-// Helper to get pool URL
+// Helper to get direct pool URL on protocol
 function getPoolUrl(pool) {
     const project = pool.project?.toLowerCase();
-    if (project?.includes('aerodrome')) return 'https://aerodrome.finance/liquidity';
-    if (project?.includes('aave')) return 'https://app.aave.com/';
-    if (project?.includes('compound')) return 'https://app.compound.finance/';
-    if (project?.includes('morpho')) return 'https://app.morpho.org/';
-    return '#';
+    const poolId = pool.id || '';
+    const poolAddress = poolId.split('_')[1] || poolId; // Extract address from id like "base_0x..."
+    const symbol = pool.symbol || '';
+
+    // Beefy - vault pages
+    if (project?.includes('beefy')) {
+        const chain = pool.chain?.toLowerCase() || 'base';
+        return `https://app.beefy.com/vault/${chain}-${symbol.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+    }
+
+    // Aerodrome - liquidity pools
+    if (project?.includes('aerodrome')) {
+        if (poolAddress && poolAddress.startsWith('0x')) {
+            return `https://aerodrome.finance/deposit?token0=&token1=${poolAddress}`;
+        }
+        return 'https://aerodrome.finance/liquidity';
+    }
+
+    // Aave - specific markets
+    if (project?.includes('aave')) {
+        return `https://app.aave.com/reserve-overview/?underlyingAsset=${symbol.split('-')[0]?.toLowerCase() || 'usdc'}&marketName=proto_base_v3`;
+    }
+
+    // Compound
+    if (project?.includes('compound')) {
+        return 'https://app.compound.finance/markets';
+    }
+
+    // Morpho - specific vaults
+    if (project?.includes('morpho')) {
+        return `https://app.morpho.org/?network=base`;
+    }
+
+    // Moonwell
+    if (project?.includes('moonwell')) {
+        return `https://moonwell.fi/discover/base`;
+    }
+
+    // Default - try protocol website
+    return `https://${project?.replace(/[-_]/g, '')}.finance/` || '#';
 }
 
 // CSS for unlock modal

@@ -230,8 +230,8 @@ const PoolDetailModal = {
                 ` : ''}
                 
                 <div class="pool-detail-actions">
-                    <a href="${pool.pool_link || (getPoolUrl ? getPoolUrl(pool) : '#')}" target="_blank" class="btn-primary-large" onclick="event.stopPropagation();" title="Techne will auto-swap your assets to match pool ratio">
-                        ⚡ Zap & Deposit
+                    <a href="${pool.pool_link || (getPoolUrl ? getPoolUrl(pool) : '#')}" target="_blank" class="btn-primary-large" onclick="event.stopPropagation();" title="Open pool on ${pool.project}">
+                        💰 Deposit on ${pool.project}
                     </a>
                     <button class="btn-secondary-large" onclick="PoolDetailModal.addToStrategy()">
                         + Add to Strategy
