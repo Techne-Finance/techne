@@ -891,11 +891,14 @@ function renderPools(pools) {
         return;
     }
 
-    // Check if user has paid - FIRST 15 POOLS ARE FREE, rest are blurred
+    // Check if user has paid - DAILY ROTATING 15 FREE pools
     const FREE_POOL_LIMIT = 15;
     const userHasPaid = window.unlockedPools || localStorage.getItem('techne_pools_unlocked');
 
-    poolGrid.innerHTML = pools.map((pool, index) => createPoolCard(pool, userHasPaid, index, FREE_POOL_LIMIT)).join('');
+    // Get today's free pool indices (same for everyone, rotates daily)
+    const freeIndices = getDailyFreePoolIndices(pools.length, FREE_POOL_LIMIT);
+
+    poolGrid.innerHTML = pools.map((pool, index) => createPoolCard(pool, userHasPaid, index, freeIndices)).join('');
 
     // If not paid and there are more than 15 pools, show unlock overlay
     if (!userHasPaid && pools.length > FREE_POOL_LIMIT) {
@@ -910,7 +913,30 @@ window.verifiedPoolsData = null;
 // FREE_POOL_LIMIT constant for other uses
 window.FREE_POOL_LIMIT = 15;
 
-function createPoolCard(pool, isUnlocked, index, freeLimit = 15) {
+// Get deterministic "random" free pools based on date (same for all users each day)
+function getDailyFreePoolIndices(totalPools, limit = 15) {
+    // Use today's date as seed (YYYYMMDD)
+    const today = new Date();
+    const seed = today.getUTCFullYear() * 10000 + (today.getUTCMonth() + 1) * 100 + today.getUTCDate();
+
+    // Simple seeded random function
+    const seededRandom = (s) => {
+        const x = Math.sin(s) * 10000;
+        return x - Math.floor(x);
+    };
+
+    // Generate shuffled indices
+    const indices = Array.from({ length: totalPools }, (_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(seededRandom(seed + i) * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+
+    // Return first 'limit' indices as Set for O(1) lookup
+    return new Set(indices.slice(0, limit));
+}
+
+function createPoolCard(pool, isUnlocked, index, freeIndices = new Set()) {
     const protocolIcon = getProtocolIconUrl(pool.project);
     const chainIcon = getChainIconUrl(pool.chain);
 
@@ -924,8 +950,8 @@ function createPoolCard(pool, isUnlocked, index, freeLimit = 15) {
     const isVerified = pool.verified || pool.agent_verified;
     const poolData = JSON.stringify(pool).replace(/"/g, '&quot;');
 
-    // FREE first 15 pools, blur the rest (unless user paid)
-    const isFreePool = index < freeLimit;
+    // Check if this pool is in today's FREE rotation (15 pools, same for everyone, rotates daily)
+    const isFreePool = freeIndices.has(index);
     const shouldShowPool = isFreePool || isUnlocked;
 
     const blurredClass = shouldShowPool ? '' : 'pool-blurred';
