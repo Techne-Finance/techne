@@ -702,7 +702,9 @@ function loadUserPoolHistory() {
 }
 
 function updateWalletGatedSections() {
-    const gatedSections = ['section-vaults', 'section-portfolio', 'section-build'];
+    // Only Portfolio requires wallet - Build/Vaults/Strategies are viewable
+    // Deploy Agent button in Build checks wallet separately
+    const gatedSections = ['section-portfolio'];
 
     gatedSections.forEach(sectionId => {
         const section = document.getElementById(sectionId);
