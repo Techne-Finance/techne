@@ -159,18 +159,50 @@ def is_cache_valid(key: str) -> bool:
 
 
 # ============================================
-# PROJECT WHITELIST (Base Only - MVP)
+# PROJECT WHITELIST (Multi-chain)
 # ============================================
 PROJECT_WHITELIST = {
-    # Base chain protocols only
+    # Base chain protocols
     "morpho", "morpho-blue",
     "aave", "aave-v3",
     "moonwell",
     "compound", "compound-v3",
     "aerodrome", "aerodrome-v2", "aerodrome-slipstream",
     "beefy",
-    # Base native DEXes (for reference, may add later)
-    # "base-swap", "alien-base",
+    
+    # Solana protocols
+    "marinade", "marinade-finance",
+    "jito", "jito-staking",
+    "drift", "drift-protocol",
+    "marginfi", "margin-fi",
+    "kamino", "kamino-finance",
+    "meteora",
+    "sanctum",
+    "jupiter", "jupiter-perps",
+    "solend",
+    "mango", "mango-markets",
+    "raydium",
+    "orca",
+    
+    # Ethereum/Multi-chain protocols
+    "lido", "lido-staked-ether",
+    "curve", "curve-dex",
+    "convex", "convex-finance",
+    "yearn", "yearn-finance",
+    "uniswap", "uniswap-v3",
+    "sushiswap",
+    "balancer",
+    "gmx",
+    "pendle",
+    "eigenlayer", "eigen-layer",
+    "rocketpool", "rocket-pool",
+    "frax", "frax-finance",
+    "maker", "makerdao",
+    "spark", "spark-protocol",
+    "radiant", "radiant-capital",
+    "benqi",
+    "stargate",
+    "velodrome", "velodrome-v2",
 }
 
 # ============================================
