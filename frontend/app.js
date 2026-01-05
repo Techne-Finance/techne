@@ -893,7 +893,7 @@ function renderPools(pools) {
     }
 
     // Check if user has paid - DAILY ROTATING 15 FREE pools
-    const FREE_POOL_LIMIT = 15;
+    const FREE_POOL_LIMIT = 16;
     const userHasPaid = window.unlockedPools || localStorage.getItem('techne_pools_unlocked');
 
     // Get today's free pool indices (same for everyone, rotates daily)
@@ -912,7 +912,7 @@ window.unlockedPools = localStorage.getItem('techne_pools_unlocked') ? true : fa
 window.verifiedPoolsData = null;
 
 // FREE_POOL_LIMIT constant for other uses
-window.FREE_POOL_LIMIT = 15;
+window.FREE_POOL_LIMIT = 16;
 
 // Get deterministic "random" free pools based on date (same for all users each day)
 function getDailyFreePoolIndices(totalPools, limit = 15) {
@@ -1162,7 +1162,7 @@ function addUnlockOverlay(poolGrid) {
             <h3>🔓 Unlock 12 AI-Verified Pools</h3>
             <p>Get full risk analysis, airdrop potential, and deposit verification for all pools</p>
             <button class="btn-unlock-cta" onclick="UnlockModal.open()">
-                <span>⚡</span> 12 Pools for $0.10 USDC
+                <span>⚡</span> 16 Pools for $0.10 USDC
             </button>
         </div>
     `;

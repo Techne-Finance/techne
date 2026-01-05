@@ -103,7 +103,7 @@ const UnlockModal = {
                         text-transform: uppercase;
                         letter-spacing: 1px;
                         text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-                    ">Unlock 15 Pools</h2>
+                    ">Unlock 16 Pools</h2>
                     <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">Instant access to high-yield stablecoin strategies</p>
                 </div>
 
