@@ -1,0 +1,11 @@
+{
+  "name": "techne-finance",
+  "type": "module",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@openzeppelin/contracts": "^5.4.0",
+    "ethers": "^6.16.0",
+    "hardhat": "^3.1.2",
+    "solc": "^0.8.33"
+  }
+}

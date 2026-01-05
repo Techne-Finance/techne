@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv/
+
+# Environment & Secrets
+.env
+*.env.local
+.env.*
+*.pem
+*.key
+
+# Private keys - NEVER COMMIT
+hardhat.config.cjs
+deploy.mjs
+deploy-compiled.js
+deploy-wallet.js
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & Databases
+*.log
+*.db
+
+# Test files with secrets
+test_pool.py
+
+# Cache & Dependencies
+.cache/
+node_modules/
+package-lock.json
+
+# Build artifacts
+out/
+artifacts/

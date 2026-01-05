@@ -1,0 +1,22 @@
+﻿Testing single-sided lending pools...
+Total single-sided pools: 100
+
+Risk Level Distribution:
+  Low     :  83 (83.0%)
+  Medium  :  17 (17.0%)
+  High    :   0 (0.0%)
+  Critical:   0 (0.0%)
+
+Score stats: min=36.0, max=65.8, avg=54.2
+
+=== LOW RISK POOLS (first 10) ===
+  peapods-finance      Score: 51.8 APY:  38.6% TVL:$4.8M
+  garden               Score: 51.8 APY:  37.1% TVL:$1.1M
+  pendle               Score: 51.8 APY:  25.7% TVL:$6.2M
+  stake-dao            Score: 51.8 APY:  22.6% TVL:$4.2M
+  pendle               Score: 51.8 APY:  21.6% TVL:$1.4M
+  kiloex               Score: 51.8 APY:  20.1% TVL:$1.1M
+  merkl                Score: 51.8 APY:  19.5% TVL:$0.8M
+  wildcat-protocol     Score: 58.8 APY:  18.5% TVL:$5.0M
+  wildcat-protocol     Score: 58.8 APY:  18.5% TVL:$5.0M
+  yearn-finance        Score: 51.8 APY:  18.4% TVL:$0.9M

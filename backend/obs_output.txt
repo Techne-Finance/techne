@@ -1,0 +1,54 @@
+﻿============================================================
+c:\Users\Dell\.gemini\
+antigravity\scratch\te
+chne-finance\backend\v
+env\Scripts\python.exe
+ : Traceback (most rec
+ent call last):
+At line:1 char:1
++ c:\Users\Dell\.gemin
+i\antigravity\scratch\
+techne-finance\backend
+\venv ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (Traceback    
+ (most recent call    
+ last)::String) [    ]
+, RemoteExceptio    n
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+  File "C:\Users\Dell\
+.gemini\antigravity\sc
+ratch\techne-finance\b
+ackend\test_observabil
+ity.py", line 7, in <m
+odule>
+    print("\U0001f50d 
+Testing Agent Observab
+ility System")
+    ~~~~~^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^
+  File "C:\Python314\L
+ib\encodings\cp1250.py
+", line 19, in encode
+    return codecs.char
+map_encode(input,self.
+errors,encoding_table)
+[0]
+           ~~~~~~~~~~~
+~~~~~~~~~~^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'c
+harmap' codec can't en
+code character '\U0001
+f50d' in position 0: c
+haracter maps to <unde
+fined>
