@@ -965,7 +965,7 @@ function createPoolCard(pool, isUnlocked, index, freeIndices = new Set()) {
 
     return `
         <div class="pool-card ${isVerified ? 'verified' : ''} ${blurredClass}" 
-             onclick='${isUnlocked ? `PoolDetailModal?.show(${poolData})` : ""}' 
+             onclick='${shouldShowPool ? `PoolDetailModal?.show(${poolData})` : ""}' 
              data-pool-index="${index}">
             ${lockedOverlay}
             <div class="pool-header">
