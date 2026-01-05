@@ -105,7 +105,8 @@ PROTOCOL_CATEGORIES = {
     },
     # Yield Vaults (Single deposit, auto-compound)
     "vault": {
-        "protocols": ["beefy", "yearn", "convex", "origin", "infinifi", "stargate"],
+        "protocols": ["beefy", "yearn", "convex", "origin", "infinifi", "stargate",
+                      "peapods", "meme-dollar", "memedollar"],
         "icon": "🏛️",
         "label": "Vault",
         "is_single": True
@@ -121,7 +122,7 @@ PROTOCOL_CATEGORIES = {
     # AMM DEX (Dual-sided LP = IL Risk!)
     "amm": {
         "protocols": ["uniswap", "curve", "balancer", "aerodrome", "velodrome", 
-                      "raydium", "orca", "meteora", "sushiswap"],
+                      "raydium", "orca", "meteora", "sushiswap", "jupiter"],
         "icon": "🔄",
         "label": "AMM",
         "is_single": False  # IL RISK!
