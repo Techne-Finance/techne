@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initWallet();
     initViewToggle();
     initProtocolSearch();
+    initBuildSection();
     loadPools();
 });
 
@@ -60,6 +61,61 @@ function initProtocolSearch() {
                 item.style.display = 'none';
             }
         });
+    });
+}
+
+// Build Section - Filter protocols by pool type
+function initBuildSection() {
+    const poolTypeButtons = document.querySelectorAll('.pool-type-btn-build');
+    const protocolGrid = document.getElementById('buildProtocolGrid');
+
+    if (!poolTypeButtons.length || !protocolGrid) return;
+
+    poolTypeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Update active state
+            poolTypeButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const selectedType = btn.dataset.poolType;
+            filterBuildProtocols(selectedType);
+        });
+    });
+
+    // Initial filter based on default selection (single)
+    const activeBtn = document.querySelector('.pool-type-btn-build.active');
+    if (activeBtn) {
+        filterBuildProtocols(activeBtn.dataset.poolType);
+    }
+}
+
+// Filter protocol chips based on pool type (single/dual/all)
+function filterBuildProtocols(poolType) {
+    const protocolGrid = document.getElementById('buildProtocolGrid');
+    if (!protocolGrid) return;
+
+    const chips = protocolGrid.querySelectorAll('.protocol-chip');
+
+    chips.forEach(chip => {
+        const chipSide = chip.dataset.poolSide; // 'single' or 'dual'
+
+        if (poolType === 'all') {
+            // Show all protocols
+            chip.style.display = '';
+        } else if (poolType === 'single' && chipSide === 'single') {
+            chip.style.display = '';
+        } else if (poolType === 'dual' && chipSide === 'dual') {
+            chip.style.display = '';
+        } else {
+            chip.style.display = 'none';
+        }
+    });
+
+    // Deselect hidden protocols
+    chips.forEach(chip => {
+        if (chip.style.display === 'none') {
+            chip.classList.remove('active');
+        }
     });
 }
 
