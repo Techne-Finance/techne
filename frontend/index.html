@@ -33,13 +33,13 @@
                     <img src="/icons/nav/explore.svg" alt="Explore" class="nav-icon">
                     <span class="nav-text">Explore</span>
                 </a>
+                <a href="#protocols" class="nav-item" data-section="protocols">
+                    <img src="/icons/nav/vaults.svg" alt="Protocols" class="nav-icon">
+                    <span class="nav-text">Protocols</span>
+                </a>
                 <a href="#premium" class="nav-item" data-section="premium">
                     <img src="/icons/nav/premium.svg" alt="Premium" class="nav-icon">
                     <span class="nav-text">Premium</span>
-                </a>
-                <a href="#vaults" class="nav-item" data-section="vaults">
-                    <img src="/icons/nav/vaults.svg" alt="Vaults" class="nav-icon">
-                    <span class="nav-text">Vaults</span>
                 </a>
                 <a href="#strategies" class="nav-item" data-section="strategies">
                     <img src="/icons/nav/strategies.svg" alt="Strategies" class="nav-icon">
@@ -763,215 +763,499 @@
                     </div>
                 </section>
 
-                <!-- Section: Vaults -->
-                <section class="section" id="section-vaults">
+                <!-- Section: Protocols -->
+                <section class="section" id="section-protocols">
                     <div class="section-header">
-                        <h1>Automated Vaults</h1>
-                        <p class="section-desc">AI-managed strategies for passive yield optimization</p>
+                        <h1>Verified Protocols</h1>
+                        <p class="section-desc">Trusted DeFi protocols integrated with Techne. All protocols have been
+                            vetted for security and reliability.</p>
                     </div>
 
-                    <!-- Agent Wallet Dashboard -->
-                    <div class="agent-wallet-dashboard" style="
-                        background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.02));
-                        border: 1px solid var(--gold);
-                        border-radius: 20px;
-                        padding: 24px;
-                        margin-bottom: 32px;
-                    ">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-                            <div>
-                                <h2 style="margin: 0 0 8px;">🤖 Agent Wallet</h2>
-                                <p style="color: var(--text-muted); margin: 0;">
-                                    Your AI agent's dedicated wallet for executing yield strategies
-                                </p>
-                            </div>
-                            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                                <button onclick="AgentWallet.showDepositModal()" class="btn-action" style="
-                                    background: var(--gradient-gold); border: none; padding: 12px 24px;
-                                    border-radius: 10px; font-weight: 600; cursor: pointer;
-                                ">💰 Deposit</button>
-                                <button onclick="AgentWallet.showWithdrawModal()" class="btn-action" style="
-                                    background: var(--bg-elevated); border: 1px solid var(--border);
-                                    padding: 12px 24px; border-radius: 10px; cursor: pointer; color: var(--text);
-                                ">📤 Withdraw</button>
-                                <button onclick="AgentWallet.setup2FA()" class="btn-action" style="
-                                    background: var(--bg-elevated); border: 1px solid var(--border);
-                                    padding: 12px 20px; border-radius: 10px; cursor: pointer; color: var(--text);
-                                ">🔐 2FA</button>
-                                <button onclick="AgentWallet.exportPrivateKey()" class="btn-action" style="
-                                    background: var(--bg-elevated); border: 1px solid var(--border);
-                                    padding: 12px 20px; border-radius: 10px; cursor: pointer; color: var(--text);
-                                ">🔑 Export Key</button>
-                            </div>
+                    <!-- Protocol Stats -->
+                    <div class="protocol-stats-bar">
+                        <div class="stat-item">
+                            <span class="stat-value" id="totalProtocols">40+</span>
+                            <span class="stat-label">Protocols</span>
                         </div>
-
-                        <div
-                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 24px;">
-                            <div style="background: var(--bg-elevated); border-radius: 12px; padding: 20px;">
-                                <div style="color: var(--text-muted); font-size: 0.8rem;">Agent Address</div>
-                                <div id="agentAddress" style="font-family: monospace; font-size: 0.9rem;">Not created
-                                </div>
-                            </div>
-                            <div style="background: var(--bg-elevated); border-radius: 12px; padding: 20px;">
-                                <div style="color: var(--text-muted); font-size: 0.8rem;">Total Balance</div>
-                                <div id="agentBalance" style="font-size: 1.5rem; font-weight: 700; color: var(--gold);">
-                                    $0.00</div>
-                            </div>
-                            <div style="background: var(--bg-elevated); border-radius: 12px; padding: 20px;">
-                                <div style="color: var(--text-muted); font-size: 0.8rem;">Active Positions</div>
-                                <div id="agentPositions" style="font-size: 1.5rem; font-weight: 700;">0</div>
-                            </div>
-                            <div style="background: var(--bg-elevated); border-radius: 12px; padding: 20px;">
-                                <div style="color: var(--text-muted); font-size: 0.8rem;">Security</div>
-                                <div id="agentSecurity" style="font-size: 1rem;">
-                                    <span style="color: #4ade80;">✓ Multi-sig</span>
-                                    <span id="2faStatus" style="color: var(--text-muted);">• 2FA Off</span>
-                                </div>
-                            </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="totalProtocolTvl">$45B+</span>
+                            <span class="stat-label">Combined TVL</span>
                         </div>
-
-                        <div style="
-                            background: rgba(0,0,0,0.2);
-                            border-radius: 12px;
-                            padding: 16px;
-                            margin-top: 20px;
-                            display: flex;
-                            align-items: center;
-                            gap: 16px;
-                            flex-wrap: wrap;
-                        ">
-                            <span>🛡️ Security Features:</span>
-                            <span style="color: var(--text-muted);">
-                                24/7 Fund Access • Multi-sig for >$10k • Safe{Wallet} Support • TOTP 2FA • Contract
-                                Audit Log
-                            </span>
+                        <div class="stat-item">
+                            <span class="stat-value">5</span>
+                            <span class="stat-label">Chains</span>
                         </div>
                     </div>
 
-                    <div class="vault-tiers">
-                        <!-- Conservative -->
-                        <div class="vault-card tier-conservative">
-                            <div class="vault-header">
-                                <span class="vault-tier">Conservative</span>
-                                <span class="vault-apy">5-12% APY</span>
-                            </div>
-                            <div class="vault-body">
-                                <h3>Stablecoin Vault</h3>
-                                <p>Low-risk stablecoin strategies across audited protocols</p>
-                                <div class="vault-protocols">
-                                    <img src="/icons/protocols/aave.png" alt="Aave">
-                                    <img src="/icons/protocols/compound.png" alt="Compound">
-                                    <img src="/icons/protocols/curve.png" alt="Curve">
-                                </div>
-                                <div class="vault-stats">
-                                    <div class="vault-stat">
-                                        <span class="stat-value">$2.4M</span>
-                                        <span class="stat-label">TVL</span>
-                                    </div>
-                                    <div class="vault-stat">
-                                        <span class="stat-value">8.2%</span>
-                                        <span class="stat-label">Current APY</span>
+                    <!-- Protocol Grid -->
+                    <div class="protocol-grid" id="protocolGrid">
+                        <!-- Aave -->
+                        <div class="protocol-card" data-protocol="aave">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/aave.png" alt="Aave" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Aave</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag lending">Lending</span>
+                                        <span class="tag vault">Vault</span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="vault-actions">
-                                <button class="btn-deposit">Deposit</button>
-                                <button class="btn-details">Details</button>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$12.5B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                    <img src="/icons/base.png" alt="Base" title="Base">
+                                    <img src="/icons/arbitrum.png" alt="Arbitrum" title="Arbitrum">
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Balanced -->
-                        <div class="vault-card tier-balanced featured">
-                            <div class="vault-header">
-                                <span class="vault-tier">Balanced</span>
-                                <span class="vault-apy">15-25% APY</span>
-                            </div>
-                            <div class="vault-body">
-                                <h3>Multi-Strategy Vault</h3>
-                                <p>Diversified yield across lending, LP, and staking</p>
-                                <div class="vault-protocols">
-                                    <img src="/icons/protocols/aerodrome.png" alt="Aerodrome">
-                                    <img src="/icons/protocols/uniswap.png" alt="Uniswap">
-                                    <img src="/icons/protocols/lido.png" alt="Lido">
-                                    <img src="/icons/protocols/aave.png" alt="Aave">
-                                </div>
-                                <div class="vault-stats">
-                                    <div class="vault-stat">
-                                        <span class="stat-value">$5.1M</span>
-                                        <span class="stat-label">TVL</span>
-                                    </div>
-                                    <div class="vault-stat">
-                                        <span class="stat-value">18.5%</span>
-                                        <span class="stat-label">Current APY</span>
+                        <!-- Lido -->
+                        <div class="protocol-card" data-protocol="lido">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/lido.png" alt="Lido" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Lido</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag staking">Staking</span>
+                                        <span class="tag rewards">Rewards</span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="vault-actions">
-                                <button class="btn-deposit primary">Deposit</button>
-                                <button class="btn-details">Details</button>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$22.1B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Aggressive -->
-                        <div class="vault-card tier-aggressive">
-                            <div class="vault-header">
-                                <span class="vault-tier">Aggressive</span>
-                                <span class="vault-apy">30%+ APY</span>
-                            </div>
-                            <div class="vault-body">
-                                <h3>Alpha Vault</h3>
-                                <p>High-yield opportunities with active management</p>
-                                <div class="vault-protocols">
-                                    <img src="/icons/protocols/pendle.png" alt="Pendle">
-                                    <img src="/icons/protocols/gmx.png" alt="GMX">
-                                    <img src="/icons/protocols/morpho.png" alt="Morpho">
-                                </div>
-                                <div class="vault-stats">
-                                    <div class="vault-stat">
-                                        <span class="stat-value">$1.2M</span>
-                                        <span class="stat-label">TVL</span>
-                                    </div>
-                                    <div class="vault-stat">
-                                        <span class="stat-value">42.1%</span>
-                                        <span class="stat-label">Current APY</span>
+                        <!-- Uniswap -->
+                        <div class="protocol-card" data-protocol="uniswap">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/uniswap.png" alt="Uniswap" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Uniswap</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag amm">AMM</span>
+                                        <span class="tag lp">LP</span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="vault-actions">
-                                <button class="btn-deposit">Deposit</button>
-                                <button class="btn-details">Details</button>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$5.2B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                    <img src="/icons/base.png" alt="Base" title="Base">
+                                    <img src="/icons/arbitrum.png" alt="Arbitrum" title="Arbitrum">
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Airdrop -->
-                        <div class="vault-card tier-airdrop">
-                            <div class="vault-header">
-                                <span class="vault-tier">🎁 Airdrop</span>
-                                <span class="vault-apy">+Airdrops</span>
-                            </div>
-                            <div class="vault-body">
-                                <h3>Airdrop Farming</h3>
-                                <p>Maximize eligibility for upcoming token distributions</p>
-                                <div class="vault-protocols">
-                                    <img src="/icons/protocols/scroll.png" alt="Scroll">
-                                    <img src="/icons/protocols/linea.png" alt="Linea">
-                                    <img src="/icons/protocols/eigenlayer.png" alt="EigenLayer">
-                                </div>
-                                <div class="vault-stats">
-                                    <div class="vault-stat">
-                                        <span class="stat-value">$800K</span>
-                                        <span class="stat-label">TVL</span>
-                                    </div>
-                                    <div class="vault-stat">
-                                        <span class="stat-value">High</span>
-                                        <span class="stat-label">Potential</span>
+                        <!-- Curve -->
+                        <div class="protocol-card" data-protocol="curve">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/curve.png" alt="Curve" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Curve</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag amm">AMM</span>
+                                        <span class="tag rewards">Rewards</span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="vault-actions">
-                                <button class="btn-deposit">Deposit</button>
-                                <button class="btn-details">Details</button>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$1.8B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                    <img src="/icons/arbitrum.png" alt="Arbitrum" title="Arbitrum">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Aerodrome -->
+                        <div class="protocol-card" data-protocol="aerodrome">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/aerodrome.png" alt="Aerodrome" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Aerodrome</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag amm">AMM</span>
+                                        <span class="tag rewards">Rewards</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$1.4B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/base.png" alt="Base" title="Base">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Compound -->
+                        <div class="protocol-card" data-protocol="compound">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/compound.png" alt="Compound" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Compound</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag lending">Lending</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$2.1B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                    <img src="/icons/base.png" alt="Base" title="Base">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Morpho -->
+                        <div class="protocol-card" data-protocol="morpho">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/morpho.png" alt="Morpho" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Morpho</h3>
+                                    <span class="airdrop-badge">🎁</span>
+                                    <div class="protocol-tags">
+                                        <span class="tag lending">Lending</span>
+                                        <span class="tag vault">Vault</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$3.2B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                    <img src="/icons/base.png" alt="Base" title="Base">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pendle -->
+                        <div class="protocol-card" data-protocol="pendle">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/pendle.png" alt="Pendle" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Pendle</h3>
+                                    <span class="airdrop-badge">🎁</span>
+                                    <div class="protocol-tags">
+                                        <span class="tag yield">Yield</span>
+                                        <span class="tag amm">AMM</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$2.8B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                    <img src="/icons/arbitrum.png" alt="Arbitrum" title="Arbitrum">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- GMX -->
+                        <div class="protocol-card" data-protocol="gmx">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/gmx.png" alt="GMX" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>GMX</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag perps">Perps</span>
+                                        <span class="tag rewards">Rewards</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$450M</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/arbitrum.png" alt="Arbitrum" title="Arbitrum">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Yearn -->
+                        <div class="protocol-card" data-protocol="yearn">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/yearn.png" alt="Yearn" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Yearn</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag vault">Vault</span>
+                                        <span class="tag yield">Yield</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$320M</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Beefy -->
+                        <div class="protocol-card" data-protocol="beefy">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/beefy.png" alt="Beefy" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Beefy</h3>
+                                    <span class="airdrop-badge">🐮</span>
+                                    <div class="protocol-tags">
+                                        <span class="tag vault">Vault</span>
+                                        <span class="tag yield">Yield</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$280M</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/base.png" alt="Base" title="Base">
+                                    <img src="/icons/arbitrum.png" alt="Arbitrum" title="Arbitrum">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Balancer -->
+                        <div class="protocol-card" data-protocol="balancer">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/balancer.png" alt="Balancer" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Balancer</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag amm">AMM</span>
+                                        <span class="tag lp">LP</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$780M</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                    <img src="/icons/arbitrum.png" alt="Arbitrum" title="Arbitrum">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Spark -->
+                        <div class="protocol-card" data-protocol="spark">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/spark.png" alt="Spark" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Spark</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag lending">Lending</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$1.5B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Convex -->
+                        <div class="protocol-card" data-protocol="convex">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/convex.png" alt="Convex" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Convex</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag yield">Yield</span>
+                                        <span class="tag rewards">Rewards</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$1.2B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Moonwell -->
+                        <div class="protocol-card" data-protocol="moonwell">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/moonwell.png" alt="Moonwell" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Moonwell</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag lending">Lending</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$380M</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/base.png" alt="Base" title="Base">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kamino -->
+                        <div class="protocol-card" data-protocol="kamino">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/kamino.png" alt="Kamino" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Kamino</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag lending">Lending</span>
+                                        <span class="tag lp">LP</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$1.1B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/solana.png" alt="Solana" title="Solana">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Raydium -->
+                        <div class="protocol-card" data-protocol="raydium">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/raydium.png" alt="Raydium" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Raydium</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag amm">AMM</span>
+                                        <span class="tag lp">LP</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$890M</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/solana.png" alt="Solana" title="Solana">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Orca -->
+                        <div class="protocol-card" data-protocol="orca">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/orca.png" alt="Orca" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Orca</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag amm">AMM</span>
+                                        <span class="tag lp">LP</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$210M</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/solana.png" alt="Solana" title="Solana">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jupiter -->
+                        <div class="protocol-card" data-protocol="jupiter">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/jupiter.png" alt="Jupiter" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>Jupiter</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag amm">AMM</span>
+                                        <span class="tag perps">Perps</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$1.8B</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/solana.png" alt="Solana" title="Solana">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- InfiniFi -->
+                        <div class="protocol-card" data-protocol="infinifi">
+                            <div class="protocol-header">
+                                <img src="/icons/protocols/infinifi.svg" alt="InfiniFi" class="protocol-icon">
+                                <div class="protocol-info">
+                                    <h3>InfiniFi</h3>
+                                    <div class="protocol-tags">
+                                        <span class="tag vault">Vault</span>
+                                        <span class="tag yield">Yield</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="protocol-stats">
+                                <div class="protocol-tvl">
+                                    <span class="tvl-value">$45M</span>
+                                    <span class="tvl-label">TVL</span>
+                                </div>
+                                <div class="protocol-chains">
+                                    <img src="/icons/ethereum.png" alt="Ethereum" title="Ethereum">
+                                </div>
                             </div>
                         </div>
                     </div>
