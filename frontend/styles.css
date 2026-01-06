@@ -3436,6 +3436,7 @@ body.section-vaults .main-content {
     flex: 1;
     height: 6px;
     -webkit-appearance: none;
+    appearance: none;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
 }
@@ -4878,6 +4879,7 @@ textarea:focus {
     background: linear-gradient(135deg, #FFD700 0%, #D4A853 100%);
     /* Bright Gold */
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-bottom: var(--space-2);
     filter: drop-shadow(0 0 10px rgba(212, 168, 83, 0.3));
@@ -5295,6 +5297,7 @@ textarea:focus {
     margin-bottom: var(--space-2);
     background: linear-gradient(135deg, #fff 0%, #aaa 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -7652,4 +7655,483 @@ body.oracle-visible .oracle-toggle-btn {
 
 #section-build .config-card h3 .greek-icon {
     margin-right: var(--space-2);
+}
+
+/* ===========================================
+   GREEK GAMING COCKPIT LAYOUT
+   =========================================== */
+
+/* Grid Container */
+.cockpit-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr 340px;
+    /* Left / Center / Right */
+    gap: 24px;
+    width: 100%;
+    margin-top: 20px;
+    align-items: start;
+}
+
+/* ===========================================
+   GLOBAL GREEK GAMING EXTENSIONS
+   =========================================== */
+
+/* Global Section Refactor */
+.section {
+    padding: var(--space-6);
+    max-width: 1600px;
+    /* Wider for dashboard view */
+    margin: 0 auto;
+}
+
+/* Battle Card (For Pools, Strategies, Vaults) */
+.battle-card {
+    background: linear-gradient(135deg, rgba(10, 10, 15, 0.9), rgba(20, 20, 25, 0.95));
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: all 0.3s ease;
+    /* HUD Corners */
+    clip-path: polygon(0 10px, 10px 0,
+            100% 0, 100% calc(100% - 10px),
+            calc(100% - 10px) 100%, 0 100%);
+}
+
+.battle-card:hover {
+    border-color: var(--gold);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
+    transform: translateY(-2px);
+}
+
+.battle-card::before {
+    /* Corner Accent Top-Left/Bottom-Right */
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    border-top: 2px solid var(--gold);
+    border-left: 2px solid var(--gold);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.battle-card::after {
+    /* Corner Accent Bottom-Right */
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    border-bottom: 2px solid var(--gold);
+    border-right: 2px solid var(--gold);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Battle Card Header */
+.battle-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 12px;
+}
+
+.battle-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(212, 175, 55, 0.1);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold);
+    font-size: 1.2rem;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.battle-title-group {
+    flex: 1;
+}
+
+.battle-title {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: #fff;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.battle-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+}
+
+/* Battle Card Stats (Grid) */
+.battle-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.stat-module {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 8px 12px;
+    border-radius: 4px;
+    border-left: 2px solid var(--border-color);
+}
+
+.stat-module.highlight {
+    border-left-color: var(--gold);
+}
+
+.stat-module.danger {
+    border-left-color: #ff3333;
+}
+
+.stat-module.safe {
+    border-left-color: var(--cyan);
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.stat-value {
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    color: #fff;
+}
+
+.stat-value.gold {
+    color: var(--gold);
+}
+
+.stat-value.cyan {
+    color: var(--cyan);
+}
+
+/* Battle Card Actions */
+.battle-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.btn-battle {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--gold-dim);
+    background: transparent;
+    color: var(--gold);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+
+.btn-battle:hover {
+    background: var(--gold);
+    color: #000;
+}
+
+.btn-battle.secondary {
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+}
+
+.btn-battle.secondary:hover {
+    border-color: #fff;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Mission Control Buttons (Dashboard) */
+.mission-control-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.btn-mission {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), transparent);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    gap: 12px;
+    transition: all 0.3s;
+    height: 120px;
+}
+
+.btn-mission:hover {
+    background: rgba(212, 175, 55, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+}
+
+.btn-mission .mission-icon {
+    font-size: 2rem;
+}
+
+.btn-mission span {
+    font-family: var(--font-display);
+    letter-spacing: 1px;
+}
+
+/* Home Section Layout */
+.home-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    align-items: start;
+}
+
+.home-main {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Stats Row Refactor */
+.stats-hud-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+/* Live Feed (Right Col) */
+.live-feed-panel {
+    height: 100%;
+    min-height: 400px;
+}
+
+/* Columns */
+.cockpit-col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Panel Styling (Replaces config-card in this view) */
+.cockpit-panel {
+    background: linear-gradient(135deg, rgba(5, 5, 5, 0.95), rgba(10, 10, 10, 0.98));
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    position: relative;
+    padding: 20px;
+    /* Corner Brackets via Clip Path or simple Borders */
+    clip-path: polygon(0 10px, 10px 0,
+            calc(100% - 10px) 0, 100% 10px,
+            100% calc(100% - 10px), calc(100% - 10px) 100%,
+            10px 100%, 0 calc(100% - 10px));
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.cockpit-panel::before {
+    /* Gold Corner Accents */
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(135deg, var(--gold) 10px, transparent 0) top left,
+        linear-gradient(225deg, var(--gold) 10px, transparent 0) top right,
+        linear-gradient(315deg, var(--gold) 10px, transparent 0) bottom right,
+        linear-gradient(45deg, var(--gold) 10px, transparent 0) bottom left;
+    background-size: 100% 100%;
+    /* Cover full area but masked by corners? 
+       Actually gradients at corners works best with no-repeat 
+    */
+    background-repeat: no-repeat;
+    opacity: 0.5;
+    z-index: 1;
+}
+
+/* Better corner accents implementation */
+.cockpit-panel::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    z-index: 0;
+    clip-path: inherit;
+    pointer-events: none;
+}
+
+.cockpit-panel:hover {
+    border-color: var(--gold);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.15);
+}
+
+/* Header Styling */
+.cockpit-panel h3 {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--gold);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+    padding-bottom: 8px;
+}
+
+/* Data & Values */
+.cockpit-value {
+    font-family: var(--font-mono);
+    color: var(--cyan);
+}
+
+/* Custom Icons */
+.tech-icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    display: inline-block;
+    vertical-align: text-bottom;
+}
+
+.tech-icon.gold {
+    color: var(--gold);
+}
+
+.tech-icon.cyan {
+    color: var(--cyan);
+}
+
+.tech-icon.void {
+    color: var(--text-dim);
+}
+
+/* Remove old sidebar styles from grid context */
+.agent-builder {
+    display: block;
+    /* Reset flex */
+    padding: 0;
+}
+
+/* Specific Component Overrides for Cockpit */
+
+/* Chain Selector (Compact) */
+.chain-selector-build {
+    gap: 8px;
+}
+
+.chain-btn-build {
+    padding: 8px 12px;
+    border-radius: 4px;
+    /* Slight round, mostly square */
+    border: 1px solid var(--border-color);
+}
+
+.chain-btn-build.active {
+    border-color: var(--gold);
+    background: rgba(212, 175, 55, 0.1);
+}
+
+/* Pool Type (Toggle Style) */
+.pool-type-selector-build {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pool-type-btn-build {
+    justify-content: flex-start;
+    padding: 10px;
+    border: 1px solid var(--bg-surface);
+    background: var(--bg-surface);
+}
+
+.pool-type-btn-build.active {
+    border-color: var(--gold);
+    background: linear-gradient(90deg, rgba(212, 175, 55, 0.15), transparent);
+}
+
+/* Strategy Presets (Grid) */
+.strategy-presets {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.preset-btn {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    height: 80px;
+    position: relative;
+    overflow: hidden;
+}
+
+.preset-btn .preset-icon {
+    font-size: 1.2rem;
+    margin-bottom: 4px;
+    color: var(--gold);
+}
+
+.preset-btn .preset-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.preset-btn .preset-desc {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    white-space: normal;
+    /* wrap text */
+}
+
+/* Controls Panel */
+.duration-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+    .cockpit-grid {
+        grid-template-columns: 300px 1fr 300px;
+    }
+}
+
+@media (max-width: 1100px) {
+    .cockpit-grid {
+        grid-template-columns: 1fr;
+        /* Stack on small screens */
+    }
+
+    .agent-builder-cockpit {
+        display: flex;
+        flex-direction: column;
+    }
 }

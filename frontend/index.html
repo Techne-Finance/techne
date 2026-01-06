@@ -511,44 +511,63 @@
             <div class="content-area">
                 <!-- Section: Explore -->
                 <section class="section active" id="section-explore">
-                    <div class="section-header">
+                    <div class="section-header"
+                        style="border-bottom: 1px solid rgba(212,175,55,0.1); padding-bottom: 20px; margin-bottom: 24px;">
                         <div class="section-title-row">
-                            <h1>Explore Opportunities</h1>
-                            <span class="pool-count" id="poolCount">Loading...</span>
+                            <h1 style="font-family: var(--font-display); letter-spacing: 1px; color: #fff;">Explore
+                                <span style="color: var(--gold);">Opportunities</span>
+                            </h1>
+                            <span class="pool-count" id="poolCount"
+                                style="background: rgba(212,175,55,0.1); border: 1px solid var(--gold); border-radius: 4px; padding: 4px 8px; color: var(--gold); font-family: var(--font-mono);">Loading...</span>
                         </div>
-                        <div class="view-toggles">
-                            <button class="view-btn active" data-view="grid">Grid</button>
-                            <button class="view-btn" data-view="list">List</button>
+                        <div class="view-toggles"
+                            style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+                            <button class="view-btn active" data-view="grid" style="border-radius: 2px;">Grid</button>
+                            <button class="view-btn" data-view="list" style="border-radius: 2px;">List</button>
                         </div>
                     </div>
 
-                    <!-- Stats Bar -->
-                    <div class="stats-bar">
-                        <div class="stat-item">
-                            <span class="stat-value" id="totalTvl">$0</span>
-                            <span class="stat-label">Total TVL</span>
+                    <!-- Stats Bar HUD -->
+                    <div class="stats-hud-row" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 32px;">
+                        <div class="cockpit-panel"
+                            style="padding: 16px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                            <span class="stat-label"
+                                style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">Total
+                                TVL</span>
+                            <span class="stat-value" id="totalTvl"
+                                style="font-size: 1.5rem; color: var(--gold); font-family: var(--font-mono);">$0</span>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-value" id="avgApy">0%</span>
-                            <span class="stat-label">Avg APY</span>
+                        <div class="cockpit-panel"
+                            style="padding: 16px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                            <span class="stat-label"
+                                style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">Avg
+                                APY</span>
+                            <span class="stat-value" id="avgApy"
+                                style="font-size: 1.5rem; color: var(--cyan); font-family: var(--font-mono);">0%</span>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-value" id="protocolsActive">0</span>
-                            <span class="stat-label">Protocols</span>
+                        <div class="cockpit-panel"
+                            style="padding: 16px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                            <span class="stat-label"
+                                style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">Protocols</span>
+                            <span class="stat-value" id="protocolsActive"
+                                style="font-size: 1.5rem; color: #fff; font-family: var(--font-mono);">0</span>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-value" id="chainsActive">0</span>
-                            <span class="stat-label">Chains</span>
+                        <div class="cockpit-panel"
+                            style="padding: 16px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                            <span class="stat-label"
+                                style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">Chains</span>
+                            <span class="stat-value" id="chainsActive"
+                                style="font-size: 1.5rem; color: #fff; font-family: var(--font-mono);">0</span>
                         </div>
-                        <!-- Unlock button removed - using credits for filters now -->
                     </div>
 
                     <!-- Pool Grid -->
-                    <div class="pool-grid" id="poolGrid">
+                    <div class="pool-grid cockpit-grid" id="poolGrid"
+                        style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); margin-top: 0; align-items: stretch;">
                         <!-- Pools loaded dynamically -->
                         <div class="loading-state">
-                            <div class="loader"></div>
-                            <p>Scanning protocols...</p>
+                            <div class="loader" style="border-top-color: var(--gold);"></div>
+                            <p style="color: var(--gold);">Scanning protocols...</p>
                         </div>
                     </div>
                 </section>
@@ -765,223 +784,199 @@
 
                 <!-- Section: Vaults -->
                 <section class="section" id="section-vaults">
-                    <div class="section-header">
-                        <h1>Automated Vaults</h1>
-                        <p class="section-desc">AI-managed strategies for passive yield optimization</p>
+                    <div class="section-header"
+                        style="border-bottom: 1px solid rgba(212,175,55,0.1); padding-bottom: 20px; margin-bottom: 24px;">
+                        <h1 style="font-family: var(--font-display); color: #fff;">Automated <span
+                                style="color: var(--gold);">Vaults</span></h1>
+                        <p class="section-desc" style="color: var(--text-dim);">AI-managed strategies for passive yield
+                            optimization</p>
                     </div>
 
-                    <!-- Agent Wallet Dashboard -->
-                    <div class="agent-wallet-dashboard" style="
-                        background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.02));
-                        border: 1px solid var(--gold);
-                        border-radius: 20px;
-                        padding: 24px;
-                        margin-bottom: 32px;
-                    ">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-                            <div>
-                                <h2 style="margin: 0 0 8px;">🤖 Agent Wallet</h2>
-                                <p style="color: var(--text-muted); margin: 0;">
-                                    Your AI agent's dedicated wallet for executing yield strategies
-                                </p>
+                    <!-- Agent Wallet Dashboard (Cockpit Panel) -->
+                    <div class="cockpit-panel" style="margin-bottom: 32px;">
+                        <h3><span class="greek-icon">🤖</span> Agent Wallet</h3>
+
+                        <div class="cockpit-grid"
+                            style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 20px;">
+                            <div class="stat-module">
+                                <span class="stat-label">Address</span>
+                                <div id="agentAddress" style="font-family: monospace; color: var(--cyan);">Not created
+                                </div>
                             </div>
-                            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                                <button onclick="AgentWallet.showDepositModal()" class="btn-action" style="
-                                    background: var(--gradient-gold); border: none; padding: 12px 24px;
-                                    border-radius: 10px; font-weight: 600; cursor: pointer;
-                                ">💰 Deposit</button>
-                                <button onclick="AgentWallet.showWithdrawModal()" class="btn-action" style="
-                                    background: var(--bg-elevated); border: 1px solid var(--border);
-                                    padding: 12px 24px; border-radius: 10px; cursor: pointer; color: var(--text);
-                                ">📤 Withdraw</button>
-                                <button onclick="AgentWallet.setup2FA()" class="btn-action" style="
-                                    background: var(--bg-elevated); border: 1px solid var(--border);
-                                    padding: 12px 20px; border-radius: 10px; cursor: pointer; color: var(--text);
-                                ">🔐 2FA</button>
-                                <button onclick="AgentWallet.exportPrivateKey()" class="btn-action" style="
-                                    background: var(--bg-elevated); border: 1px solid var(--border);
-                                    padding: 12px 20px; border-radius: 10px; cursor: pointer; color: var(--text);
-                                ">🔑 Export Key</button>
+                            <div class="stat-module highlight">
+                                <span class="stat-label">Total Balance</span>
+                                <div id="agentBalance"
+                                    style="font-size: 1.5rem; color: var(--gold); font-family: var(--font-mono);">$0.00
+                                </div>
+                            </div>
+                            <div class="stat-module">
+                                <span class="stat-label">Active Positions</span>
+                                <div id="agentPositions" style="font-size: 1.5rem; color: #fff;">0</div>
+                            </div>
+                            <div class="stat-module">
+                                <span class="stat-label">Security</span>
+                                <div id="agentSecurity" style="font-size: 0.9rem; color: #4ade80;">✓ Multi-sig</div>
                             </div>
                         </div>
 
-                        <div
-                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 24px;">
-                            <div style="background: var(--bg-elevated); border-radius: 12px; padding: 20px;">
-                                <div style="color: var(--text-muted); font-size: 0.8rem;">Agent Address</div>
-                                <div id="agentAddress" style="font-family: monospace; font-size: 0.9rem;">Not created
-                                </div>
-                            </div>
-                            <div style="background: var(--bg-elevated); border-radius: 12px; padding: 20px;">
-                                <div style="color: var(--text-muted); font-size: 0.8rem;">Total Balance</div>
-                                <div id="agentBalance" style="font-size: 1.5rem; font-weight: 700; color: var(--gold);">
-                                    $0.00</div>
-                            </div>
-                            <div style="background: var(--bg-elevated); border-radius: 12px; padding: 20px;">
-                                <div style="color: var(--text-muted); font-size: 0.8rem;">Active Positions</div>
-                                <div id="agentPositions" style="font-size: 1.5rem; font-weight: 700;">0</div>
-                            </div>
-                            <div style="background: var(--bg-elevated); border-radius: 12px; padding: 20px;">
-                                <div style="color: var(--text-muted); font-size: 0.8rem;">Security</div>
-                                <div id="agentSecurity" style="font-size: 1rem;">
-                                    <span style="color: #4ade80;">✓ Multi-sig</span>
-                                    <span id="2faStatus" style="color: var(--text-muted);">• 2FA Off</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="
-                            background: rgba(0,0,0,0.2);
-                            border-radius: 12px;
-                            padding: 16px;
-                            margin-top: 20px;
-                            display: flex;
-                            align-items: center;
-                            gap: 16px;
-                            flex-wrap: wrap;
-                        ">
-                            <span>🛡️ Security Features:</span>
-                            <span style="color: var(--text-muted);">
-                                24/7 Fund Access • Multi-sig for >$10k • Safe{Wallet} Support • TOTP 2FA • Contract
-                                Audit Log
-                            </span>
+                        <div class="battle-actions" style="margin-top: 24px;">
+                            <button onclick="AgentWallet.showDepositModal()" class="btn-battle">DEPOSIT</button>
+                            <button onclick="AgentWallet.showWithdrawModal()"
+                                class="btn-battle secondary">WITHDRAW</button>
+                            <button onclick="AgentWallet.setup2FA()" class="btn-battle secondary">SECURITY</button>
+                            <button onclick="AgentWallet.exportPrivateKey()" class="btn-battle secondary">KEYS</button>
                         </div>
                     </div>
 
-                    <div class="vault-tiers">
+                    <!-- Vault Tiers Grid -->
+                    <div class="cockpit-grid"
+                        style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 0; align-items: stretch;">
+
                         <!-- Conservative -->
-                        <div class="vault-card tier-conservative">
-                            <div class="vault-header">
-                                <span class="vault-tier">Conservative</span>
-                                <span class="vault-apy">5-12% APY</span>
-                            </div>
-                            <div class="vault-body">
-                                <h3>Stablecoin Vault</h3>
-                                <p>Low-risk stablecoin strategies across audited protocols</p>
-                                <div class="vault-protocols">
-                                    <img src="/icons/protocols/aave.png" alt="Aave">
-                                    <img src="/icons/protocols/compound.png" alt="Compound">
-                                    <img src="/icons/protocols/curve.png" alt="Curve">
-                                </div>
-                                <div class="vault-stats">
-                                    <div class="vault-stat">
-                                        <span class="stat-value">$2.4M</span>
-                                        <span class="stat-label">TVL</span>
-                                    </div>
-                                    <div class="vault-stat">
-                                        <span class="stat-value">8.2%</span>
-                                        <span class="stat-label">Current APY</span>
-                                    </div>
+                        <div class="battle-card">
+                            <div class="battle-card-header">
+                                <div class="battle-icon">🛡️</div>
+                                <div class="battle-title-group">
+                                    <h4 class="battle-title">Conservative</h4>
+                                    <span class="battle-subtitle">Stablecoin Vault</span>
                                 </div>
                             </div>
-                            <div class="vault-actions">
-                                <button class="btn-deposit">Deposit</button>
-                                <button class="btn-details">Details</button>
+                            <div class="battle-stats">
+                                <div class="stat-module highlight">
+                                    <span class="stat-label">APY</span>
+                                    <span class="stat-value cyan">5-12%</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">TVL</span>
+                                    <span class="stat-value gold">$2.4M</span>
+                                </div>
+                                <div class="stat-module safe">
+                                    <span class="stat-label">Risk</span>
+                                    <span class="stat-value" style="color: #4ade80;">Low</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">Assets</span>
+                                    <span class="stat-value" style="font-size:0.8rem;">USDC/DAI</span>
+                                </div>
+                            </div>
+                            <div class="battle-actions">
+                                <button class="btn-battle">DEPOSIT</button>
+                                <button class="btn-battle secondary">DETAILS</button>
                             </div>
                         </div>
 
                         <!-- Balanced -->
-                        <div class="vault-card tier-balanced featured">
-                            <div class="vault-header">
-                                <span class="vault-tier">Balanced</span>
-                                <span class="vault-apy">15-25% APY</span>
-                            </div>
-                            <div class="vault-body">
-                                <h3>Multi-Strategy Vault</h3>
-                                <p>Diversified yield across lending, LP, and staking</p>
-                                <div class="vault-protocols">
-                                    <img src="/icons/protocols/aerodrome.png" alt="Aerodrome">
-                                    <img src="/icons/protocols/uniswap.png" alt="Uniswap">
-                                    <img src="/icons/protocols/lido.png" alt="Lido">
-                                    <img src="/icons/protocols/aave.png" alt="Aave">
+                        <div class="battle-card"
+                            style="border-color: var(--gold); box-shadow: 0 0 15px rgba(212,175,55,0.1);">
+                            <div class="battle-card-header">
+                                <div class="battle-icon">⚖️</div>
+                                <div class="battle-title-group">
+                                    <h4 class="battle-title">Balanced</h4>
+                                    <span class="battle-subtitle">Multi-Strategy</span>
                                 </div>
-                                <div class="vault-stats">
-                                    <div class="vault-stat">
-                                        <span class="stat-value">$5.1M</span>
-                                        <span class="stat-label">TVL</span>
-                                    </div>
-                                    <div class="vault-stat">
-                                        <span class="stat-value">18.5%</span>
-                                        <span class="stat-label">Current APY</span>
-                                    </div>
+                                <span style="color:var(--gold); font-size:0.8rem;">★ POPULAR</span>
+                            </div>
+                            <div class="battle-stats">
+                                <div class="stat-module highlight">
+                                    <span class="stat-label">APY</span>
+                                    <span class="stat-value cyan">15-25%</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">TVL</span>
+                                    <span class="stat-value gold">$5.1M</span>
+                                </div>
+                                <div class="stat-module safe">
+                                    <span class="stat-label">Risk</span>
+                                    <span class="stat-value" style="color: #F59E0B;">Medium</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">Assets</span>
+                                    <span class="stat-value" style="font-size:0.8rem;">ETH/LDO</span>
                                 </div>
                             </div>
-                            <div class="vault-actions">
-                                <button class="btn-deposit primary">Deposit</button>
-                                <button class="btn-details">Details</button>
+                            <div class="battle-actions">
+                                <button class="btn-battle">DEPOSIT</button>
+                                <button class="btn-battle secondary">DETAILS</button>
                             </div>
                         </div>
 
                         <!-- Aggressive -->
-                        <div class="vault-card tier-aggressive">
-                            <div class="vault-header">
-                                <span class="vault-tier">Aggressive</span>
-                                <span class="vault-apy">30%+ APY</span>
-                            </div>
-                            <div class="vault-body">
-                                <h3>Alpha Vault</h3>
-                                <p>High-yield opportunities with active management</p>
-                                <div class="vault-protocols">
-                                    <img src="/icons/protocols/pendle.png" alt="Pendle">
-                                    <img src="/icons/protocols/gmx.png" alt="GMX">
-                                    <img src="/icons/protocols/morpho.png" alt="Morpho">
-                                </div>
-                                <div class="vault-stats">
-                                    <div class="vault-stat">
-                                        <span class="stat-value">$1.2M</span>
-                                        <span class="stat-label">TVL</span>
-                                    </div>
-                                    <div class="vault-stat">
-                                        <span class="stat-value">42.1%</span>
-                                        <span class="stat-label">Current APY</span>
-                                    </div>
+                        <div class="battle-card">
+                            <div class="battle-card-header">
+                                <div class="battle-icon">⚡</div>
+                                <div class="battle-title-group">
+                                    <h4 class="battle-title">Aggressive</h4>
+                                    <span class="battle-subtitle">Alpha Vault</span>
                                 </div>
                             </div>
-                            <div class="vault-actions">
-                                <button class="btn-deposit">Deposit</button>
-                                <button class="btn-details">Details</button>
+                            <div class="battle-stats">
+                                <div class="stat-module highlight">
+                                    <span class="stat-label">APY</span>
+                                    <span class="stat-value cyan">30%+</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">TVL</span>
+                                    <span class="stat-value gold">$1.2M</span>
+                                </div>
+                                <div class="stat-module danger">
+                                    <span class="stat-label">Risk</span>
+                                    <span class="stat-value" style="color: #EF4444;">High</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">Assets</span>
+                                    <span class="stat-value" style="font-size:0.8rem;">Derivs</span>
+                                </div>
+                            </div>
+                            <div class="battle-actions">
+                                <button class="btn-battle">DEPOSIT</button>
+                                <button class="btn-battle secondary">DETAILS</button>
                             </div>
                         </div>
 
                         <!-- Airdrop -->
-                        <div class="vault-card tier-airdrop">
-                            <div class="vault-header">
-                                <span class="vault-tier">🎁 Airdrop</span>
-                                <span class="vault-apy">+Airdrops</span>
-                            </div>
-                            <div class="vault-body">
-                                <h3>Airdrop Farming</h3>
-                                <p>Maximize eligibility for upcoming token distributions</p>
-                                <div class="vault-protocols">
-                                    <img src="/icons/protocols/scroll.png" alt="Scroll">
-                                    <img src="/icons/protocols/linea.png" alt="Linea">
-                                    <img src="/icons/protocols/eigenlayer.png" alt="EigenLayer">
-                                </div>
-                                <div class="vault-stats">
-                                    <div class="vault-stat">
-                                        <span class="stat-value">$800K</span>
-                                        <span class="stat-label">TVL</span>
-                                    </div>
-                                    <div class="vault-stat">
-                                        <span class="stat-value">High</span>
-                                        <span class="stat-label">Potential</span>
-                                    </div>
+                        <div class="battle-card">
+                            <div class="battle-card-header">
+                                <div class="battle-icon">🎁</div>
+                                <div class="battle-title-group">
+                                    <h4 class="battle-title">Airdrop</h4>
+                                    <span class="battle-subtitle">Points Farming</span>
                                 </div>
                             </div>
-                            <div class="vault-actions">
-                                <button class="btn-deposit">Deposit</button>
-                                <button class="btn-details">Details</button>
+                            <div class="battle-stats">
+                                <div class="stat-module highlight">
+                                    <span class="stat-label">Points</span>
+                                    <span class="stat-value cyan">2x</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">TVL</span>
+                                    <span class="stat-value gold">$900K</span>
+                                </div>
+                                <div class="stat-module safe">
+                                    <span class="stat-label">Risk</span>
+                                    <span class="stat-value" style="color: #F59E0B;">Medium</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">Assets</span>
+                                    <span class="stat-value" style="font-size:0.8rem;">ETH/LRT</span>
+                                </div>
+                            </div>
+                            <div class="battle-actions">
+                                <button class="btn-battle">DEPOSIT</button>
+                                <button class="btn-battle secondary">DETAILS</button>
                             </div>
                         </div>
+
                     </div>
                 </section>
 
                 <!-- Section: Strategies -->
                 <section class="section" id="section-strategies">
-                    <div class="section-header">
-                        <h1>Community Strategies</h1>
-                        <p class="section-desc">Discover and copy proven yield strategies</p>
+                    <div class="section-header"
+                        style="border-bottom: 1px solid rgba(212,175,55,0.1); padding-bottom: 20px; margin-bottom: 24px;">
+                        <h1 style="font-family: var(--font-display); color: #fff;">Community <span
+                                style="color: var(--gold);">Strategies</span></h1>
+                        <p class="section-desc" style="color: var(--text-dim);">Discover and copy proven yield
+                            strategies</p>
                     </div>
 
                     <div class="strategy-tabs">
@@ -991,60 +986,88 @@
                         <button class="tab-btn">My Strategies</button>
                     </div>
 
-                    <div class="strategy-list">
-                        <div class="strategy-card">
-                            <div class="strategy-header">
-                                <div class="strategy-info">
-                                    <h3>Stablecoin Maximizer</h3>
-                                    <span class="creator">by 0xDeFi...42</span>
+                    <div class="cockpit-grid"
+                        style="grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px; margin-top: 20px;">
+
+                        <!-- Strategy 1 -->
+                        <div class="battle-card">
+                            <div class="battle-card-header">
+                                <div class="battle-icon">💰</div>
+                                <div class="battle-title-group">
+                                    <h4 class="battle-title">Stablecoin Maximizer</h4>
+                                    <span class="battle-subtitle">Yield Farming • 0xDeFi...42</span>
                                 </div>
-                                <div class="strategy-perf">
-                                    <span class="perf-value positive">+24.5%</span>
-                                    <span class="perf-period">30d</span>
+                                <div style="text-align:right;">
+                                    <div style="color: #4ade80; font-family: var(--font-mono); font-weight: 700;">+24.5%
+                                    </div>
+                                    <div style="font-size: 0.7rem; color: var(--text-dim);">30d</div>
                                 </div>
                             </div>
-                            <p class="strategy-desc">Auto-compounds USDC across Aave, Compound, and Curve for maximum
-                                stable yield</p>
-                            <div class="strategy-meta">
-                                <span class="meta-item">
-                                    <img src="https://icons.llama.fi/aave.png" alt="Aave" width="16">
-                                    <img src="https://icons.llama.fi/compound-finance.png" alt="Compound" width="16">
-                                    <img src="https://icons.llama.fi/curve.png" alt="Curve" width="16">
-                                </span>
-                                <span class="meta-item">👥 124 copiers</span>
-                                <span class="meta-item">⭐ 4.8</span>
+                            <div class="battle-stats">
+                                <div class="stat-module highlight">
+                                    <span class="stat-label">Copiers</span>
+                                    <span class="stat-value cyan">124</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">Rating</span>
+                                    <span class="stat-value gold">⭐ 4.8</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">Protocols</span>
+                                    <div style="display:flex; gap:4px; margin-top:4px;">
+                                        <img src="https://icons.llama.fi/aave.png" width="16"
+                                            style="border-radius:50%;">
+                                        <img src="https://icons.llama.fi/curve.png" width="16"
+                                            style="border-radius:50%;">
+                                    </div>
+                                </div>
                             </div>
-                            <div class="strategy-actions">
-                                <button class="btn-copy">Copy Strategy</button>
-                                <button class="btn-view">View Details</button>
+                            <div class="battle-actions">
+                                <button class="btn-battle">COPY STRATEGY</button>
+                                <button class="btn-battle secondary">DETAILS</button>
                             </div>
                         </div>
 
-                        <div class="strategy-card">
-                            <div class="strategy-header">
-                                <div class="strategy-info">
-                                    <h3>Base DEX Hunter</h3>
-                                    <span class="creator">by BaseChad.eth</span>
+                        <!-- Strategy 2 -->
+                        <div class="battle-card"
+                            style="border-color: var(--gold); box-shadow: 0 0 20px rgba(212,175,55,0.15);">
+                            <div class="battle-card-header">
+                                <div class="battle-icon">🦄</div>
+                                <div class="battle-title-group">
+                                    <h4 class="battle-title">Base DEX Hunter</h4>
+                                    <span class="battle-subtitle">LP Farming • BaseChad.eth</span>
                                 </div>
-                                <div class="strategy-perf">
-                                    <span class="perf-value positive">+67.2%</span>
-                                    <span class="perf-period">30d</span>
+                                <div style="text-align:right;">
+                                    <div style="color: var(--gold); font-family: var(--font-mono); font-weight: 700;">
+                                        +67.2%</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-dim);">30d</div>
                                 </div>
                             </div>
-                            <p class="strategy-desc">Aggressive LP farming on Aerodrome with auto-rebalancing</p>
-                            <div class="strategy-meta">
-                                <span class="meta-item">
-                                    <img src="https://icons.llama.fi/aerodrome.png" alt="Aerodrome" width="16">
-                                    <img src="https://icons.llama.fi/uniswap.png" alt="Uniswap" width="16">
-                                </span>
-                                <span class="meta-item">👥 89 copiers</span>
-                                <span class="meta-item">⭐ 4.6</span>
+                            <div class="battle-stats">
+                                <div class="stat-module highlight">
+                                    <span class="stat-label">Copiers</span>
+                                    <span class="stat-value cyan">89</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">Rating</span>
+                                    <span class="stat-value gold">⭐ 4.6</span>
+                                </div>
+                                <div class="stat-module">
+                                    <span class="stat-label">Protocols</span>
+                                    <div style="display:flex; gap:4px; margin-top:4px;">
+                                        <img src="https://icons.llama.fi/aerodrome.png" width="16"
+                                            style="border-radius:50%;">
+                                        <img src="https://icons.llama.fi/uniswap.png" width="16"
+                                            style="border-radius:50%;">
+                                    </div>
+                                </div>
                             </div>
-                            <div class="strategy-actions">
-                                <button class="btn-copy">Copy Strategy</button>
-                                <button class="btn-view">View Details</button>
+                            <div class="battle-actions">
+                                <button class="btn-battle">COPY STRATEGY</button>
+                                <button class="btn-battle secondary">DETAILS</button>
                             </div>
                         </div>
+
                     </div>
                 </section>
 
@@ -1098,12 +1121,14 @@
                         </div>
                     </div>
 
-                    <div class="agent-builder">
-                        <!-- Left: Configuration Panel -->
-                        <div class="agent-config-panel">
-                            <!-- Chain Selection -->
-                            <div class="config-card">
-                                <h3>⛓️ Chain</h3>
+                    <div class="agent-builder-cockpit">
+                        <!-- LEFT COLUMN: ARCHITECTURE -->
+                        <div class="cockpit-col left">
+
+                            <!-- Chain & Pool Type -->
+                            <div class="cockpit-panel">
+                                <h3><span class="greek-icon">α</span> Network Architecture</h3>
+
                                 <div class="chain-selector-build">
                                     <button class="chain-btn-build active" data-chain="base">
                                         <img src="/icons/chains/base.svg" alt="Base">
@@ -1111,218 +1136,154 @@
                                     </button>
                                     <button class="chain-btn-build disabled" data-chain="ethereum" disabled>
                                         <img src="/icons/chains/ethereum.svg" alt="Ethereum">
-                                        <span>Ethereum</span>
-                                        <span class="coming-soon-badge">Soon</span>
-                                    </button>
-                                    <button class="chain-btn-build disabled" data-chain="arbitrum" disabled>
-                                        <img src="/icons/chains/arbitrum.svg" alt="Arbitrum">
-                                        <span>Arbitrum</span>
-                                        <span class="coming-soon-badge">Soon</span>
-                                    </button>
-                                    <button class="chain-btn-build disabled" data-chain="solana" disabled>
-                                        <img src="/icons/chains/solana.svg" alt="Solana">
-                                        <span>Solana</span>
-                                        <span class="coming-soon-badge">Soon</span>
+                                        <span>ETH</span>
                                     </button>
                                 </div>
-                            </div>
 
-                            <!-- Pool Type Selection -->
-                            <div class="config-card">
-                                <h3>🏊 Pool Type</h3>
-                                <div class="pool-type-selector-build">
+                                <div class="pool-type-selector-build" style="margin-top: 16px;">
                                     <button class="pool-type-btn-build active" data-pool-type="single">
-                                        <span class="type-icon">🛡️</span>
-                                        <span class="type-name">Single-Sided</span>
-                                        <span class="type-desc">Lending, staking - No IL risk</span>
+                                        <span class="type-icon"><svg viewBox="0 0 24 24" class="tech-icon gold">
+                                                <path
+                                                    d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"
+                                                    fill="currentColor" />
+                                            </svg></span>
+                                        <div class="type-info">
+                                            <span class="type-name">Single-Sided (Safe)</span>
+                                            <span class="type-desc">Lending/Staking • No IL Risk</span>
+                                        </div>
                                     </button>
                                     <button class="pool-type-btn-build" data-pool-type="dual">
-                                        <span class="type-icon">💧</span>
-                                        <span class="type-name">Dual-Sided (LP)</span>
-                                        <span class="type-desc">Higher yields, IL exposure</span>
-                                    </button>
-                                    <button class="pool-type-btn-build" data-pool-type="all">
-                                        <span class="type-icon">🔀</span>
-                                        <span class="type-name">All Pools</span>
-                                        <span class="type-desc">Mixed strategy</span>
+                                        <span class="type-icon"><svg viewBox="0 0 24 24" class="tech-icon cyan">
+                                                <path
+                                                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5z"
+                                                    fill="currentColor" />
+                                            </svg></span>
+                                        <div class="type-info">
+                                            <span class="type-name">Dual-Sided (LP)</span>
+                                            <span class="type-desc">High Yield • IL Exposure</span>
+                                        </div>
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Strategy Presets -->
-                            <div class="config-card">
-                                <h3>🎯 Strategy Presets</h3>
+                            <div class="cockpit-panel">
+                                <h3><span class="greek-icon">β</span> Strategy Matrix</h3>
                                 <div class="strategy-presets">
-                                    <button class="preset-btn" data-preset="stable-farmer">
-                                        <span class="preset-icon">💰</span>
-                                        <span class="preset-name">Stable Farmer</span>
-                                        <span class="preset-desc">Safe stablecoin yields 8-15% APY</span>
-                                    </button>
                                     <button class="preset-btn active" data-preset="balanced-growth">
-                                        <span class="preset-icon">📊</span>
-                                        <span class="preset-name">Balanced Growth</span>
-                                        <span class="preset-desc">Mix of stable & volatile 15-25% APY</span>
+                                        <span class="preset-icon"><svg viewBox="0 0 24 24" class="tech-icon gold">
+                                                <path
+                                                    d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"
+                                                    fill="currentColor" />
+                                            </svg></span>
+                                        <span class="preset-name">Balanced</span>
+                                        <span class="preset-desc">15-25% APY</span>
                                     </button>
                                     <button class="preset-btn" data-preset="yield-maximizer">
-                                        <span class="preset-icon">🚀</span>
-                                        <span class="preset-name">Yield Maximizer</span>
-                                        <span class="preset-desc">Aggressive returns 25-50%+ APY</span>
+                                        <span class="preset-icon"><svg viewBox="0 0 24 24" class="tech-icon cyan">
+                                                <path d="M13 10V3L4 14h7v7l9-11h-7z" fill="currentColor" />
+                                            </svg></span>
+                                        <span class="preset-name">Max Yield</span>
+                                        <span class="preset-desc">25-50%+ APY</span>
                                     </button>
-                                    <button class="preset-btn" data-preset="airdrop-hunter">
-                                        <span class="preset-icon">🎁</span>
-                                        <span class="preset-name">Airdrop Hunter</span>
-                                        <span class="preset-desc">Farm emerging protocols for drops</span>
-                                    </button>
-                                    <button class="preset-btn" data-preset="eth-maxi">
-                                        <span class="preset-icon">💎</span>
-                                        <span class="preset-name">ETH Maxi</span>
-                                        <span class="preset-desc">ETH & LSTs only 5-12% APY</span>
+                                    <button class="preset-btn" data-preset="stable-farmer">
+                                        <span class="preset-icon"><svg viewBox="0 0 24 24" class="tech-icon">
+                                                <path
+                                                    d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"
+                                                    fill="currentColor" />
+                                            </svg></span>
+                                        <span class="preset-name">Stable</span>
+                                        <span class="preset-desc">8-15% APY</span>
                                     </button>
                                     <button class="preset-btn" data-preset="custom">
-                                        <span class="preset-icon">⚙️</span>
+                                        <span class="preset-icon"><svg viewBox="0 0 24 24" class="tech-icon">
+                                                <path
+                                                    d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
+                                                    fill="currentColor" />
+                                            </svg></span>
                                         <span class="preset-name">Custom</span>
-                                        <span class="preset-desc">Configure everything manually</span>
+                                        <span class="preset-desc">Manual</span>
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- PRO MODE: Yield Engineering -->
-                            <div class="config-card pro-mode-only" id="yieldEngineeringCard">
-                                <h3>⚡ Yield Engineering</h3>
+                            <!-- Assets -->
+                            <div class="cockpit-panel">
+                                <h3><span class="greek-icon">γ</span> Asset Allocation</h3>
+                                <div class="asset-category">
+                                    <span class="category-label">Stables</span>
+                                    <div class="asset-chips">
+                                        <button class="asset-chip active" data-asset="USDC">USDC</button>
+                                        <button class="asset-chip" data-asset="DAI">DAI</button>
+                                    </div>
+                                </div>
+                                <div class="asset-category">
+                                    <span class="category-label">Volatile</span>
+                                    <div class="asset-chips">
+                                        <button class="asset-chip active" data-asset="WETH">WETH</button>
+                                        <button class="asset-chip" data-asset="AERO">AERO</button>
+                                        <button class="asset-chip" data-asset="cbBTC">cbBTC</button>
+                                    </div>
+                                </div>
+                            </div>
 
-                                <!-- Smart Loop Engine (Single-Sided) -->
+                        </div>
+
+                        <!-- CENTER COLUMN: ENGINE -->
+                        <div class="cockpit-col center">
+
+                            <!-- Yield Engineering -->
+                            <div class="cockpit-panel" id="yieldEngineeringCard" style="border-color: var(--gold);">
+                                <h3><span class="greek-icon">⚡</span> Yield Reactor</h3>
+
+                                <!-- Smart Loop Engine -->
                                 <div class="pro-section" id="smartLoopSection">
                                     <div class="pro-section-header">
-                                        <span class="pro-badge">🔄 Smart Loop Engine</span>
-                                        <span class="pro-tooltip"
-                                            title="Automatically loop your position for amplified yields">ⓘ</span>
+                                        <span class="pro-badge"
+                                            style="background: rgba(212,175,55,0.2); color: var(--gold); border: 1px solid var(--gold);">🔄
+                                            Smart Loop Engine</span>
                                     </div>
                                     <div class="leverage-control">
-                                        <label>Leverage Level</label>
+                                        <label>Power Output (Leverage)</label>
                                         <div class="leverage-slider-container">
                                             <input type="range" id="leverageSlider" min="100" max="300" value="100"
                                                 step="10">
                                             <div class="leverage-labels">
                                                 <span class="lev-label" data-lev="100">1.0x</span>
-                                                <span class="lev-label" data-lev="150">1.5x</span>
                                                 <span class="lev-label" data-lev="200">2.0x</span>
-                                                <span class="lev-label" data-lev="250">2.5x</span>
                                                 <span class="lev-label" data-lev="300">3.0x</span>
                                             </div>
                                         </div>
                                         <div class="leverage-stats">
                                             <div class="lev-stat">
-                                                <span class="lev-stat-label">Est. APY</span>
-                                                <span class="lev-stat-value" id="leverageApy">12% → <span
+                                                <span class="lev-stat-label">Proj. Yield</span>
+                                                <span class="lev-stat-value" id="leverageApy"
+                                                    style="color: var(--cyan);">12% → <span
                                                         class="highlight">12%</span></span>
                                             </div>
                                             <div class="lev-stat warning">
-                                                <span class="lev-stat-label">Liquidation</span>
+                                                <span class="lev-stat-label">Liq. Price</span>
                                                 <span class="lev-stat-value" id="liquidationPrice">$0.00</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Active Liquidity Manager (Dual-Sided) -->
+                                <!-- Liquidity Manager -->
                                 <div class="pro-section hidden" id="liquidityManagerSection">
                                     <div class="pro-section-header">
-                                        <span class="pro-badge">💧 Active Liquidity Manager</span>
-                                        <span class="pro-tooltip"
-                                            title="Automatically rebalance your LP position">ⓘ</span>
+                                        <span class="pro-badge">💧 Active Manager</span>
                                     </div>
                                     <div class="liquidity-strategy-toggle">
-                                        <button class="liq-btn active" data-strategy="passive">
-                                            <span class="btn-icon">🧘</span>
-                                            <span class="btn-text">Passive (Fixed)</span>
-                                        </button>
-                                        <button class="liq-btn" data-strategy="active">
-                                            <span class="btn-icon">🎯</span>
-                                            <span class="btn-text">Active (Auto-Rebalance)</span>
-                                        </button>
-                                        <button class="liq-btn" data-strategy="jit">
-                                            <span class="btn-icon">⚡</span>
-                                            <span class="btn-text">JIT Liquidity</span>
-                                        </button>
-                                    </div>
-                                    <div class="rebalance-config" id="rebalanceConfig">
-                                        <label>Rebalance if price moves ></label>
-                                        <div class="input-with-unit">
-                                            <input type="number" id="rebalancePercent" value="5" min="1" max="50">
-                                            <span class="unit">%</span>
-                                        </div>
+                                        <button class="liq-btn active" data-strategy="passive">Passive</button>
+                                        <button class="liq-btn" data-strategy="active">Active</button>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- PRO MODE: Precision Duration -->
-                            <div class="config-card pro-mode-only" id="precisionDurationCard">
-                                <h3>⏱️ Precision Timing</h3>
-
-                                <div class="duration-mode-toggle">
-                                    <button class="dur-mode-btn" data-mode="preset">Preset</button>
-                                    <button class="dur-mode-btn active" data-mode="custom">Custom</button>
-                                </div>
-
-                                <div class="custom-duration-input" id="customDurationInput">
-                                    <label>Farm Duration</label>
-                                    <div class="duration-split-input">
-                                        <input type="number" id="durationValue" value="24" min="1" max="365">
-                                        <select id="durationUnit">
-                                            <option value="hours" selected>Hours</option>
-                                            <option value="days">Days</option>
-                                            <option value="weeks">Weeks</option>
-                                            <option value="months">Months</option>
-                                        </select>
-                                    </div>
-                                    <p class="duration-hint">⚡ Snipe mode: Farm for exactly 24 hours</p>
-                                </div>
-
-                                <!-- Exit Targets -->
-                                <div class="exit-targets">
-                                    <h4>🎯 Exit Targets</h4>
-                                    <div class="exit-target">
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" id="takeProfitEnabled">
-                                            <span class="checkmark"></span>
-                                            Take Profit at
-                                        </label>
-                                        <div class="input-with-unit">
-                                            <span class="unit">$</span>
-                                            <input type="number" id="takeProfitAmount" value="500" min="0" disabled>
-                                        </div>
-                                    </div>
-                                    <div class="exit-target">
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" id="stopLossEnabled" checked>
-                                            <span class="checkmark"></span>
-                                            Stop Loss at
-                                        </label>
-                                        <div class="input-with-unit">
-                                            <input type="number" id="stopLossPercent" value="15" min="1" max="50">
-                                            <span class="unit">%</span>
-                                        </div>
-                                    </div>
-                                    <div class="exit-target">
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" id="apyTargetEnabled">
-                                            <span class="checkmark"></span>
-                                            Exit if APY drops below
-                                        </label>
-                                        <div class="input-with-unit">
-                                            <input type="number" id="apyTargetValue" value="5" min="0" max="100"
-                                                disabled>
-                                            <span class="unit">%</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- PRO MODE: Harvest Strategy -->
-                            <div class="config-card pro-mode-only" id="harvestStrategyCard">
+                            <!-- Harvest Strategy -->
+                            <div class="cockpit-panel" id="harvestStrategyCard">
                                 <h3><span class="greek-icon">Σ</span> Harvest Strategy</h3>
-                                <p class="card-desc">Choose what to do with collected yield rewards</p>
-
                                 <div class="harvest-options">
                                     <label class="harvest-card active" data-strategy="auto-compound">
                                         <input type="radio" name="harvestStrategy" value="auto-compound" checked>
@@ -1331,438 +1292,140 @@
                                             <span class="harvest-title">Auto-Compound</span>
                                             <span class="harvest-desc">Reinvest rewards for exponential growth</span>
                                         </div>
-                                        <span class="pro-tooltip"
-                                            title="Automatically sells reward tokens and deposits back into the pool. Best for maximizing long-term returns.">ⓘ</span>
                                     </label>
-
                                     <label class="harvest-card" data-strategy="cash-out">
                                         <input type="radio" name="harvestStrategy" value="cash-out">
                                         <div class="harvest-icon">Δ</div>
                                         <div class="harvest-info">
-                                            <span class="harvest-title">Cash Out to Stable</span>
-                                            <span class="harvest-desc">Convert rewards to USDC</span>
+                                            <span class="harvest-title">Cash Out</span>
+                                            <span class="harvest-desc">Convert to USDC</span>
                                         </div>
-                                        <span class="pro-tooltip"
-                                            title="Sells reward tokens to USDC and sends to your wallet. Ideal for taking profits regularly.">ⓘ</span>
                                     </label>
-
                                     <label class="harvest-card" data-strategy="hodl">
                                         <input type="radio" name="harvestStrategy" value="hodl">
                                         <div class="harvest-icon">Ω</div>
                                         <div class="harvest-info">
-                                            <span class="harvest-title">HODL Rewards</span>
-                                            <span class="harvest-desc">Keep tokens (AERO, MORPHO)</span>
+                                            <span class="harvest-title">HODL</span>
+                                            <span class="harvest-desc">Keep rewards</span>
                                         </div>
-                                        <span class="pro-tooltip"
-                                            title="Holds reward tokens without selling. Best if you believe in the protocol's long-term value.">ⓘ</span>
                                     </label>
                                 </div>
                             </div>
 
-                            <!-- PRO MODE: Safety & Risk Controls -->
-                            <div class="config-card pro-mode-only" id="safetyGasCard">
-                                <h3><span class="greek-icon">Φ</span> Safety & Risk Controls</h3>
+                            <!-- Safety & Risk -->
+                            <div class="cockpit-panel" id="safetyGasCard">
+                                <h3><span class="greek-icon">Φ</span> Safety Protocols</h3>
 
-                                <!-- Volatility Circuit Breaker -->
                                 <div class="config-group toggle-group">
-                                    <label>
-                                        <span>⚡ Volatility Circuit Breaker</span>
-                                        <span class="pro-tooltip"
-                                            title="Emergency exit to stablecoins if 24h volatility exceeds your threshold">ⓘ</span>
-                                    </label>
+                                    <label><span>⚡ Volatility Circuit Breaker</span></label>
                                     <label class="toggle-switch">
                                         <input type="checkbox" id="volatilityGuard">
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
                                 <div class="volatility-threshold hidden" id="volatilityThresholdGroup">
-                                    <label>Exit if 24h volatility exceeds</label>
+                                    <label>Threshold</label>
                                     <div class="input-with-unit">
-                                        <input type="number" id="volatilityThreshold" value="50" min="10" max="200">
+                                        <input type="number" id="volatilityThreshold" value="50">
                                         <span class="unit">%</span>
                                     </div>
                                 </div>
 
-                                <!-- Smart Gas Toggle -->
                                 <div class="config-group toggle-group">
-                                    <label>
-                                        <span>⛽ Smart Gas Optimization</span>
-                                        <span class="pro-tooltip"
-                                            title="Delays transactions until yield > gas cost. Ensures profitability.">ⓘ</span>
-                                    </label>
+                                    <label><span>⛽ Smart Gas Optimization</span></label>
                                     <label class="toggle-switch">
                                         <input type="checkbox" id="smartGasEnabled" checked>
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
 
-                                <!-- MEV Protection -->
                                 <div class="config-group toggle-group">
-                                    <label>
-                                        <span>🔒 Stealth Mode (MEV Protection)</span>
-                                        <span class="pro-tooltip"
-                                            title="Uses private mempool to prevent sandwich attacks and front-running">ⓘ</span>
-                                    </label>
+                                    <label><span>🔒 Stealth Mode (MEV)</span></label>
                                     <label class="toggle-switch">
                                         <input type="checkbox" id="mevProtection">
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
+                            </div>
+                        </div>
 
-                                <!-- Gas Strategy Dropdown -->
-                                <div class="config-group">
-                                    <label>Gas Priority</label>
-                                    <select id="gasStrategy" class="pro-select">
-                                        <option value="standard">Standard (Always Harvest)</option>
-                                        <option value="smart" selected>Smart Compound (Profit > 5x Gas)</option>
-                                        <option value="gas-saver">Gas Saver (Low Priority)</option>
-                                    </select>
+                        <!-- RIGHT COLUMN: FLIGHT CONTROLS -->
+                        <div class="cockpit-col right">
+
+                            <!-- Duration -->
+                            <div class="cockpit-panel">
+                                <h3><span class="greek-icon">T</span> Mission Time</h3>
+                                <div class="duration-buttons">
+                                    <button class="duration-btn" data-days="7">1W</button>
+                                    <button class="duration-btn active" data-days="30">1M</button>
+                                    <button class="duration-btn" data-days="90">3M</button>
+                                    <button class="duration-btn" data-days="0">∞</button>
                                 </div>
                             </div>
 
-                            <!-- Old Custom Instructions removed - merged into Oracle Console -->
-
-                            <!-- Risk & Returns -->
-                            <div class="config-card">
-                                <h3>⚖️ Risk & Returns</h3>
-
-                                <!-- Risk Tolerance -->
+                            <!-- Risk & Allocations -->
+                            <div class="cockpit-panel">
+                                <h3><span class="greek-icon">Ψ</span> Risk Parameters</h3>
                                 <div class="config-group">
                                     <label>Risk Tolerance</label>
-                                    <div class="risk-selector">
-                                        <button class="risk-option" data-risk="low">
-                                            <span class="icon">🛡️</span>
-                                            <span class="label">Low</span>
-                                            <span class="desc">5-15% APY</span>
-                                        </button>
-                                        <button class="risk-option active" data-risk="medium">
-                                            <span class="icon">⚖️</span>
-                                            <span class="label">Mid</span>
-                                            <span class="desc">15-30% APY</span>
-                                        </button>
-                                        <button class="risk-option" data-risk="high">
-                                            <span class="icon">🚀</span>
-                                            <span class="label">High</span>
-                                            <span class="desc">30-50% APY</span>
-                                        </button>
-                                        <button class="risk-option" data-risk="critical">
-                                            <span class="icon">⚠️</span>
-                                            <span class="label">Critical</span>
-                                            <span class="desc">50%+ APY (Very Risky)</span>
-                                        </button>
-                                    </div>
-
-                                </div>
-
-                                <!-- APY Range -->
-                                <div class="config-group">
-                                    <label>Target APY Range</label>
-                                    <div class="dual-range-display">
-                                        <span id="minApyDisplay">10%</span>
-                                        <span>—</span>
-                                        <span id="maxApyDisplay">50%</span>
-                                    </div>
-                                    <div class="apy-slider">
-                                        <input type="range" id="minApyConfig" min="0" max="100" value="10">
-                                        <input type="range" id="maxApyConfig" min="0" max="100" value="50">
+                                    <div class="risk-selector" style="grid-template-columns: repeat(3, 1fr);">
+                                        <button class="risk-option" data-risk="low"><span
+                                                class="label">Low</span></button>
+                                        <button class="risk-option active" data-risk="medium"><span
+                                                class="label">Mid</span></button>
+                                        <button class="risk-option" data-risk="high"><span
+                                                class="label">High</span></button>
                                     </div>
                                 </div>
-
-                                <!-- Max Drawdown -->
                                 <div class="config-group">
-                                    <label>Max Drawdown Tolerance</label>
-                                    <div class="allocation-slider">
-                                        <input type="range" id="maxDrawdown" min="5" max="50" value="20">
-                                        <span class="allocation-value" id="maxDrawdownValue">-20%</span>
-                                    </div>
+                                    <label>Max Drawdown: <span id="maxDrawdownValue"
+                                            class="cockpit-value">-20%</span></label>
+                                    <input type="range" id="maxDrawdown" min="5" max="50" value="20">
                                 </div>
                             </div>
 
-                            <!-- Protocols - Base Only -->
-                            <div class="config-card">
-                                <h3>🔗 Protocols (Base)</h3>
-                                <div class="protocol-grid" id="buildProtocolGrid">
+                            <!-- Protocols grid (Moved here) -->
+                            <div class="cockpit-panel">
+                                <h3><span class="greek-icon">Π</span> Protocols</h3>
+                                <div class="protocol-grid" id="buildProtocolGrid"
+                                    style="grid-template-columns: repeat(3, 1fr); gap: 8px;">
                                     <button class="protocol-chip active" data-protocol="morpho" data-pool-side="single">
                                         <img src="/icons/protocols/morpho.png" alt="">
-                                        <span>Morpho</span>
                                     </button>
                                     <button class="protocol-chip active" data-protocol="aave" data-pool-side="single">
                                         <img src="/icons/protocols/aave.png" alt="">
-                                        <span>Aave V3</span>
                                     </button>
                                     <button class="protocol-chip active" data-protocol="moonwell"
                                         data-pool-side="single">
                                         <img src="/icons/protocols/moonwell.png" alt="">
-                                        <span>Moonwell</span>
                                     </button>
                                     <button class="protocol-chip" data-protocol="aerodrome" data-pool-side="dual">
                                         <img src="/icons/protocols/aerodrome.png" alt="">
-                                        <span>Aerodrome</span>
                                     </button>
                                     <button class="protocol-chip" data-protocol="beefy" data-pool-side="single">
                                         <img src="/icons/protocols/beefy.png" alt="">
-                                        <span>Beefy</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="compound" data-pool-side="single">
-                                        <img src="/icons/protocols/compound.png" alt="">
-                                        <span>Compound</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="seamless" data-pool-side="single">
-                                        <img src="https://icons.llama.fi/seamless-protocol.png" alt="">
-                                        <span>Seamless</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="sonne" data-pool-side="single">
-                                        <img src="https://icons.llama.fi/sonne-finance.png" alt="">
-                                        <span>Sonne</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="exactly" data-pool-side="single">
-                                        <img src="https://icons.llama.fi/exactly.png" alt="">
-                                        <span>Exactly</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="extra" data-pool-side="dual">
-                                        <img src="https://icons.llama.fi/extra-finance.png" alt="">
-                                        <span>Extra</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="avantis" data-pool-side="single">
-                                        <img src="https://icons.llama.fi/avantis.png" alt="">
-                                        <span>Avantis</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="origin" data-pool-side="single">
-                                        <img src="https://icons.llama.fi/origin-ether.png" alt="">
-                                        <span>Origin</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="merkl" data-pool-side="dual">
-                                        <img src="/icons/protocols/merkl.png" alt="">
-                                        <span>Merkl</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="curve" data-pool-side="dual">
-                                        <img src="https://icons.llama.fi/curve-dex.png" alt="">
-                                        <span>Curve</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="uniswap" data-pool-side="dual">
-                                        <img src="https://icons.llama.fi/uniswap-v3.png" alt="">
-                                        <span>Uniswap</span>
-                                    </button>
-                                    <button class="protocol-chip" data-protocol="convex" data-pool-side="single">
-                                        <img src="https://icons.llama.fi/convex-finance.png" alt="">
-                                        <span>Convex</span>
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- Assets -->
-                            <div class="config-card">
-                                <h3>💎 Assets</h3>
-
-                                <div class="asset-category">
-                                    <span class="category-label">Stablecoins</span>
-                                    <div class="asset-chips">
-                                        <button class="asset-chip active" data-asset="USDC">USDC</button>
-                                        <button class="asset-chip" data-asset="USDT">USDT</button>
-                                        <button class="asset-chip" data-asset="DAI">DAI</button>
-                                        <button class="asset-chip" data-asset="FRAX">FRAX</button>
-                                        <button class="asset-chip" data-asset="crvUSD">crvUSD</button>
-                                        <button class="asset-chip" data-asset="GHO">GHO</button>
-                                        <button class="asset-chip" data-asset="LUSD">LUSD</button>
-                                        <button class="asset-chip" data-asset="USD+">USD+</button>
+                            <!-- DEPLOY ACTION -->
+                            <div style="margin-top: auto;">
+                                <div class="config-card"
+                                    style="border: 1px solid var(--gold); background: var(--gold-dark);">
+                                    <p style="font-size: 0.8rem; margin-bottom: 8px; color: var(--gold);">TOTAL
+                                        INVESTMENT</p>
+                                    <div style="font-size: 1.5rem; font-family: var(--font-mono); color: #fff;">
+                                        $ <input type="number" id="investmentAmount" value="1000"
+                                            style="background:transparent; border:none; color:inherit; width: 120px; font-family:inherit;">
                                     </div>
                                 </div>
 
-                                <div class="asset-category">
-                                    <span class="category-label">ETH & LSTs</span>
-                                    <div class="asset-chips">
-                                        <button class="asset-chip active" data-asset="WETH">WETH</button>
-                                        <button class="asset-chip" data-asset="cbETH">cbETH</button>
-                                        <button class="asset-chip" data-asset="wstETH">wstETH</button>
-                                        <button class="asset-chip" data-asset="rETH">rETH</button>
-                                        <button class="asset-chip" data-asset="stETH">stETH</button>
-                                        <button class="asset-chip" data-asset="swETH">swETH</button>
-                                    </div>
-                                </div>
-
-                                <div class="asset-category">
-                                    <span class="category-label">Blue Chips</span>
-                                    <div class="asset-chips">
-                                        <button class="asset-chip" data-asset="WBTC">WBTC</button>
-                                        <button class="asset-chip" data-asset="cbBTC">cbBTC</button>
-                                        <button class="asset-chip" data-asset="tBTC">tBTC</button>
-                                    </div>
-                                </div>
-
-                                <div class="asset-category">
-                                    <span class="category-label">DeFi Blue Chips</span>
-                                    <div class="asset-chips">
-                                        <button class="asset-chip" data-asset="AERO">AERO</button>
-                                        <button class="asset-chip" data-asset="CRV">CRV</button>
-                                        <button class="asset-chip" data-asset="AAVE">AAVE</button>
-                                        <button class="asset-chip" data-asset="COMP">COMP</button>
-                                        <button class="asset-chip" data-asset="UNI">UNI</button>
-                                    </div>
-                                </div>
+                                <button class="btn-deploy-agent" id="deployAgentBtn"
+                                    style="width: 100%; margin-top: 10px; background: var(--gold); color: #000; font-weight: bold;">
+                                    <span>🚀</span> INITIATE DEPLOY
+                                </button>
                             </div>
 
-                            <!-- Duration & Allocation -->
-                            <div class="config-card">
-                                <h3>⏱️ Duration & Allocation</h3>
-
-                                <div class="config-group">
-                                    <label>Investment Duration</label>
-                                    <div class="duration-buttons">
-                                        <button class="duration-btn" data-days="7">1W</button>
-                                        <button class="duration-btn active" data-days="30">1M</button>
-                                        <button class="duration-btn" data-days="90">3M</button>
-                                        <button class="duration-btn" data-days="180">6M</button>
-                                        <button class="duration-btn" data-days="365">1Y</button>
-                                        <button class="duration-btn" data-days="0">∞</button>
-                                    </div>
-                                </div>
-
-                                <div class="config-group">
-                                    <label>Max per Vault</label>
-                                    <div class="allocation-slider">
-                                        <input type="range" id="maxAllocation" min="5" max="100" value="25">
-                                        <span class="allocation-value" id="maxAllocationValue">25%</span>
-                                    </div>
-                                </div>
-
-                                <div class="config-group">
-                                    <label>Number of Vaults</label>
-                                    <div class="vault-count-selector">
-                                        <button class="count-btn" data-count="1">1</button>
-                                        <button class="count-btn" data-count="3">3</button>
-                                        <button class="count-btn active" data-count="5">5</button>
-                                        <button class="count-btn" data-count="10">10</button>
-                                        <button class="count-btn" data-count="0">Auto</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Advanced Settings -->
-                            <div class="config-card collapsible">
-                                <h3 class="collapsible-header">
-                                    🔧 Advanced Settings
-                                    <span class="collapse-icon">▼</span>
-                                </h3>
-                                <div class="collapsible-content">
-                                    <!-- Rebalancing -->
-                                    <div class="config-group toggle-group">
-                                        <label>Auto-Rebalance</label>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="autoRebalance" checked>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </div>
-
-                                    <div class="config-group">
-                                        <label>Rebalance Threshold</label>
-                                        <div class="allocation-slider">
-                                            <input type="range" id="rebalanceThreshold" min="1" max="20" value="5">
-                                            <span class="allocation-value" id="rebalanceThresholdValue">5%</span>
-                                        </div>
-                                    </div>
-
-                                    <!-- Gas Settings -->
-                                    <div class="config-group">
-                                        <label>Max Gas Price (gwei)</label>
-                                        <div class="allocation-slider">
-                                            <input type="range" id="maxGasPrice" min="10" max="200" value="50">
-                                            <span class="allocation-value" id="maxGasPriceValue">50</span>
-                                        </div>
-                                    </div>
-
-                                    <!-- Slippage -->
-                                    <div class="config-group">
-                                        <label>Max Slippage</label>
-                                        <div class="slippage-buttons">
-                                            <button class="slippage-btn" data-slippage="0.1">0.1%</button>
-                                            <button class="slippage-btn active" data-slippage="0.5">0.5%</button>
-                                            <button class="slippage-btn" data-slippage="1">1%</button>
-                                            <button class="slippage-btn" data-slippage="3">3%</button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Compound Frequency -->
-                                    <div class="config-group">
-                                        <label>Compound Frequency</label>
-                                        <div class="compound-buttons">
-                                            <button class="compound-btn" data-freq="1">Daily</button>
-                                            <button class="compound-btn active" data-freq="7">Weekly</button>
-                                            <button class="compound-btn" data-freq="30">Monthly</button>
-                                            <button class="compound-btn" data-freq="0">Auto</button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Only Audited -->
-                                    <div class="config-group toggle-group">
-                                        <label>Only Audited Protocols</label>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="onlyAudited" checked>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </div>
-
-                                    <!-- Avoid IL -->
-                                    <div class="config-group toggle-group">
-                                        <label>Avoid Impermanent Loss</label>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="avoidIL">
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </div>
-
-                                    <!-- Emergency Exit -->
-                                    <div class="config-group toggle-group">
-                                        <label>Emergency Exit on -30%</label>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="emergencyExit" checked>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Deploy Button -->
-                            <button class="btn-deploy-agent" id="deployAgentBtn">
-                                <span>🚀</span> Deploy Agent
-                            </button>
-                            <p class="deploy-note">Agent will manage funds autonomously based on your settings</p>
-                        </div>
-
-                        <!-- Right: Chat Interface -->
-                        <div class="agent-chat-panel">
-                            <div class="chat-header">
-                                <span class="chat-icon">🤖</span>
-                                <span class="chat-title">Artisan Agent</span>
-                                <span class="chat-status online">Online</span>
-                            </div>
-
-                            <div class="chat-messages" id="agentChatMessages">
-                                <div class="chat-message agent">
-                                    <div class="message-avatar">🤖</div>
-                                    <div class="message-content">
-                                        <p>Hello! I'm your Artisan Agent. Tell me how you want to invest your funds, and
-                                            I'll configure the optimal strategy.</p>
-                                        <p class="message-hint">Try: "I want stable 15% APY with low risk" or "Maximize
-                                            yield on my ETH"</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="chat-input-area">
-                                <div class="quick-commands">
-                                    <button class="quick-cmd" data-cmd="stable yield">💰 Stable Yield</button>
-                                    <button class="quick-cmd" data-cmd="maximize returns">📈 Max Returns</button>
-                                    <button class="quick-cmd" data-cmd="farm airdrops">🎁 Farm Airdrops</button>
-                                    <button class="quick-cmd" data-cmd="diversify">🔀 Diversify</button>
-                                </div>
-                                <div class="chat-input-wrapper">
-                                    <input type="text" id="agentChatInput"
-                                        placeholder="Tell the agent what you want to achieve...">
-                                    <button class="chat-send-btn" id="sendAgentMessage">
-                                        <span>➤</span>
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -1784,9 +1447,14 @@
 
             <!-- Section: Portfolio -->
             <section class="section" id="section-portfolio">
-                <div class="section-header">
-                    <h1>💼 Portfolio Dashboard</h1>
-                    <p class="section-desc">Track your positions, earnings, and agent activity</p>
+                <div class="section-header"
+                    style="border-bottom: 1px solid rgba(212,175,55,0.1); padding-bottom: 20px; margin-bottom: 24px;">
+                    <div class="section-title-row">
+                        <h1 style="font-family: var(--font-display); color: #fff;">Portfolio <span
+                                style="color: var(--gold);">Dashboard</span></h1>
+                    </div>
+                    <p class="section-desc" style="color: var(--text-dim);">Track your positions, earnings, and agent
+                        activity</p>
                 </div>
 
                 <!-- Portfolio Stats Overview -->

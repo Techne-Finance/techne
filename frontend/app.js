@@ -1169,58 +1169,53 @@ function createPoolCard(pool, isUnlocked, index, freeIndices = new Set()) {
     const isVerified = pool.verified || pool.agent_verified;
     const poolData = JSON.stringify(pool).replace(/"/g, '&quot;');
 
-    // All 15 pools are FREE preview - no blur needed
-    // Using filters/credits shows different results
-
+    // Battle Card HTML
     return `
-        <div class="pool-card ${isVerified ? 'verified' : ''}" 
+        <div class="battle-card ${isVerified ? 'verified' : ''}" 
              onclick='PoolDetailModal?.show(${poolData})' 
              data-pool-index="${index}">
-            <div class="pool-header">
-                <div class="pool-protocol">
-                    <img src="${protocolIcon}" alt="${pool.project}" class="protocol-icon" onerror="this.style.display='none'">
-                    <div class="pool-info">
-                        <span class="pool-name">${pool.project}</span>
-                        <span class="pool-pair">${pool.symbol}</span>
+            
+            <div class="battle-card-header">
+                <div class="battle-icon">
+                    <img src="${protocolIcon}" alt="${pool.project}" class="protocol-icon" style="width:24px;height:24px;" onerror="this.style.display='none'">
+                </div>
+                <div class="battle-title-group">
+                    <h4 class="battle-title">${pool.project}</h4>
+                    <div class="battle-subtitle">
+                        <img src="${chainIcon}" style="width:12px; height:12px; vertical-align:middle; border-radius:50%;">
+                        ${pool.chain} • ${pool.symbol}
                     </div>
                 </div>
-                <div class="pool-chain" title="${pool.chain}">
-                    <img src="${chainIcon}" alt="${pool.chain}" class="chain-icon" style="width:20px;height:20px;border-radius:50%;">
-                </div>
+                ${isVerified ? '<span title="Verified" style="color:var(--cyan);">🤖</span>' : ''}
             </div>
-            
-            <div class="pool-stats">
-                <div class="pool-stat">
-                    <span class="stat-value apy">${pool.apy?.toFixed(2) || '0.00'}%</span>
+
+            <div class="battle-stats">
+                <div class="stat-module highlight">
                     <span class="stat-label">APY</span>
+                    <span class="stat-value cyan">${pool.apy?.toFixed(2) || '0.00'}%</span>
                 </div>
-                <div class="pool-stat">
-                    <span class="stat-value">${formatTvl(pool.tvl)}</span>
+                <div class="stat-module">
                     <span class="stat-label">TVL</span>
+                    <span class="stat-value gold">${formatTvl(pool.tvl)}</span>
                 </div>
-                <div class="pool-stat">
-                    <span class="risk-badge ${riskClass}" style="background: ${riskColor}20; color: ${riskColor}; border-color: ${riskColor};" title="Risk Score: ${riskScore}/100">
-                        ${riskLevel}
-                    </span>
+                <div class="stat-module ${riskClass === 'low' ? 'safe' : 'danger'}">
                     <span class="stat-label">Risk</span>
+                    <span class="stat-value" style="color: ${riskColor}">${riskScore}</span>
+                </div>
+                <div class="stat-module">
+                    <span class="stat-label">Type</span>
+                    <span class="stat-value" style="font-size:0.8rem;">${pool.pool_type || 'Yield'}</span>
                 </div>
             </div>
 
-            
-            <div class="pool-badges">
-                ${pool.category_icon && pool.category_label ? `<span class="badge category" title="${pool.category}">${pool.category_icon} ${pool.category_label}</span>` : ''}
-                ${isVerified ? `<span class="badge verified">🤖 Verified</span>` : ''}
-                ${airdropPotential ? `<span class="badge airdrop">🎁 Airdrop</span>` : ''}
-                ${pool.stablecoin ? `<span class="badge stable">Stable</span>` : ''}
+            <div class="battle-actions">
+                ${isUnlocked ? `
+                    <button class="btn-battle" onclick="event.stopPropagation(); handleDeposit('${pool.id || pool.pool}')">DEPLOY</button>
+                    <button class="btn-battle secondary" onclick='event.stopPropagation(); YieldComparison?.addPool(${poolData})'>SCAN</button>
+                ` : '<button class="btn-battle secondary" disabled>LOCKED</button>'}
             </div>
             
-            ${isUnlocked ? `
-                <div class="pool-actions">
-                    <button class="btn-deposit" onclick="event.stopPropagation(); handleDeposit('${pool.id || pool.pool}')">Deposit</button>
-                    <button class="btn-compare" onclick='event.stopPropagation(); YieldComparison?.addPool(${poolData})'>📊</button>
-                    <button class="btn-add-strategy" onclick="event.stopPropagation(); addToStrategy('${pool.id || pool.pool}')">+</button>
-                </div>
-            ` : ''}
+            ${airdropPotential ? `<div style="position:absolute; top:0; right:0; background:rgba(212,175,55,0.2); color:var(--gold); font-size:0.6rem; padding:2px 6px; border-bottom-left-radius:4px;">🎁 AIRDROP</div>` : ''}
         </div>
     `;
 }
