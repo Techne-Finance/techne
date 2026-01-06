@@ -1320,13 +1320,13 @@
 
                             <!-- PRO MODE: Harvest Strategy -->
                             <div class="config-card pro-mode-only" id="harvestStrategyCard">
-                                <h3>🌾 Harvest Strategy</h3>
+                                <h3><span class="greek-icon">Σ</span> Harvest Strategy</h3>
                                 <p class="card-desc">Choose what to do with collected yield rewards</p>
 
                                 <div class="harvest-options">
                                     <label class="harvest-card active" data-strategy="auto-compound">
                                         <input type="radio" name="harvestStrategy" value="auto-compound" checked>
-                                        <div class="harvest-icon">🔄</div>
+                                        <div class="harvest-icon">Σ</div>
                                         <div class="harvest-info">
                                             <span class="harvest-title">Auto-Compound</span>
                                             <span class="harvest-desc">Reinvest rewards for exponential growth</span>
@@ -1337,7 +1337,7 @@
 
                                     <label class="harvest-card" data-strategy="cash-out">
                                         <input type="radio" name="harvestStrategy" value="cash-out">
-                                        <div class="harvest-icon">💵</div>
+                                        <div class="harvest-icon">Δ</div>
                                         <div class="harvest-info">
                                             <span class="harvest-title">Cash Out to Stable</span>
                                             <span class="harvest-desc">Convert rewards to USDC</span>
@@ -1348,7 +1348,7 @@
 
                                     <label class="harvest-card" data-strategy="hodl">
                                         <input type="radio" name="harvestStrategy" value="hodl">
-                                        <div class="harvest-icon">💎</div>
+                                        <div class="harvest-icon">Ω</div>
                                         <div class="harvest-info">
                                             <span class="harvest-title">HODL Rewards</span>
                                             <span class="harvest-desc">Keep tokens (AERO, MORPHO)</span>
@@ -1361,7 +1361,7 @@
 
                             <!-- PRO MODE: Safety & Risk Controls -->
                             <div class="config-card pro-mode-only" id="safetyGasCard">
-                                <h3>🛡️ Safety & Risk Controls</h3>
+                                <h3><span class="greek-icon">Φ</span> Safety & Risk Controls</h3>
 
                                 <!-- Volatility Circuit Breaker -->
                                 <div class="config-group toggle-group">
@@ -1420,14 +1420,7 @@
                                 </div>
                             </div>
 
-                            <!-- PRO MODE: Custom Instructions -->
-                            <div class="config-card pro-mode-only" id="customInstructionsCard">
-                                <h3>💬 Agent Command Interface</h3>
-                                <p class="card-desc">Give your agent natural language instructions</p>
-                                <textarea id="customInstructions" class="custom-instructions-input"
-                                    placeholder="Example: Keep farming until ETH hits $4000, then withdraw everything to USDC. Prioritize Aave and Morpho for safety."
-                                    rows="4"></textarea>
-                            </div>
+                            <!-- Old Custom Instructions removed - merged into Oracle Console -->
 
                             <!-- Risk & Returns -->
                             <div class="config-card">
@@ -2053,6 +2046,52 @@
     <!-- UX Polish: Subscription & Button Handlers -->
     <script src="/subscription-ui.js"></script>
     <script src="/button-handler.js"></script>
+
+    <!-- THE ORACLE - Unified Command Console -->
+    <div class="oracle-console" id="oracleConsole" style="display: none;">
+        <div class="oracle-header">
+            <div class="oracle-title">
+                <span class="oracle-logo">Ω</span>
+                <span class="oracle-name">THE ORACLE</span>
+            </div>
+            <div class="oracle-status">
+                <div class="oracle-status-dot"></div>
+                <span class="oracle-status-text">ONLINE</span>
+            </div>
+            <div class="oracle-controls">
+                <button class="oracle-btn" id="oracleClear" title="Clear Logs">CLR</button>
+                <button class="oracle-btn" id="oracleMinimize" title="Minimize">−</button>
+                <button class="oracle-btn" id="oracleClose" title="Close">×</button>
+            </div>
+        </div>
+        <div class="oracle-body">
+            <div class="oracle-terminal">
+                <div class="oracle-logs" id="oracleLogs">
+                    <div class="oracle-log system">[SYS] Oracle Console initialized</div>
+                    <div class="oracle-log info">[INFO] Awaiting commands...</div>
+                </div>
+                <div class="oracle-input-area">
+                    <span class="oracle-prompt">Ω&gt;</span>
+                    <input type="text" class="oracle-input" id="oracleInput"
+                        placeholder="Enter command or natural language instruction...">
+                </div>
+            </div>
+            <div class="oracle-chat">
+                <div class="oracle-chat-header">Agent Responses</div>
+                <div class="oracle-chat-messages" id="oracleChatMessages">
+                    <!-- Agent responses appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Oracle Toggle Button (FAB) -->
+    <button class="oracle-toggle-btn" id="oracleToggle" title="Open Oracle Console">
+        <span class="oracle-toggle-icon">Ω</span>
+    </button>
+
+    <script src="/oracle-console.js"></script>
+
 </body>
 
 </html>

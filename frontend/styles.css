@@ -1,59 +1,72 @@
 ﻿/* ============================================
    TECHNE PROTOCOL - Full UI System
-   Greek Gaming Aesthetic + Modern DeFi
+   Techno-Grecian Aesthetic: Matrix + Ancient Greece
    ============================================ */
 
 /* ===========================================
-   DESIGN TOKENS
+   DESIGN TOKENS - TECHNO-GRECIAN SYSTEM
    =========================================== */
 :root {
-    /* Core Colors */
-    --bg-void: #06060a;
-    --bg-deep: #0a0a10;
-    --bg-surface: #0f0f18;
-    --bg-elevated: #151520;
-    --bg-elevated-2: #1a1a28;
-    --bg-hover: #1f1f30;
+    /* Core Colors - Deep Void */
+    --bg-void: #050505;
+    --bg-abyss: #080808;
+    --bg-deep: #0a0a0e;
+    --bg-surface: #0f0f14;
+    --bg-elevated: #141418;
+    --bg-elevated-2: #1a1a20;
+    --bg-hover: #1f1f28;
 
-    /* Gold System (Greek) */
-    --gold: #d4a853;
-    --gold-bright: #f0c060;
-    --gold-dim: #a07830;
-    --gold-glow: rgba(212, 168, 83, 0.25);
-    --gold-subtle: rgba(212, 168, 83, 0.08);
+    /* Divine Gold (Grecian) */
+    --gold: #D4AF37;
+    --gold-bright: #E8C547;
+    --gold-dim: #A08020;
+    --gold-glow: rgba(212, 175, 55, 0.3);
+    --gold-subtle: rgba(212, 175, 55, 0.1);
+
+    /* Cyber Cyan (Digital) */
+    --cyan: #00FFFF;
+    --cyan-dim: #00CCCC;
+    --cyan-glow: rgba(0, 255, 255, 0.25);
+    --cyan-subtle: rgba(0, 255, 255, 0.08);
 
     /* Status Colors */
-    --success: #22c55e;
-    --success-dim: rgba(34, 197, 94, 0.15);
-    --warning: #eab308;
-    --warning-dim: rgba(234, 179, 8, 0.15);
-    --danger: #ef4444;
-    --danger-dim: rgba(239, 68, 68, 0.15);
-    --info: #3b82f6;
-    --info-dim: rgba(59, 130, 246, 0.15);
+    --success: #00FF88;
+    --success-dim: rgba(0, 255, 136, 0.15);
+    --warning: #FFB800;
+    --warning-dim: rgba(255, 184, 0, 0.15);
+    --danger: #FF3366;
+    --danger-dim: rgba(255, 51, 102, 0.15);
+    --info: #00AAFF;
+    --info-dim: rgba(0, 170, 255, 0.15);
 
     /* Text */
-    --text: #f0f0f5;
-    --text-secondary: #a0a0b5;
-    --text-muted: #606075;
+    --text: #E8E8F0;
+    --text-secondary: #A0A0B8;
+    --text-muted: #505068;
+    --text-data: var(--cyan);
 
     /* Borders */
-    --border: #252535;
-    --border-gold: rgba(212, 168, 83, 0.25);
+    --border: #202030;
+    --border-gold: rgba(212, 175, 55, 0.4);
+    --border-cyan: rgba(0, 255, 255, 0.3);
 
     /* Gradients */
-    --gradient-gold: linear-gradient(135deg, #d4a853, #a07830);
+    --gradient-gold: linear-gradient(135deg, #D4AF37, #A08020);
+    --gradient-cyan: linear-gradient(135deg, #00FFFF, #0088AA);
     --gradient-surface: linear-gradient(180deg, var(--bg-elevated), var(--bg-surface));
+    --gradient-oracle: linear-gradient(180deg, rgba(212, 175, 55, 0.05), transparent);
 
     /* Shadows */
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
-    --shadow-gold: 0 4px 30px rgba(212, 168, 83, 0.2);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.7);
+    --shadow-gold: 0 0 30px rgba(212, 175, 55, 0.25);
+    --shadow-cyan: 0 0 20px rgba(0, 255, 255, 0.2);
 
     /* Typography */
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-display: 'Outfit', 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
     /* Spacing */
     --space-1: 0.25rem;
@@ -65,10 +78,10 @@
     --space-8: 2rem;
 
     /* Radius */
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
+    --radius-sm: 2px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+    --radius-xl: 8px;
 
     /* Transitions */
     --transition-fast: 150ms ease;
@@ -7203,4 +7216,440 @@ body.builder-pro .basic-mode-only {
 
 .volatility-threshold .input-with-unit input {
     width: 70px;
+}
+
+/* ===========================================
+   TECHNO-GRECIAN BUILD SECTION
+   =========================================== */
+
+/* Corner Bracket Cards (HUD Style) */
+.corner-bracket {
+    position: relative;
+    background: var(--bg-surface);
+    border: none;
+    padding: var(--space-4);
+}
+
+.corner-bracket::before,
+.corner-bracket::after,
+.corner-bracket .corner-tr,
+.corner-bracket .corner-bl {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-style: solid;
+    border-color: var(--gold);
+}
+
+.corner-bracket::before {
+    top: 0;
+    left: 0;
+    border-width: 2px 0 0 2px;
+}
+
+.corner-bracket::after {
+    bottom: 0;
+    right: 0;
+    border-width: 0 2px 2px 0;
+}
+
+.corner-bracket .corner-tr {
+    top: 0;
+    right: 0;
+    border-width: 2px 2px 0 0;
+}
+
+.corner-bracket .corner-bl {
+    bottom: 0;
+    left: 0;
+    border-width: 0 0 2px 2px;
+}
+
+/* Apply corner bracket styling to Build section config cards */
+body.section-build .config-card {
+    position: relative;
+    background: var(--bg-abyss);
+    border: 1px solid rgba(212, 175, 55, 0.1);
+    border-radius: 0;
+}
+
+body.section-build .config-card::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 20px;
+    height: 20px;
+    border-top: 2px solid var(--gold);
+    border-left: 2px solid var(--gold);
+}
+
+body.section-build .config-card::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 20px;
+    height: 20px;
+    border-bottom: 2px solid var(--gold);
+    border-right: 2px solid var(--gold);
+}
+
+/* Monospace Data Styling */
+.data-value,
+.apy-value,
+.tvl-value,
+.price-value,
+[class*="stat-value"],
+[class*="apy"],
+[class*="tvl"],
+#leverageApy,
+#liquidationPrice,
+#minApyDisplay,
+#maxApyDisplay,
+.allocation-value,
+.input-with-unit input,
+.amount-input {
+    font-family: var(--font-mono) !important;
+    color: var(--cyan);
+}
+
+/* Greek Letter Icons */
+.greek-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    font-family: 'Times New Roman', serif;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--gold);
+}
+
+/* ===========================================
+   THE ORACLE - UNIFIED COMMAND CONSOLE
+   =========================================== */
+
+.oracle-console {
+    position: fixed;
+    bottom: 0;
+    left: 280px;
+    /* Sidebar width */
+    right: 0;
+    height: 280px;
+    background: var(--bg-abyss);
+    border-top: 1px solid var(--gold-dim);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--font-mono);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Full width when sidebar hidden */
+body.section-build .oracle-console,
+body.section-portfolio .oracle-console,
+body.section-strategies .oracle-console,
+body.section-vaults .oracle-console {
+    left: 0;
+}
+
+.oracle-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-4);
+    background: linear-gradient(180deg, rgba(212, 175, 55, 0.08), transparent);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+.oracle-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.oracle-logo {
+    font-size: 1.2rem;
+    color: var(--gold);
+}
+
+.oracle-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.oracle-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.oracle-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: oracle-pulse 2s infinite;
+}
+
+@keyframes oracle-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.5);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(0, 255, 136, 0);
+    }
+}
+
+.oracle-status-text {
+    font-size: 0.75rem;
+    color: var(--success);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.oracle-controls {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.oracle-btn {
+    padding: var(--space-1) var(--space-2);
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.oracle-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.oracle-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.oracle-terminal {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+.oracle-logs {
+    flex: 1;
+    padding: var(--space-3);
+    overflow-y: auto;
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+.oracle-logs::-webkit-scrollbar {
+    width: 4px;
+}
+
+.oracle-logs::-webkit-scrollbar-thumb {
+    background: var(--gold-dim);
+}
+
+.oracle-log {
+    margin-bottom: 4px;
+    opacity: 0.9;
+}
+
+.oracle-log .time {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+.oracle-log.info {
+    color: var(--cyan);
+}
+
+.oracle-log.success {
+    color: var(--success);
+}
+
+.oracle-log.warning {
+    color: var(--warning);
+}
+
+.oracle-log.error {
+    color: var(--danger);
+}
+
+.oracle-log.system {
+    color: var(--gold);
+    opacity: 0.7;
+}
+
+.oracle-input-area {
+    display: flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+.oracle-prompt {
+    color: var(--gold);
+    margin-right: var(--space-2);
+    font-weight: bold;
+}
+
+.oracle-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--cyan);
+    font-family: inherit;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.oracle-input::placeholder {
+    color: rgba(0, 255, 255, 0.3);
+}
+
+/* Oracle Chat Panel */
+.oracle-chat {
+    width: 350px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.oracle-chat-header {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+    font-size: 0.75rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.oracle-chat-messages {
+    flex: 1;
+    padding: var(--space-3);
+    overflow-y: auto;
+}
+
+.oracle-message {
+    margin-bottom: var(--space-3);
+    padding: var(--space-2);
+    border-left: 2px solid var(--gold-dim);
+    font-size: 0.8rem;
+}
+
+.oracle-message.user {
+    border-left-color: var(--cyan);
+}
+
+.oracle-message .sender {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+/* Adjust content area when Oracle is visible */
+body.oracle-visible .content-area {
+    padding-bottom: 300px;
+}
+
+/* ===========================================
+   GRECIAN HARVEST PANEL UPDATE
+   =========================================== */
+
+.harvest-card .harvest-icon {
+    font-family: 'Times New Roman', Georgia, serif;
+    font-size: 1.4rem;
+    color: var(--gold);
+}
+
+/* Override emoji with Greek letters */
+.harvest-card[data-strategy="auto-compound"] .harvest-icon::before {
+    content: "Σ";
+}
+
+.harvest-card[data-strategy="cash-out"] .harvest-icon::before {
+    content: "Δ";
+}
+
+.harvest-card[data-strategy="hodl"] .harvest-icon::before {
+    content: "Ω";
+}
+
+/* ===========================================
+   ORACLE TOGGLE BUTTON (FAB)
+   =========================================== */
+
+.oracle-toggle-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--gradient-gold);
+    border: 2px solid var(--gold);
+    color: var(--bg-void);
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-gold);
+    transition: all 0.3s ease;
+}
+
+.oracle-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.5);
+}
+
+.oracle-toggle-icon {
+    font-family: 'Times New Roman', Georgia, serif;
+}
+
+/* Hide FAB when console is visible */
+body.oracle-visible .oracle-toggle-btn {
+    display: none;
+}
+
+/* Oracle minimized state */
+.oracle-console.minimized {
+    height: 44px;
+}
+
+.oracle-console.minimized .oracle-body {
+    display: none;
+}
+
+/* ===========================================
+   BUILD SECTION TECHNO-GRECIAN OVERRIDES
+   =========================================== */
+
+#section-build .section-header h1 {
+    font-family: var(--font-display);
+    letter-spacing: 2px;
+}
+
+#section-build .config-card h3 .greek-icon {
+    margin-right: var(--space-2);
 }
