@@ -72,6 +72,8 @@ function initBuildSection() {
     initLeverageSlider();
     initExitTargetCheckboxes();
     initLiquidityStrategyToggle();
+    initHarvestStrategy();
+    initVolatilityBreaker();
 }
 
 // Mode Toggle (Basic/Pro)
@@ -245,6 +247,36 @@ function initLiquidityStrategyToggle() {
             }
         });
     });
+}
+
+// Harvest Strategy Cards
+function initHarvestStrategy() {
+    const harvestCards = document.querySelectorAll('.harvest-card');
+
+    harvestCards.forEach(card => {
+        card.addEventListener('click', () => {
+            harvestCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+
+            const radio = card.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        });
+    });
+}
+
+// Volatility Circuit Breaker Toggle with threshold visibility
+function initVolatilityBreaker() {
+    const volatilityGuard = document.getElementById('volatilityGuard');
+    const thresholdGroup = document.getElementById('volatilityThresholdGroup');
+
+    if (volatilityGuard && thresholdGroup) {
+        // Initial state
+        thresholdGroup.classList.toggle('hidden', !volatilityGuard.checked);
+
+        volatilityGuard.addEventListener('change', () => {
+            thresholdGroup.classList.toggle('hidden', !volatilityGuard.checked);
+        });
+    }
 }
 
 // View toggle

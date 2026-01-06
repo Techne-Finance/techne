@@ -7026,3 +7026,181 @@ body.builder-pro .basic-mode-only {
     visibility: visible;
     bottom: calc(100% + 8px);
 }
+
+/* ===========================================
+   HARVEST STRATEGY CARDS
+   =========================================== */
+
+.harvest-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.harvest-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.harvest-card input[type="radio"] {
+    display: none;
+}
+
+.harvest-card:hover {
+    border-color: var(--gold-dim);
+    background: var(--bg-hover);
+}
+
+.harvest-card.active,
+.harvest-card:has(input:checked) {
+    border-color: var(--gold);
+    background: var(--gold-subtle);
+    box-shadow: 0 0 15px rgba(212, 168, 83, 0.15);
+}
+
+.harvest-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-md);
+}
+
+.harvest-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.harvest-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+}
+
+.harvest-card.active .harvest-title,
+.harvest-card:has(input:checked) .harvest-title {
+    color: var(--gold);
+}
+
+.harvest-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.harvest-card .pro-tooltip {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+}
+
+/* ===========================================
+   TOGGLE SWITCH STYLING
+   =========================================== */
+
+.toggle-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.toggle-group:last-child {
+    border-bottom: none;
+}
+
+.toggle-group label:first-child {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.9rem;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 26px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 26px;
+    transition: all 0.3s ease;
+}
+
+.toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.toggle-switch input:checked+.toggle-slider {
+    background: var(--gold-subtle);
+    border-color: var(--gold);
+}
+
+.toggle-switch input:checked+.toggle-slider::before {
+    background: var(--gold);
+    transform: translateX(24px);
+    box-shadow: 0 0 10px rgba(212, 168, 83, 0.5);
+}
+
+/* ===========================================
+   VOLATILITY THRESHOLD GROUP
+   =========================================== */
+
+.volatility-threshold {
+    padding: var(--space-3);
+    background: rgba(234, 179, 8, 0.1);
+    border-radius: var(--radius-md);
+    margin-top: var(--space-2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.volatility-threshold.hidden {
+    display: none;
+}
+
+.volatility-threshold label {
+    font-size: 0.85rem;
+    color: var(--warning);
+}
+
+.volatility-threshold .input-with-unit input {
+    width: 70px;
+}

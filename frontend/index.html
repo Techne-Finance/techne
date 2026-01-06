@@ -1318,24 +1318,100 @@
                                 </div>
                             </div>
 
-                            <!-- PRO MODE: Safety & Gas -->
-                            <div class="config-card pro-mode-only" id="safetyGasCard">
-                                <h3>🛡️ Safety & Gas</h3>
+                            <!-- PRO MODE: Harvest Strategy -->
+                            <div class="config-card pro-mode-only" id="harvestStrategyCard">
+                                <h3>🌾 Harvest Strategy</h3>
+                                <p class="card-desc">Choose what to do with collected yield rewards</p>
 
+                                <div class="harvest-options">
+                                    <label class="harvest-card active" data-strategy="auto-compound">
+                                        <input type="radio" name="harvestStrategy" value="auto-compound" checked>
+                                        <div class="harvest-icon">🔄</div>
+                                        <div class="harvest-info">
+                                            <span class="harvest-title">Auto-Compound</span>
+                                            <span class="harvest-desc">Reinvest rewards for exponential growth</span>
+                                        </div>
+                                        <span class="pro-tooltip"
+                                            title="Automatically sells reward tokens and deposits back into the pool. Best for maximizing long-term returns.">ⓘ</span>
+                                    </label>
+
+                                    <label class="harvest-card" data-strategy="cash-out">
+                                        <input type="radio" name="harvestStrategy" value="cash-out">
+                                        <div class="harvest-icon">💵</div>
+                                        <div class="harvest-info">
+                                            <span class="harvest-title">Cash Out to Stable</span>
+                                            <span class="harvest-desc">Convert rewards to USDC</span>
+                                        </div>
+                                        <span class="pro-tooltip"
+                                            title="Sells reward tokens to USDC and sends to your wallet. Ideal for taking profits regularly.">ⓘ</span>
+                                    </label>
+
+                                    <label class="harvest-card" data-strategy="hodl">
+                                        <input type="radio" name="harvestStrategy" value="hodl">
+                                        <div class="harvest-icon">💎</div>
+                                        <div class="harvest-info">
+                                            <span class="harvest-title">HODL Rewards</span>
+                                            <span class="harvest-desc">Keep tokens (AERO, MORPHO)</span>
+                                        </div>
+                                        <span class="pro-tooltip"
+                                            title="Holds reward tokens without selling. Best if you believe in the protocol's long-term value.">ⓘ</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- PRO MODE: Safety & Risk Controls -->
+                            <div class="config-card pro-mode-only" id="safetyGasCard">
+                                <h3>🛡️ Safety & Risk Controls</h3>
+
+                                <!-- Volatility Circuit Breaker -->
                                 <div class="config-group toggle-group">
                                     <label>
-                                        <span>Volatility Guard</span>
+                                        <span>⚡ Volatility Circuit Breaker</span>
                                         <span class="pro-tooltip"
-                                            title="Emergency exit to stablecoins if market volatility exceeds 200%">ⓘ</span>
+                                            title="Emergency exit to stablecoins if 24h volatility exceeds your threshold">ⓘ</span>
                                     </label>
                                     <label class="toggle-switch">
-                                        <input type="checkbox" id="volatilityGuard" checked>
+                                        <input type="checkbox" id="volatilityGuard">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="volatility-threshold hidden" id="volatilityThresholdGroup">
+                                    <label>Exit if 24h volatility exceeds</label>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="volatilityThreshold" value="50" min="10" max="200">
+                                        <span class="unit">%</span>
+                                    </div>
+                                </div>
+
+                                <!-- Smart Gas Toggle -->
+                                <div class="config-group toggle-group">
+                                    <label>
+                                        <span>⛽ Smart Gas Optimization</span>
+                                        <span class="pro-tooltip"
+                                            title="Delays transactions until yield > gas cost. Ensures profitability.">ⓘ</span>
+                                    </label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="smartGasEnabled" checked>
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
 
+                                <!-- MEV Protection -->
+                                <div class="config-group toggle-group">
+                                    <label>
+                                        <span>🔒 Stealth Mode (MEV Protection)</span>
+                                        <span class="pro-tooltip"
+                                            title="Uses private mempool to prevent sandwich attacks and front-running">ⓘ</span>
+                                    </label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="mevProtection">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+
+                                <!-- Gas Strategy Dropdown -->
                                 <div class="config-group">
-                                    <label>Gas Strategy</label>
+                                    <label>Gas Priority</label>
                                     <select id="gasStrategy" class="pro-select">
                                         <option value="standard">Standard (Always Harvest)</option>
                                         <option value="smart" selected>Smart Compound (Profit > 5x Gas)</option>
