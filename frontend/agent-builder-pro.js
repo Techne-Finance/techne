@@ -50,14 +50,8 @@ class AgentBuilderPro {
             apyTargetEnabled: this.isApyTargetEnabled(),
             apyTargetValue: this.getApyTargetValue(),
 
-            // Harvest Strategy
-            harvestStrategy: this.getHarvestStrategy(),
-
-            // Safety & Risk Controls
+            // Safety & Gas
             volatilityGuard: this.isVolatilityGuardEnabled(),
-            volatilityThreshold: this.getVolatilityThreshold(),
-            smartGasEnabled: this.isSmartGasEnabled(),
-            mevProtection: this.isMevProtectionEnabled(),
             gasStrategy: this.getGasStrategy(),
 
             // Custom Instructions
@@ -151,36 +145,12 @@ class AgentBuilderPro {
     }
 
     // ==========================================
-    // HARVEST STRATEGY
-    // ==========================================
-
-    getHarvestStrategy() {
-        const checked = document.querySelector('input[name="harvestStrategy"]:checked');
-        return checked?.value || 'auto-compound';
-    }
-
-    // ==========================================
-    // SAFETY & RISK CONTROLS
+    // SAFETY & GAS
     // ==========================================
 
     isVolatilityGuardEnabled() {
         const check = document.getElementById('volatilityGuard');
-        return check?.checked || false;
-    }
-
-    getVolatilityThreshold() {
-        const input = document.getElementById('volatilityThreshold');
-        return input ? parseInt(input.value) || 50 : 50;
-    }
-
-    isSmartGasEnabled() {
-        const check = document.getElementById('smartGasEnabled');
         return check?.checked ?? true;
-    }
-
-    isMevProtectionEnabled() {
-        const check = document.getElementById('mevProtection');
-        return check?.checked || false;
     }
 
     getGasStrategy() {

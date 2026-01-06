@@ -72,8 +72,6 @@ function initBuildSection() {
     initLeverageSlider();
     initExitTargetCheckboxes();
     initLiquidityStrategyToggle();
-    initHarvestStrategy();
-    initVolatilityBreaker();
 }
 
 // Mode Toggle (Basic/Pro)
@@ -247,36 +245,6 @@ function initLiquidityStrategyToggle() {
             }
         });
     });
-}
-
-// Harvest Strategy Cards
-function initHarvestStrategy() {
-    const harvestCards = document.querySelectorAll('.harvest-card');
-
-    harvestCards.forEach(card => {
-        card.addEventListener('click', () => {
-            harvestCards.forEach(c => c.classList.remove('active'));
-            card.classList.add('active');
-
-            const radio = card.querySelector('input[type="radio"]');
-            if (radio) radio.checked = true;
-        });
-    });
-}
-
-// Volatility Circuit Breaker Toggle with threshold visibility
-function initVolatilityBreaker() {
-    const volatilityGuard = document.getElementById('volatilityGuard');
-    const thresholdGroup = document.getElementById('volatilityThresholdGroup');
-
-    if (volatilityGuard && thresholdGroup) {
-        // Initial state
-        thresholdGroup.classList.toggle('hidden', !volatilityGuard.checked);
-
-        volatilityGuard.addEventListener('change', () => {
-            thresholdGroup.classList.toggle('hidden', !volatilityGuard.checked);
-        });
-    }
 }
 
 // View toggle
@@ -1169,53 +1137,58 @@ function createPoolCard(pool, isUnlocked, index, freeIndices = new Set()) {
     const isVerified = pool.verified || pool.agent_verified;
     const poolData = JSON.stringify(pool).replace(/"/g, '&quot;');
 
-    // Battle Card HTML
+    // All 15 pools are FREE preview - no blur needed
+    // Using filters/credits shows different results
+
     return `
-        <div class="battle-card ${isVerified ? 'verified' : ''}" 
+        <div class="pool-card ${isVerified ? 'verified' : ''}" 
              onclick='PoolDetailModal?.show(${poolData})' 
              data-pool-index="${index}">
-            
-            <div class="battle-card-header">
-                <div class="battle-icon">
-                    <img src="${protocolIcon}" alt="${pool.project}" class="protocol-icon" style="width:24px;height:24px;" onerror="this.style.display='none'">
-                </div>
-                <div class="battle-title-group">
-                    <h4 class="battle-title">${pool.project}</h4>
-                    <div class="battle-subtitle">
-                        <img src="${chainIcon}" style="width:12px; height:12px; vertical-align:middle; border-radius:50%;">
-                        ${pool.chain} • ${pool.symbol}
+            <div class="pool-header">
+                <div class="pool-protocol">
+                    <img src="${protocolIcon}" alt="${pool.project}" class="protocol-icon" onerror="this.style.display='none'">
+                    <div class="pool-info">
+                        <span class="pool-name">${pool.project}</span>
+                        <span class="pool-pair">${pool.symbol}</span>
                     </div>
                 </div>
-                ${isVerified ? '<span title="Verified" style="color:var(--cyan);">🤖</span>' : ''}
-            </div>
-
-            <div class="battle-stats">
-                <div class="stat-module highlight">
-                    <span class="stat-label">APY</span>
-                    <span class="stat-value cyan">${pool.apy?.toFixed(2) || '0.00'}%</span>
+                <div class="pool-chain" title="${pool.chain}">
+                    <img src="${chainIcon}" alt="${pool.chain}" class="chain-icon" style="width:20px;height:20px;border-radius:50%;">
                 </div>
-                <div class="stat-module">
-                    <span class="stat-label">TVL</span>
-                    <span class="stat-value gold">${formatTvl(pool.tvl)}</span>
-                </div>
-                <div class="stat-module ${riskClass === 'low' ? 'safe' : 'danger'}">
-                    <span class="stat-label">Risk</span>
-                    <span class="stat-value" style="color: ${riskColor}">${riskScore}</span>
-                </div>
-                <div class="stat-module">
-                    <span class="stat-label">Type</span>
-                    <span class="stat-value" style="font-size:0.8rem;">${pool.pool_type || 'Yield'}</span>
-                </div>
-            </div>
-
-            <div class="battle-actions">
-                ${isUnlocked ? `
-                    <button class="btn-battle" onclick="event.stopPropagation(); handleDeposit('${pool.id || pool.pool}')">DEPLOY</button>
-                    <button class="btn-battle secondary" onclick='event.stopPropagation(); YieldComparison?.addPool(${poolData})'>SCAN</button>
-                ` : '<button class="btn-battle secondary" disabled>LOCKED</button>'}
             </div>
             
-            ${airdropPotential ? `<div style="position:absolute; top:0; right:0; background:rgba(212,175,55,0.2); color:var(--gold); font-size:0.6rem; padding:2px 6px; border-bottom-left-radius:4px;">🎁 AIRDROP</div>` : ''}
+            <div class="pool-stats">
+                <div class="pool-stat">
+                    <span class="stat-value apy">${pool.apy?.toFixed(2) || '0.00'}%</span>
+                    <span class="stat-label">APY</span>
+                </div>
+                <div class="pool-stat">
+                    <span class="stat-value">${formatTvl(pool.tvl)}</span>
+                    <span class="stat-label">TVL</span>
+                </div>
+                <div class="pool-stat">
+                    <span class="risk-badge ${riskClass}" style="background: ${riskColor}20; color: ${riskColor}; border-color: ${riskColor};" title="Risk Score: ${riskScore}/100">
+                        ${riskLevel}
+                    </span>
+                    <span class="stat-label">Risk</span>
+                </div>
+            </div>
+
+            
+            <div class="pool-badges">
+                ${pool.category_icon && pool.category_label ? `<span class="badge category" title="${pool.category}">${pool.category_icon} ${pool.category_label}</span>` : ''}
+                ${isVerified ? `<span class="badge verified">🤖 Verified</span>` : ''}
+                ${airdropPotential ? `<span class="badge airdrop">🎁 Airdrop</span>` : ''}
+                ${pool.stablecoin ? `<span class="badge stable">Stable</span>` : ''}
+            </div>
+            
+            ${isUnlocked ? `
+                <div class="pool-actions">
+                    <button class="btn-deposit" onclick="event.stopPropagation(); handleDeposit('${pool.id || pool.pool}')">Deposit</button>
+                    <button class="btn-compare" onclick='event.stopPropagation(); YieldComparison?.addPool(${poolData})'>📊</button>
+                    <button class="btn-add-strategy" onclick="event.stopPropagation(); addToStrategy('${pool.id || pool.pool}')">+</button>
+                </div>
+            ` : ''}
         </div>
     `;
 }
@@ -1936,71 +1909,6 @@ function initAllButtonHandlers() {
         });
     });
 
-    // --- Terminal Grid Listeners ---
-
-    // Chain Selection (Build)
-    document.querySelectorAll('.chain-btn-build').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (btn.hasAttribute('disabled')) return;
-            document.querySelectorAll('.chain-btn-build').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            // Update logic if needed
-            Toast?.show(`Network set to: ${btn.textContent.trim()}`, 'info');
-        });
-    });
-
-    // Pool Type Selection (Build)
-    document.querySelectorAll('.pool-type-btn-build').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.pool-type-btn-build').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        });
-    });
-
-    // Asset Chips
-    document.querySelectorAll('.asset-chip').forEach(btn => {
-        btn.addEventListener('click', () => {
-            btn.classList.toggle('active'); // Multi-select behavior for chips
-        });
-    });
-
-    // Quick Amounts
-    document.querySelectorAll('.quick-amounts button').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const amount = btn.dataset.amount;
-            const input = document.getElementById('builderAmount');
-            if (input) input.value = amount;
-
-            document.querySelectorAll('.quick-amounts button').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        });
-    });
-
-    // Duration Buttons
-    document.querySelectorAll('.duration-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        });
-    });
-
-    // Risk Options
-    document.querySelectorAll('.risk-option').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.risk-option').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        });
-    });
-
-    // Protocol Chips (Build)
-    document.querySelectorAll('.protocol-chip').forEach(btn => {
-        btn.addEventListener('click', () => {
-            btn.classList.toggle('active');
-        });
-    });
-
-    // --- End Terminal Grid Listeners ---
-
     // Preset Buttons
     document.querySelectorAll('.preset-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -2277,145 +2185,10 @@ window.addEventListener('sectionChanged', () => {
     setTimeout(initAllButtonHandlers, 100);
 });
 
-// Accordion Functionality for Agent Builder
-function toggleAccordion(id) {
-    const panel = document.getElementById(id);
-    if (panel) {
-        panel.classList.toggle('open');
-    }
-}
-
 // Export shared functions for components.js
 window.formatTvl = formatTvl;
 window.getProtocolIconUrl = getProtocolIconUrl;
 window.getChainIconUrl = getChainIconUrl;
 window.addToStrategy = addToStrategy;
-window.toggleAccordion = toggleAccordion;
 window.pools = pools;
 window.handleDeposit = handleDeposit;
-
-// ===========================================
-// TERMINAL GRID LOGIC (RESTORED & ENHANCED)
-// ===========================================
-function initTerminalGridLogic() {
-    console.log('[Techne] 🟢 Initializing Terminal Grid Logic...');
-
-    // 1. Mode Toggle (Basic <-> Pro)
-    const modeBtns = document.querySelectorAll('#builderModeToggle .mode-btn');
-    const proSections = document.querySelectorAll('.liquidity-manager-compact');
-
-    // Helper to Apply Mode
-    const applyMode = (isPro) => {
-        proSections.forEach(el => {
-            if (isPro) {
-                el.style.display = 'block';
-                el.classList.remove('hidden');
-            } else {
-                el.style.display = 'none';
-                el.classList.add('hidden');
-            }
-        });
-        document.body.classList.toggle('builder-pro-mode', isPro);
-    };
-
-    // Default State
-    const activeMode = document.querySelector('#builderModeToggle .mode-btn.active')?.dataset.mode || 'basic';
-    applyMode(activeMode === 'pro');
-
-    modeBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            modeBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const mode = btn.dataset.mode;
-            applyMode(mode === 'pro');
-
-            Toast?.show(`Switched to ${mode.toUpperCase()} Mode`, 'info');
-        });
-    });
-
-    // 2. Strategy Presets & Custom Handling
-    const presetBtns = document.querySelectorAll('.preset-btn');
-    const customInputs = document.querySelectorAll('#leverageSlider, #maxDrawdown, #volatilityGuard, #smartGasEnabled');
-
-    presetBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            presetBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const preset = btn.dataset.preset;
-
-            if (preset === 'custom') {
-                // Unlock inputs
-                customInputs.forEach(input => {
-                    input.removeAttribute('disabled');
-                    input.style.opacity = '1';
-                    input.style.cursor = 'pointer';
-                    input.parentElement.style.opacity = '1';
-                });
-                Toast?.show('🔓 Custom Mode: Manual Inputs Enabled', 'warning');
-            } else {
-                // Lock inputs to preset defaults
-                customInputs.forEach(input => {
-                    input.setAttribute('disabled', 'true');
-                    input.style.opacity = '0.6';
-                    input.style.cursor = 'not-allowed';
-                    input.parentElement.style.opacity = '0.6';
-                });
-                // Apply preset values (Mock logic)
-                if (preset === 'yield-maximizer') {
-                    const slider = document.getElementById('leverageSlider');
-                    if (slider) slider.value = 300;
-                }
-            }
-        });
-    });
-
-    // 3. Liquidity Manager Toggle (Restored)
-    const liqBtns = document.querySelectorAll('.liquidity-strategy-toggle .liq-btn');
-    liqBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            liqBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        });
-    });
-
-    // 4. Protocol Filtering (Single vs Dual)
-    const poolTypeBtns = document.querySelectorAll('.pool-type-btn-build');
-    const protocolChips = document.querySelectorAll('.protocol-chip');
-
-    poolTypeBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // UI toggle
-            poolTypeBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const selectedType = btn.dataset.poolType; // 'single' or 'dual'
-
-            // Filter Logic
-            let visibleCount = 0;
-            protocolChips.forEach(chip => {
-                const chipSide = chip.dataset.poolSide;
-                if (chipSide === selectedType) {
-                    chip.style.display = 'flex';
-                    visibleCount++;
-                } else {
-                    chip.style.display = 'none';
-                }
-            });
-
-            Toast?.show(`Showing ${visibleCount} ${selectedType === 'single' ? 'Single-Sided' : 'LP'} Protocols`, 'info');
-        });
-    });
-
-    // Run filter once on init
-    const activeTypeBtn = document.querySelector('.pool-type-btn-build.active');
-    if (activeTypeBtn) activeTypeBtn.click();
-}
-
-// Auto-init when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => setTimeout(initTerminalGridLogic, 500));
-} else {
-    setTimeout(initTerminalGridLogic, 500);
-}
