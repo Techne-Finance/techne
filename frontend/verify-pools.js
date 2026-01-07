@@ -88,8 +88,11 @@ const VerifyPools = {
             // Save to history
             this.saveToHistory(poolData);
 
+            // Normalize data for PoolDetailModal (DefiLlama uses different field names)
+            const normalizedPool = this.normalizePoolData(poolData);
+
             // Show modal
-            this.showVerificationModal(poolData);
+            this.showVerificationModal(normalizedPool);
 
             // Clear input
             if (input) input.value = '';
@@ -105,47 +108,346 @@ const VerifyPools = {
         }
     },
 
-    // Parse input (address or URL)
+    // Parse input (address or URL) - supports multiple protocols
     parseInput(input) {
-        // DefiLlama URL: https://defillama.com/yields/pool/...
+        console.log('[VerifyPools] Parsing input:', input);
+
+        // DefiLlama URL: https://defillama.com/yields/pool/UUID
         if (input.includes('defillama.com')) {
             const match = input.match(/pool\/([a-f0-9-]+)/i);
-            return match ? match[1] : input;
+            if (match) {
+                console.log('[VerifyPools] Parsed DefiLlama pool ID:', match[1]);
+                return { type: 'defillama', id: match[1] };
+            }
         }
 
-        // Contract address
+        // Aerodrome URL: https://aerodrome.finance/deposit?token0=0x...&token1=0x...
+        // or: https://aerodrome.finance/liquidity/0x...
+        if (input.includes('aerodrome.finance')) {
+            // Try to extract pool address from liquidity path
+            const liquidityMatch = input.match(/liquidity\/(0x[a-fA-F0-9]{40})/i);
+            if (liquidityMatch) {
+                console.log('[VerifyPools] Parsed Aerodrome pool address:', liquidityMatch[1]);
+                return { type: 'address', id: liquidityMatch[1].toLowerCase(), protocol: 'aerodrome' };
+            }
+            // Try token0 from deposit URL
+            const tokenMatch = input.match(/token0=(0x[a-fA-F0-9]{40})/i);
+            if (tokenMatch) {
+                console.log('[VerifyPools] Parsed Aerodrome token0:', tokenMatch[1]);
+                return { type: 'address', id: tokenMatch[1].toLowerCase(), protocol: 'aerodrome' };
+            }
+        }
+
+        // Uniswap URL: https://app.uniswap.org/pools/POOL_ID or /pool/CHAIN/0x...
+        if (input.includes('uniswap.org') || input.includes('uniswap.com')) {
+            const poolMatch = input.match(/pool[s]?\/([\w]+)\/(0x[a-fA-F0-9]{40})/i);
+            if (poolMatch) {
+                console.log('[VerifyPools] Parsed Uniswap pool:', poolMatch[2]);
+                return { type: 'address', id: poolMatch[2].toLowerCase(), protocol: 'uniswap' };
+            }
+            const simpleMatch = input.match(/(0x[a-fA-F0-9]{40})/i);
+            if (simpleMatch) {
+                return { type: 'address', id: simpleMatch[1].toLowerCase(), protocol: 'uniswap' };
+            }
+        }
+
+        // Curve URL: https://curve.fi/#/ethereum/pools/...
+        if (input.includes('curve.fi')) {
+            const poolMatch = input.match(/pools\/([a-zA-Z0-9-]+)/i);
+            if (poolMatch) {
+                console.log('[VerifyPools] Parsed Curve pool:', poolMatch[1]);
+                return { type: 'name', id: poolMatch[1], protocol: 'curve' };
+            }
+        }
+
+        // Contract address (0x...)
         if (input.startsWith('0x') && input.length === 42) {
-            return input.toLowerCase();
+            console.log('[VerifyPools] Parsed contract address:', input);
+            return { type: 'address', id: input.toLowerCase() };
+        }
+
+        // UUID format (DefiLlama pool ID)
+        if (/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(input)) {
+            console.log('[VerifyPools] Parsed UUID:', input);
+            return { type: 'defillama', id: input };
         }
 
         // Return as-is for other formats
-        return input;
+        console.log('[VerifyPools] Unknown format, using as-is');
+        return { type: 'unknown', id: input };
+    },
+
+    // Normalize DefiLlama pool data to match our PoolDetailModal expected format
+    normalizePoolData(pool) {
+        console.log('[VerifyPools] Normalizing pool data:', pool);
+
+        // Calculate risk data
+        const riskScore = this.calculateRiskScore(pool);
+        const riskLevel = this.getRiskLevel(pool);
+
+        // Format volume
+        const volume = pool.volumeUsd1d || pool.volumeUsd7d || 0;
+        const volumeFormatted = this.formatNumber(volume);
+
+        // Generate premium insights based on pool data
+        const premiumInsights = this.generateInsights(pool);
+
+        // Generate risk reasons
+        const riskReasons = this.generateRiskReasons(pool);
+
+        // Get reward token name
+        const rewardTokens = pool.rewardTokens || [];
+        const rewardToken = rewardTokens.length > 0 ? rewardTokens[0] : pool.project;
+
+        return {
+            // Identity
+            id: pool.pool || pool.id,
+            pool: pool.pool,
+            symbol: pool.symbol,
+            project: pool.project,
+            chain: pool.chain,
+
+            // TVL & Volume (DefiLlama uses tvlUsd)
+            tvl: pool.tvlUsd || pool.tvl || 0,
+            tvlUsd: pool.tvlUsd || pool.tvl || 0,
+            tvl_formatted: '$' + this.formatNumber(pool.tvlUsd || pool.tvl || 0),
+            tvl_change_7d: pool.apyPct7D || 0, // Use APY change as proxy for TVL trend
+            volume_24h: volume,
+            volume_24h_formatted: volume > 0 ? ('$' + volumeFormatted) : 'N/A',
+
+            // APY breakdown - if apyBase/apyReward not available, treat total APY as base
+            apy: pool.apy || 0,
+            apy_base: this.getApyBase(pool),
+            apy_reward: this.getApyReward(pool),
+            apyBase: pool.apyBase || pool.apy || 0,
+            apyReward: pool.apyReward || 0,
+
+            // Reward token source
+            reward_token: rewardToken,
+            rewardTokens: rewardTokens,
+
+            // Pool characteristics - SNAKE_CASE
+            pool_type: pool.stablecoin ? 'stable' : 'volatile',
+            isStable: pool.stablecoin === true,
+            stablecoin: pool.stablecoin,
+
+            // Risk metrics from DefiLlama
+            ilRisk: pool.ilRisk || 'unknown',
+            il_risk: pool.ilRisk === 'no' ? 'none' : (pool.ilRisk || 'unknown'),
+            impermanentLoss: pool.ilRisk === 'no' ? 'None' : (pool.ilRisk || 'Unknown'),
+            exposure: pool.exposure || null,
+
+            // Risk scoring
+            risk_score: riskScore,
+            risk_level: riskLevel,
+            riskScore: riskScore,
+            riskLevel: riskLevel,
+
+            // Additional metrics
+            underlyingTokens: pool.underlyingTokens || [],
+
+            // Historical data (if available)
+            apyPct1D: pool.apyPct1D || 0,
+            apyPct7D: pool.apyPct7D || 0,
+            apyPct30D: pool.apyPct30D || 0,
+            apyMean30d: pool.apyMean30d || pool.apy || 0,
+
+            // IMPORTANT: Fields for Market Dynamics section
+            premium_insights: premiumInsights,
+            risk_reasons: riskReasons,
+
+            // Smart insights for rich analysis
+            smart_insights: premiumInsights,
+
+            // Keep original data for reference
+            _raw: pool
+        };
+    },
+
+    // Generate premium insights based on pool data
+    generateInsights(pool) {
+        const insights = [];
+        const tvl = pool.tvlUsd || pool.tvl || 0;
+        const apy = pool.apy || 0;
+        const apyBase = pool.apyBase || 0;
+        const apyReward = pool.apyReward || 0;
+
+        // TVL insight
+        if (tvl > 100000000) {
+            insights.push({ type: 'positive', icon: '✅', text: `High TVL ($${this.formatNumber(tvl)}) indicates strong liquidity and reduced slippage risk` });
+        } else if (tvl > 10000000) {
+            insights.push({ type: 'neutral', icon: '📊', text: `Moderate TVL ($${this.formatNumber(tvl)}) - adequate liquidity for most trades` });
+        } else if (tvl < 1000000) {
+            insights.push({ type: 'warning', icon: '⚠️', text: `Low TVL ($${this.formatNumber(tvl)}) - potential liquidity issues and higher slippage` });
+        }
+
+        // APY composition insight
+        if (apyReward > apyBase && apyReward > 5) {
+            insights.push({ type: 'warning', icon: '⚠️', text: `${((apyReward / apy) * 100).toFixed(0)}% of APY comes from reward emissions - may decrease over time` });
+        } else if (apyBase > apyReward) {
+            insights.push({ type: 'positive', icon: '✅', text: `Majority of yield (${apyBase.toFixed(1)}%) is from trading fees - more sustainable` });
+        }
+
+        // IL risk insight
+        if (pool.ilRisk === 'no') {
+            insights.push({ type: 'positive', icon: '✅', text: 'No impermanent loss risk (single-sided or stable pair)' });
+        } else if (pool.ilRisk === 'yes') {
+            insights.push({ type: 'warning', icon: '⚠️', text: 'Volatile pair - subject to impermanent loss during price movements' });
+        }
+
+        // Stablecoin insight
+        if (pool.stablecoin) {
+            insights.push({ type: 'positive', icon: '✅', text: 'Stablecoin pool - lower volatility and predictable returns' });
+        }
+
+        // High APY warning
+        if (apy > 50) {
+            insights.push({ type: 'warning', icon: '⚠️', text: `High APY (${apy.toFixed(1)}%) - verify emission sustainability and token value` });
+        }
+
+        return insights;
+    },
+
+    // Generate risk reasons list
+    generateRiskReasons(pool) {
+        const reasons = [];
+        const tvl = pool.tvlUsd || pool.tvl || 0;
+        const apy = pool.apy || 0;
+
+        if (tvl < 1000000) reasons.push('Low TVL may cause liquidity issues');
+        if (apy > 100) reasons.push('Extremely high APY may be unsustainable');
+        if (pool.ilRisk === 'yes') reasons.push('Impermanent loss risk for volatile pairs');
+        if (pool.apyReward > pool.apyBase * 2) reasons.push('Heavy reliance on reward emissions');
+
+        return reasons;
+    },
+
+    // Calculate basic risk score (0-100, higher = safer)
+    calculateRiskScore(pool) {
+        let score = 50; // Base score
+
+        // TVL factor
+        const tvl = pool.tvlUsd || pool.tvl || 0;
+        if (tvl > 100000000) score += 20; // >100M
+        else if (tvl > 10000000) score += 15; // >10M
+        else if (tvl > 1000000) score += 10; // >1M
+        else if (tvl < 100000) score -= 15; // <100K risky
+
+        // APY factor (very high APY = risky)
+        const apy = pool.apy || 0;
+        if (apy > 100) score -= 20;
+        else if (apy > 50) score -= 10;
+        else if (apy < 20) score += 5;
+
+        // Stablecoin bonus
+        if (pool.stablecoin) score += 10;
+
+        // IL risk
+        if (pool.ilRisk === 'no') score += 10;
+        else if (pool.ilRisk === 'yes') score -= 10;
+
+        return Math.max(0, Math.min(100, score));
+    },
+
+    // Get risk level label
+    getRiskLevel(pool) {
+        const score = this.calculateRiskScore(pool);
+        if (score >= 75) return 'Low';
+        if (score >= 50) return 'Medium';
+        if (score >= 25) return 'High';
+        return 'Critical';
+    },
+
+    // Get APY base - if not available, use total APY (assume all from trading fees)
+    getApyBase(pool) {
+        if (pool.apyBase !== null && pool.apyBase !== undefined) {
+            return pool.apyBase.toFixed(2);
+        }
+        // If no breakdown available, total APY is treated as base yield
+        return (pool.apy || 0).toFixed(2);
+    },
+
+    // Get APY reward - if not available, return 0
+    getApyReward(pool) {
+        if (pool.apyReward !== null && pool.apyReward !== undefined) {
+            return pool.apyReward.toFixed(2);
+        }
+        return '0.00';
     },
 
     // Fetch pool data from API
-    async fetchPoolData(poolId) {
+    async fetchPoolData(parsed) {
+        console.log('[VerifyPools] Searching for pool:', parsed);
+
+        const poolId = parsed.id;
+        const searchType = parsed.type;
+        const protocol = parsed.protocol;
+
         try {
-            // Try to find in existing pools first
-            if (typeof pools !== 'undefined' && Array.isArray(pools)) {
-                const found = pools.find(p =>
-                    p.pool === poolId ||
-                    p.pool_id === poolId ||
-                    p.address?.toLowerCase() === poolId.toLowerCase()
-                );
-                if (found) return found;
+            // Try to find in existing pools first (already loaded from backend)
+            if (typeof pools !== 'undefined' && Array.isArray(pools) && pools.length > 0) {
+                console.log('[VerifyPools] Searching in', pools.length, 'local pools');
+
+                const found = pools.find(p => {
+                    // Match by different criteria based on type
+                    if (searchType === 'defillama') {
+                        return p.pool === poolId;
+                    }
+                    if (searchType === 'address') {
+                        const addr = p.address?.toLowerCase() || p.pool?.toLowerCase();
+                        // Also check if pool ID contains this address
+                        return addr?.includes(poolId) || p.pool?.includes(poolId);
+                    }
+                    // For protocol-specific searches
+                    if (protocol && p.project?.toLowerCase() === protocol.toLowerCase()) {
+                        return p.symbol?.toLowerCase().includes(poolId.toLowerCase()) ||
+                            p.pool?.includes(poolId);
+                    }
+                    // Fallback: generic search
+                    return p.pool === poolId ||
+                        p.pool_id === poolId ||
+                        p.address?.toLowerCase() === poolId?.toLowerCase();
+                });
+
+                if (found) {
+                    console.log('[VerifyPools] Found in local pools:', found);
+                    return found;
+                }
             }
 
-            // Fetch from DefiLlama
-            const response = await fetch(`https://yields.llama.fi/pools`);
-            if (!response.ok) throw new Error('API error');
+            // Use our backend API scout endpoint (proxies DefiLlama, avoids CSP)
+            Toast?.show('Fetching pool data from DefiLlama...', 'info');
 
-            const data = await response.json();
-            const pool = data.data?.find(p =>
-                p.pool === poolId ||
-                p.pool?.includes(poolId)
-            );
+            try {
+                // Build search URL based on type
+                let searchUrl;
+                if (searchType === 'defillama') {
+                    searchUrl = `http://localhost:8000/api/scout/pool/${encodeURIComponent(poolId)}`;
+                } else if (searchType === 'address') {
+                    // Search by address - may need to search all pools
+                    searchUrl = `http://localhost:8000/api/scout/pool/address/${encodeURIComponent(poolId)}`;
+                } else {
+                    searchUrl = `http://localhost:8000/api/scout/pool/${encodeURIComponent(poolId)}`;
+                }
 
-            return pool || null;
+                const response = await fetch(searchUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.pool) {
+                        console.log('[VerifyPools] Found via backend:', data.pool);
+                        Toast?.show('Pool found!', 'success');
+                        return data.pool;
+                    }
+                } else if (response.status === 404) {
+                    console.log('[VerifyPools] Pool not found in DefiLlama');
+                }
+            } catch (backendError) {
+                console.error('[VerifyPools] Backend error:', backendError);
+            }
+
+            Toast?.show('Pool not found in DefiLlama database', 'warning');
+            console.log('[VerifyPools] Pool not found');
+            return null;
         } catch (error) {
             console.error('[VerifyPools] Fetch error:', error);
             return null;
@@ -154,9 +456,10 @@ const VerifyPools = {
 
     // Show verification modal (reuse Pool Detail style)
     showVerificationModal(pool) {
-        // Use existing PoolDetail if available
-        if (typeof PoolDetail !== 'undefined' && PoolDetail.show) {
-            PoolDetail.show(pool);
+        // Use existing PoolDetailModal if available (same as Explore modal)
+        if (typeof PoolDetailModal !== 'undefined' && PoolDetailModal.show) {
+            console.log('[VerifyPools] Using PoolDetailModal.show()');
+            PoolDetailModal.show(pool);
             return;
         }
 
@@ -310,13 +613,17 @@ const VerifyPools = {
 
     // Open pool from history
     async openFromHistory(poolId) {
+        console.log('[VerifyPools] Opening from history:', poolId);
         const history = this.getHistory();
         const cached = history.find(p => p.id === poolId);
 
         if (cached) {
-            // Try to get fresh data
-            const fresh = await this.fetchPoolData(poolId);
-            this.showVerificationModal(fresh || cached);
+            // Use cached data directly (already verified once)
+            // Normalize it before showing modal
+            const normalized = this.normalizePoolData(cached);
+            this.showVerificationModal(normalized);
+        } else {
+            Toast?.show('Pool not found in history', 'warning');
         }
     }
 };

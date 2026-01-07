@@ -15,6 +15,95 @@ logger = logging.getLogger("ScoutRouter")
 router = APIRouter(prefix="/api/scout", tags=["Scout Intelligence"])
 
 
+@router.get("/pool/{pool_id}")
+async def get_pool_by_id(pool_id: str):
+    """
+    Fetch pool data directly from DefiLlama by pool UUID.
+    Used by Verify Pools feature to bypass browser CSP restrictions.
+    """
+    import httpx
+    
+    try:
+        logger.info(f"Searching for pool: {pool_id}")
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get("https://yields.llama.fi/pools")
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=502, detail="DefiLlama API unavailable")
+            
+            data = response.json()
+            pools = data.get("data", [])
+            
+            # Exact match on pool ID
+            pool = next((p for p in pools if p.get("pool") == pool_id), None)
+            
+            if pool:
+                logger.info(f"Found pool: {pool.get('symbol')} on {pool.get('chain')}")
+                return {"success": True, "pool": pool}
+            
+            # Partial match fallback
+            pool = next((p for p in pools if pool_id in p.get("pool", "")), None)
+            
+            if pool:
+                logger.info(f"Found partial match: {pool.get('symbol')}")
+                return {"success": True, "pool": pool}
+            
+            raise HTTPException(status_code=404, detail="Pool not found")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching pool: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/pool/address/{address}")
+async def get_pool_by_address(address: str):
+    """
+    Search for a pool by contract address in DefiLlama.
+    This endpoint is used when user inputs a contract address or Aerodrome/Uniswap URL.
+    """
+    import httpx
+    
+    try:
+        address = address.lower()
+        logger.info(f"Searching for pool by address: {address}")
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get("https://yields.llama.fi/pools")
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=502, detail="DefiLlama API unavailable")
+            
+            data = response.json()
+            pools = data.get("data", [])
+            
+            # Search for pool containing this address in pool ID
+            pool = next((p for p in pools if address in p.get("pool", "").lower()), None)
+            
+            if pool:
+                logger.info(f"Found pool by address: {pool.get('symbol')} on {pool.get('chain')}")
+                return {"success": True, "pool": pool}
+            
+            # Also check underlyingTokens if available
+            for p in pools:
+                underlying = p.get("underlyingTokens", [])
+                if isinstance(underlying, list):
+                    for token in underlying:
+                        if isinstance(token, str) and address in token.lower():
+                            logger.info(f"Found pool by underlying token: {p.get('symbol')}")
+                            return {"success": True, "pool": p}
+            
+            raise HTTPException(status_code=404, detail="Pool not found by address")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching pool by address: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/risk/{pool_id}")
 async def get_risk_score(pool_id: str):
     """
