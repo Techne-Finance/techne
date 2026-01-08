@@ -159,51 +159,68 @@ const PoolDetailModal = {
     },
 
     // Render Artisan Agent verdict banner for verified pools
+    // Greek Gold Gaming Matrix style - elegant circular score
     renderVerdictBanner(pool) {
         const riskScore = pool.riskScore || pool.risk_score || 50;
         const riskLevel = pool.riskLevel || pool.risk_level || 'Medium';
         const dataSource = pool.dataSource || 'defillama';
 
-        let verdict, verdictClass, verdictIcon, verdictDesc;
+        let verdict, scoreColor, glowColor, bgGradient, verdictDesc;
 
         if (riskScore >= 70 || riskLevel === 'Low') {
-            verdict = 'VERIFIED SAFE';
-            verdictClass = 'verdict-safe';
-            verdictIcon = '✅';
-            verdictDesc = 'This pool has passed Artisan Agent risk assessment';
+            verdict = 'SAFE';
+            scoreColor = '#10B981';
+            glowColor = 'rgba(16, 185, 129, 0.4)';
+            bgGradient = 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.02))';
+            verdictDesc = 'Pool has passed Artisan Agent risk assessment';
         } else if (riskScore >= 40 || riskLevel === 'Medium') {
             verdict = 'CAUTION';
-            verdictClass = 'verdict-caution';
-            verdictIcon = '⚠️';
-            verdictDesc = 'This pool requires careful consideration before investing';
+            scoreColor = '#D4A853';
+            glowColor = 'rgba(212, 168, 83, 0.4)';
+            bgGradient = 'linear-gradient(135deg, rgba(212, 168, 83, 0.08), rgba(212, 168, 83, 0.02))';
+            verdictDesc = 'Careful consideration recommended before investing';
         } else {
             verdict = 'HIGH RISK';
-            verdictClass = 'verdict-danger';
-            verdictIcon = '❌';
-            verdictDesc = 'This pool has significant risk factors - proceed with caution';
+            scoreColor = '#EF4444';
+            glowColor = 'rgba(239, 68, 68, 0.4)';
+            bgGradient = 'linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02))';
+            verdictDesc = 'Significant risk factors detected - proceed with caution';
         }
 
-        // Dynamic data source indicator
-        let sourceLabel;
-        if (dataSource === 'geckoterminal') {
-            sourceLabel = '🦎 Real-time data via GeckoTerminal';
-        } else if (dataSource === 'onchain') {
-            sourceLabel = '⛓️ On-chain data (most accurate)';
+        // Calculate circle progress (stroke-dasharray for 100% = 251.2)
+        const circumference = 251.2;
+        const progress = (riskScore / 100) * circumference;
+        const dashOffset = circumference - progress;
+
+        // Data source badge
+        let sourceBadge;
+        if (dataSource.includes('geckoterminal')) {
+            sourceBadge = '🦎 GeckoTerminal';
+        } else if (dataSource.includes('defillama')) {
+            sourceBadge = '📊 DefiLlama';
+        } else if (dataSource.includes('aerodrome')) {
+            sourceBadge = '🛩️ Aerodrome';
         } else {
-            sourceLabel = '📊 Data: DefiLlama (may differ from protocol)';
+            sourceBadge = '⛓️ On-chain';
         }
 
         return `
-            <div class="artisan-verdict ${verdictClass}">
-                <div class="verdict-stamp">
-                    <span class="verdict-icon">${verdictIcon}</span>
-                    <span class="verdict-text">${verdict}</span>
+            <div class="matrix-verdict" style="background: ${bgGradient}; border-color: ${scoreColor}30;">
+                <div class="matrix-score-ring" style="--score-color: ${scoreColor}; --glow-color: ${glowColor};">
+                    <svg viewBox="0 0 100 100">
+                        <circle class="ring-bg" cx="50" cy="50" r="40" />
+                        <circle class="ring-progress" cx="50" cy="50" r="40" 
+                            style="stroke: ${scoreColor}; stroke-dasharray: ${circumference}; stroke-dashoffset: ${dashOffset};" />
+                    </svg>
+                    <div class="score-value" style="color: ${scoreColor};">${riskScore}</div>
                 </div>
-                <div class="verdict-details">
-                    <span class="verdict-agent">🤖 Artisan Agent Analysis</span>
-                    <span class="verdict-desc">${verdictDesc}</span>
-                    <span class="verdict-score">Risk Score: ${riskScore}/100</span>
-                    <span class="verdict-source">${sourceLabel}</span>
+                <div class="matrix-info">
+                    <div class="matrix-verdict-label" style="color: ${scoreColor};">${verdict}</div>
+                    <div class="matrix-desc">${verdictDesc}</div>
+                    <div class="matrix-meta">
+                        <span class="matrix-source-badge">${sourceBadge}</span>
+                        <span class="matrix-score-text">Score: ${riskScore}/100</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -251,165 +268,143 @@ const PoolDetailModal = {
 
         modal.innerHTML = `
             <div class="pool-detail-modal">
-                <button class="modal-close" onclick="PoolDetailModal.close()" title="Close (ESC)">${PoolIcons.close}</button>
+                <button class="modal-close-pro" onclick="PoolDetailModal.close()" title="Close (ESC)">${PoolIcons.close}</button>
                 
                 ${pool.isVerified ? this.renderVerdictBanner(pool) : ''}
                 
-                <!-- Trust Links -->
-                <div class="trust-links">
-                    ${getExplorerUrl(pool) ? `<a href="${getExplorerUrl(pool)}" target="_blank" title="View Contract on ${pool.chain || 'Base'} Explorer">${PoolIcons.fileText} Contract</a>` : ''}
-                    ${getProtocolWebsite(pool.project) ? `<a href="${getProtocolWebsite(pool.project)}" target="_blank" title="Visit ${pool.project} website">${PoolIcons.externalLink} Protocol</a>` : ''}
-                    ${pool.pool_link ? `<a href="${pool.pool_link}" target="_blank" title="View Pool on ${pool.project}">🏊 Pool</a>` : ''}
-                </div>
-                
-                <div class="pool-detail-header">
-                    <div class="pool-detail-icon">
-                        <img src="${protocolIcon}" alt="${pool.project}" onerror="this.style.display='none'">
-                    </div>
-                    <div class="pool-detail-title">
-                        <h2>${pool.project}</h2>
-                        <div class="pool-detail-meta">
-                            <span class="symbol">${pool.symbol}</span>
-                            <img src="${chainIcon}" alt="${pool.chain}" class="chain-badge">
-                            <span class="chain-name">${pool.chain || 'Base'}</span>
-                            ${isNiche ? `<span class="niche-badge">🔮 ${nicheCategory}</span>` : ''}
+                <!-- Header Section -->
+                <div class="pd-header">
+                    <div class="pd-header-main">
+                        <div class="pd-logo">
+                            <img src="${protocolIcon}" alt="${pool.project || 'Protocol'}" onerror="this.style.display='none'">
+                        </div>
+                        <div class="pd-title-block">
+                            <h2 class="pd-protocol">${pool.project || pool.name?.split('/')[0]?.trim() || 'Unknown Protocol'}</h2>
+                            <div class="pd-pair">
+                                <span class="pd-symbol">${pool.symbol}</span>
+                                <img src="${chainIcon}" alt="${pool.chain}" class="pd-chain-icon">
+                                <span class="pd-chain">${pool.chain || 'Base'}</span>
+                                ${isNiche ? `<span class="pd-niche-tag">🔮 ${nicheCategory}</span>` : ''}
+                            </div>
                         </div>
                     </div>
-                    <div class="pool-detail-apy">
-                        <span class="apy-value">${pool.apy?.toFixed(2)}%</span>
-                        <span class="apy-label">APY</span>
+                    <div class="pd-apy-block">
+                        <span class="pd-apy-value">${pool.apy > 0 ? pool.apy.toFixed(2) + '%' : (pool.trading_fee ? `~${(pool.trading_fee * 365).toFixed(0)}%*` : 'N/A')}</span>
+                        <span class="pd-apy-label">${pool.apy > 0 ? 'APY' : (pool.trading_fee ? 'Est. APR' : 'APY')}</span>
                     </div>
                 </div>
                 
-                <div class="pool-detail-grid">
-                    <div class="detail-card">
-                        <div class="detail-label">TVL</div>
-                         <div class="detail-icon-bg">${PoolIcons.tvl}</div>
-                        <div class="detail-value">${formatTvl ? formatTvl(pool.tvl) : '$' + (pool.tvl / 1000000).toFixed(2) + 'M'}</div>
+                <!-- Metrics Grid (tread.fi style) -->
+                <div class="pd-metrics-row">
+                    <div class="pd-metric-card">
+                        <div class="pd-metric-icon">${PoolIcons.tvl}</div>
+                        <div class="pd-metric-value">${formatTvl ? formatTvl(pool.tvl) : '$' + (pool.tvl / 1000000).toFixed(2) + 'M'}</div>
+                        <div class="pd-metric-label">TVL</div>
                     </div>
-                    <div class="detail-card">
-                        <div class="detail-label">Risk Level</div>
-                        <div class="detail-icon-bg">${PoolIcons.risk}</div>
-                        <span class="risk-badge ${(pool.risk_level || 'medium').toLowerCase()}">${pool.risk_level || 'Medium'}</span>
+                    <div class="pd-metric-card">
+                        <div class="pd-metric-icon">${PoolIcons.risk}</div>
+                        <span class="pd-risk-badge ${(pool.risk_level || 'medium').toLowerCase()}">${pool.risk_level || 'Medium'}</span>
+                        <div class="pd-metric-label">Risk Level</div>
                     </div>
-                    <div class="detail-card ${pool.il_risk === 'yes' ? 'il-high' : 'il-none'}">
-                        <div class="detail-label">IL Risk</div>
-                        <div class="detail-icon-bg">${PoolIcons.shield}</div>
-                        <div class="detail-value ${pool.il_risk === 'yes' ? 'il-danger' : 'il-safe'}">
-                            ${pool.il_risk === 'yes'
-                ? '<span class="warn">🛡️ High</span>'
-                : '<span class="good">🛡️ None</span>'}
+                    <div class="pd-metric-card ${pool.il_risk === 'yes' ? 'pd-il-high' : 'pd-il-none'}">
+                        <div class="pd-metric-icon">${PoolIcons.shield}</div>
+                        <div class="pd-metric-value ${pool.il_risk === 'yes' ? 'pd-danger' : 'pd-safe'}">
+                            ${pool.il_risk === 'yes' ? '⚠️ High' : '🛡️ None'}
                         </div>
+                        <div class="pd-metric-label">IL Risk</div>
                     </div>
-                    <div class="detail-card">
-                        <div class="detail-label">Type</div>
-                        <div class="detail-icon-bg">${PoolIcons.coins}</div>
-                        <div class="detail-value">${pool.pool_type === 'stable' ? '🟢 Stable' : '🟠 Volatile'}</div>
+                    <div class="pd-metric-card">
+                        <div class="pd-metric-icon">${PoolIcons.coins}</div>
+                        <div class="pd-metric-value">${pool.pool_type === 'stable' ? '🟢 Stable' : '🟠 Volatile'}</div>
+                        <div class="pd-metric-label">Type</div>
                     </div>
                 </div>
                 
-                <div class="detail-section premium-analysis">
-                    <div class="section-header">
+                <!-- Market Dynamics Section -->
+                <div class="pd-section">
+                    <div class="pd-section-header">
                         <h3>📊 Market Dynamics</h3>
                         ${this.isEpochProtocol(pool.project) ? `
-                            <div class="epoch-timer" title="${pool.project} rewards reset each epoch (Wednesday 00:00 UTC)">
-                                ⏳ Epoch ends in: ${epoch.display}
-                            </div>
+                            <div class="pd-epoch-badge">⏳ Epoch ends in: ${epoch.display}</div>
                         ` : ''}
                     </div>
                     
                     ${pool.premium_insights?.length > 0 ? `
-                        <div class="smart-insights">
+                        <div class="pd-insights-box">
                             ${pool.premium_insights.map(insight => `
-                                <div class="insight-item ${insight.type}">
-                                    <span class="insight-icon">${insight.icon === '🟢' || insight.icon === '✅' ? PoolIcons.check :
-                        insight.icon === '🔴' || insight.icon === '⚠️' ? PoolIcons.risk :
-                            PoolIcons.activity
-                    }</span>
-                                    <span class="insight-text">${insight.text}</span>
+                                <div class="pd-insight ${insight.type}">
+                                    <span class="pd-insight-bar"></span>
+                                    <span class="pd-insight-text">${insight.text}</span>
                                 </div>
                             `).join('')}
                         </div>
                     ` : ''}
 
-                    <div class="metrics-grid">
-                        ${pool.apy_base !== undefined ? `
-                            <div class="metric-card">
-                                <span class="metric-label">APY Composition</span>
-                                <div class="apy-breakdown">
-                                    <div class="apy-part base" title="Base Yield">
-                                        <span class="dot"></span> Base: ${pool.apy_base}%
+                    <div class="pd-data-grid">
+                        ${(typeof pool.apy_base === 'number') ? `
+                            <div class="pd-data-card">
+                                <div class="pd-data-label">APY COMPOSITION</div>
+                                <div class="pd-apy-breakdown">
+                                    <div class="pd-apy-row">
+                                        <span class="pd-dot base"></span>
+                                        <span>Base: ${Number(pool.apy_base || 0).toFixed(2)}%</span>
                                     </div>
-                                    <div class="apy-part reward" title="Reward Yield - paid in ${formatRewardTokenName(pool.reward_token)}">
-                                        <span class="dot"></span> Reward (${formatRewardTokenName(pool.reward_token)}): ${pool.apy_reward}%
-                                        ${pool.pool_type !== 'stable' ? '<span class="reward-warning" title="Rewards paid in volatile token">⚠️</span>' : ''}
+                                    <div class="pd-apy-row">
+                                        <span class="pd-dot reward"></span>
+                                        <span>Reward (${formatRewardTokenName(pool.reward_token)}): ${Number(pool.apy_reward || 0).toFixed(2)}%</span>
+                                        ${pool.pool_type !== 'stable' ? '<span class="pd-warn-icon" title="Volatile token">⚠️</span>' : ''}
                                     </div>
                                 </div>
                             </div>
                         ` : ''}
                         
-                        ${pool.tvl_change_7d !== undefined ? `
-                            <div class="metric-card">
-                                <span class="metric-label">7D TVL Trend</span>
-                                <span class="metric-value ${pool.tvl_change_7d >= 0 ? 'good' : 'bad'}">
-                                    ${pool.tvl_change_7d >= 0 ? PoolIcons.trendUp : PoolIcons.trendDown}
-                                    ${Math.abs(pool.tvl_change_7d)}%
-                                </span>
+                        <div class="pd-data-card">
+                            <div class="pd-data-label">7D TVL TREND</div>
+                            <div class="pd-trend-value ${(pool.tvl_change_7d || 0) >= 0 ? 'up' : 'down'}">
+                                ${(pool.tvl_change_7d || 0) >= 0 ? PoolIcons.trendUp : PoolIcons.trendDown}
+                                ${Math.abs(pool.tvl_change_7d || 0)}%
                             </div>
-                        ` : ''}
-
-                        ${pool.volume_24h_formatted ? `
-                            <div class="metric-card">
-                                <span class="metric-label">24h Volume</span>
-                                <span class="metric-value">${pool.volume_24h_formatted}</span>
-                            </div>
+                        </div>
+                        
+                        <div class="pd-data-card">
+                            <div class="pd-data-label">24H VOLUME</div>
+                            <div class="pd-data-value">${pool.volume_24h_formatted || 'N/A'}</div>
+                        </div>
+                        
+                        ${pool.trading_fee ? `
+                        <div class="pd-data-card">
+                            <div class="pd-data-label">TRADING FEE</div>
+                            <div class="pd-data-value">${pool.trading_fee}%</div>
+                        </div>
                         ` : ''}
                     </div>
 
                     ${pool.risk_reasons?.length > 0 ? `
-                        <div class="risk-factors">
-                            <h4>Risk Factors:</h4>
-                            <ul class="risk-list">
+                        <div class="pd-risk-section">
+                            <div class="pd-risk-title">Risk Factors:</div>
+                            <ul class="pd-risk-list">
                                 ${pool.risk_reasons.map(r => `<li>• ${r}</li>`).join('')}
                             </ul>
                         </div>
                     ` : ''}
                 </div>
                 
-                ${pool.verification ? `
-                    <div class="detail-section verified">
-                        <h3>${PoolIcons.bot} Agent Verification</h3>
-                        <div class="verification-grid">
-                            <div class="verify-item ${pool.verification.deposit_ok ? 'ok' : 'fail'}">
-                                ${pool.verification.deposit_ok ? '✅' : '❌'} Deposit Check
-                            </div>
-                            <div class="verify-item ${pool.verification.withdraw_ok ? 'ok' : 'fail'}">
-                                ${pool.verification.withdraw_ok ? '✅' : '❌'} Withdraw Check
-                            </div>
-                        </div>
-                        ${pool.verification.guardian_notes?.length > 0 ? `
-                            <div class="verify-notes">
-                                <strong>Guardian Notes:</strong>
-                                ${pool.verification.guardian_notes.map(n => `<p>• ${n}</p>`).join('')}
-                            </div>
-                        ` : ''}
-                        ${pool.verification.airdrop_potential && pool.verification.airdrop_potential !== 'None' ? `
-                            <div class="airdrop-info">
-                                <span class="airdrop-badge">${pool.verification.airdrop_potential} Airdrop Potential</span>
-                                ${pool.verification.airdrop_notes?.map(n => `<span class="note">• ${n}</span>`).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                ` : ''}
+                <!-- Trust Links -->
+                <div class="pd-trust-row">
+                    ${getExplorerUrl(pool) ? `<a href="${getExplorerUrl(pool)}" target="_blank">${PoolIcons.fileText} Contract</a>` : ''}
+                    ${getProtocolWebsite(pool.project) ? `<a href="${getProtocolWebsite(pool.project)}" target="_blank">${PoolIcons.externalLink} Protocol</a>` : ''}
+                    ${pool.pool_link ? `<a href="${pool.pool_link}" target="_blank">🏊 Pool</a>` : ''}
+                </div>
                 
-                <div class="pool-detail-actions">
-                    <a href="${pool.pool_link || (getPoolUrl ? getPoolUrl(pool) : '#')}" target="_blank" class="btn-primary-large" onclick="event.stopPropagation();" title="Open pool on ${pool.project}">
-                        💰 Deposit on ${pool.project}
+                <!-- Action Buttons -->
+                <div class="pd-actions">
+                    <a href="${pool.pool_link || (getPoolUrl ? getPoolUrl(pool) : '#')}" target="_blank" class="pd-btn-primary" onclick="event.stopPropagation();">
+                        💰 DEPOSIT ON ${(pool.project || '').toUpperCase()}
                     </a>
-                    <button class="btn-secondary-large" onclick="PoolDetailModal.addToStrategy()">
+                    <button class="pd-btn-secondary" onclick="PoolDetailModal.addToStrategy()">
                         + Add to Strategy
                     </button>
-                    <button class="btn-outline-large" onclick="YieldComparison?.addPool(PoolDetailModal.currentPool)">
+                    <button class="pd-btn-outline" onclick="YieldComparison?.addPool(PoolDetailModal.currentPool)">
                         📊 Compare
                     </button>
                 </div>
@@ -437,10 +432,11 @@ const PoolDetailModal = {
 };
 
 // ============================================
-// CSS FOR POOL DETAIL MODAL
+// CSS FOR POOL DETAIL MODAL - PROFESSIONAL MATRIX GOLD THEME
 // ============================================
 const detailStyles = document.createElement('style');
 detailStyles.textContent = `
+    /* Modal Overlay */
     .pool-detail-overlay {
         display: none;
         position: fixed;
@@ -448,323 +444,565 @@ detailStyles.textContent = `
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
-        backdrop-filter: blur(8px);
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(12px);
         z-index: 2000;
         justify-content: center;
         align-items: center;
-        padding: var(--space-6);
+        padding: var(--space-4);
     }
     
+    /* Modal Container */
     .pool-detail-modal {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-xl);
-        max-width: 650px;
+        background: linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(10, 10, 10, 0.98));
+        border: 1px solid rgba(212, 168, 83, 0.3);
+        border-radius: 14px;
+        max-width: 580px;
         width: 100%;
-        max-height: 95vh;
+        max-height: 90vh;
         overflow-y: auto;
-        padding: var(--space-3);
+        padding: 18px;
         position: relative;
+        box-shadow: 0 0 60px rgba(212, 168, 83, 0.1), 0 0 1px rgba(212, 168, 83, 0.5);
     }
     
-    /* Trust Links */
-    .trust-links {
-        position: absolute;
-        top: var(--space-4);
-        right: 50px;
+    /* Matrix Verdict Banner - Greek Gold Gaming Style */
+    .matrix-verdict {
         display: flex;
-        gap: var(--space-3);
+        align-items: center;
+        gap: 16px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1px solid;
+        margin-bottom: 14px;
+    }
+    
+    .matrix-score-ring {
+        position: relative;
+        width: 56px;
+        height: 56px;
+        flex-shrink: 0;
+    }
+    
+    .matrix-score-ring svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+        filter: drop-shadow(0 0 8px var(--glow-color));
+    }
+    
+    .matrix-score-ring .ring-bg {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.08);
+        stroke-width: 6;
+    }
+    
+    .matrix-score-ring .ring-progress {
+        fill: none;
+        stroke-width: 6;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.8s ease-out;
+    }
+    
+    .matrix-score-ring .score-value {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.1rem;
+        font-weight: 800;
+        text-shadow: 0 0 10px currentColor;
+    }
+    
+    .matrix-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .matrix-verdict-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+    
+    .matrix-desc {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        font-weight: 400;
+        margin-bottom: 4px;
+    }
+    
+    .matrix-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .matrix-source-badge {
+        display: inline-block;
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.05);
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    
+    .matrix-score-text {
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        opacity: 0.7;
+    }
+    
+    /* Close Button */
+    .modal-close-pro {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 28px;
+        height: 28px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        color: var(--text-muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
         z-index: 10;
     }
     
-    .trust-links a {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        text-decoration: none;
-        padding: 6px 10px;
-        background: var(--bg-elevated);
-        border-radius: var(--radius-sm);
-        transition: var(--transition-base);
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        cursor: pointer;
-    }
-    
-    .trust-links a:hover {
+    .modal-close-pro:hover {
+        background: rgba(212, 168, 83, 0.2);
+        border-color: var(--gold);
         color: var(--gold);
-        background: rgba(234, 179, 8, 0.15);
     }
     
-    .trust-links a svg {
-        width: 14px;
-        height: 14px;
+    .modal-close-pro svg {
+        width: 18px;
+        height: 18px;
     }
     
-    .modal-close {
-        z-index: 20;
-        position: relative;
-    }
-    
-    /* Epoch Timer */
-    .epoch-timer {
-        font-size: 0.75rem;
-        color: #FBBF24;
-        background: rgba(251, 191, 36, 0.1);
-        padding: 4px 10px;
-        border-radius: var(--radius-sm);
-        margin-left: auto;
-    }
-    
-    .section-header {
+    /* Header Section */
+    .pd-header {
         display: flex;
         align-items: center;
-        gap: var(--space-3);
+        justify-content: space-between;
+        padding-bottom: 14px;
+        margin-bottom: 14px;
+        border-bottom: 1px solid rgba(212, 168, 83, 0.2);
     }
     
-    /* IL Risk Colors */
-    .detail-card.il-high {
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        background: rgba(239, 68, 68, 0.05);
-    }
-    
-    .detail-card.il-none {
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        background: rgba(16, 185, 129, 0.05);
-    }
-    
-    .detail-value.il-danger { color: #EF4444; }
-    .detail-value.il-safe { color: #10B981; }
-    
-    /* Reward Warning */
-    .reward-warning {
-        margin-left: 4px;
-        cursor: help;
-    }
-    
-    .pool-detail-header {
+    .pd-header-main {
         display: flex;
         align-items: center;
-        gap: var(--space-3);
-        margin-bottom: var(--space-3);
-        padding-bottom: var(--space-3);
-        border-bottom: 1px solid var(--border);
+        gap: 12px;
     }
     
-    .pool-detail-icon img {
-        width: 64px;
-        height: 64px;
-        border-radius: var(--radius-lg);
+    .pd-logo img {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        border: 2px solid rgba(212, 168, 83, 0.3);
     }
     
-    .pool-detail-title {
-        flex: 1;
+    .pd-protocol {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0 0 4px 0;
     }
     
-    .pool-detail-title h2 {
-        font-size: 1.5rem;
-        margin: 0 0 var(--space-2);
-    }
-    
-    .pool-detail-meta {
+    .pd-pair {
         display: flex;
         align-items: center;
-        gap: var(--space-2);
+        gap: 6px;
         color: var(--text-muted);
+        font-size: 0.75rem;
     }
     
-    .pool-detail-meta .symbol {
+    .pd-symbol {
         font-weight: 500;
+        color: var(--text-secondary);
     }
     
-    .pool-detail-meta .chain-badge {
+    .pd-chain-icon {
         width: 18px;
         height: 18px;
         border-radius: 50%;
     }
     
-    .niche-badge {
+    .pd-niche-tag {
         background: rgba(139, 92, 246, 0.15);
         color: #A78BFA;
         padding: 2px 8px;
-        border-radius: var(--radius-sm);
+        border-radius: 4px;
         font-size: 0.7rem;
         font-weight: 600;
     }
     
-    .pool-detail-apy {
+    .pd-apy-block {
         text-align: right;
     }
     
-    .pool-detail-apy .apy-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--gold);
+    .pd-apy-value {
         display: block;
+        font-size: 1.6rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #D4A853, #F5D78E);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1.1;
     }
     
-    .pool-detail-apy .apy-label {
-        font-size: 0.8rem;
+    .pd-apy-label {
+        font-size: 0.65rem;
         color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
     }
     
-    .pool-detail-grid {
+    /* Metrics Row - compact style */
+    .pd-metrics-row {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: var(--space-2);
-        margin-bottom: var(--space-3);
+        gap: 8px;
+        margin-bottom: 14px;
     }
     
-    .detail-card {
-        background: var(--bg-elevated);
-        border-radius: var(--radius-md);
-        padding: var(--space-2);
+    .pd-metric-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 8px;
+        padding: 10px 8px;
         text-align: center;
+        transition: all 0.2s;
     }
     
-    .detail-label {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        margin-bottom: var(--space-1);
+    .pd-metric-card:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(212, 168, 83, 0.3);
     }
     
-    .detail-value {
-        font-weight: 600;
-        font-size: 0.9rem;
+    .pd-metric-card.pd-il-high {
+        border-color: rgba(239, 68, 68, 0.4);
+        background: rgba(239, 68, 68, 0.05);
     }
     
-    .detail-value.risk-low { color: var(--success); }
-    .detail-value.risk-medium { color: #FBBF24; }
-    .detail-value.risk-high { color: #EF4444; }
-    
-    .detail-section {
-        background: var(--bg-elevated);
-        border-radius: var(--radius-lg);
-        padding: var(--space-3);
-        margin-bottom: var(--space-3);
-    }
-    
-    .detail-section h3 {
-        font-size: 0.9rem;
-        margin: 0 0 var(--space-3);
-    }
-    
-    .detail-section.verified {
-        border: 1px solid var(--success);
+    .pd-metric-card.pd-il-none {
+        border-color: rgba(16, 185, 129, 0.4);
         background: rgba(16, 185, 129, 0.05);
     }
     
-    .risk-list {
+    .pd-metric-icon {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 4px;
+        color: var(--gold);
+        opacity: 0.6;
+    }
+    
+    .pd-metric-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .pd-metric-value {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 2px;
+    }
+    
+    .pd-metric-value.pd-danger { color: #EF4444; }
+    .pd-metric-value.pd-safe { color: #10B981; }
+    
+    .pd-metric-label {
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+    }
+    
+    .pd-risk-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    
+    .pd-risk-badge.low { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+    .pd-risk-badge.medium { background: rgba(251, 191, 36, 0.15); color: #FBBF24; }
+    .pd-risk-badge.high { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
+    
+    /* Section Container */
+    .pd-section {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 12px;
+    }
+    
+    .pd-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+    
+    .pd-section-header h3 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0;
+    }
+    
+    .pd-epoch-badge {
+        font-size: 0.75rem;
+        color: #FBBF24;
+        background: rgba(251, 191, 36, 0.12);
+        padding: 4px 12px;
+        border-radius: 20px;
+        border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    
+    /* Insights Box */
+    .pd-insights-box {
+        background: rgba(212, 168, 83, 0.05);
+        border-left: 3px solid var(--gold);
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .pd-insight {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 6px 0;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    
+    .pd-insight-bar {
+        width: 4px;
+        height: 16px;
+        background: var(--gold);
+        border-radius: 2px;
+    }
+    
+    .pd-insight.warning .pd-insight-bar { background: #EF4444; }
+    .pd-insight.positive .pd-insight-bar { background: #10B981; }
+    
+    /* Data Grid */
+    .pd-data-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+    
+    .pd-data-card {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 14px;
+    }
+    
+    .pd-data-label {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+    
+    .pd-data-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .pd-apy-breakdown {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .pd-apy-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    
+    .pd-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    
+    .pd-dot.base { background: #10B981; }
+    .pd-dot.reward { background: #FBBF24; }
+    
+    .pd-warn-icon {
+        margin-left: 4px;
+        cursor: help;
+    }
+    
+    .pd-trend-value {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .pd-trend-value.up { color: #10B981; }
+    .pd-trend-value.down { color: #EF4444; }
+    
+    .pd-trend-value svg {
+        width: 20px;
+        height: 20px;
+    }
+    
+    /* Risk Section */
+    .pd-risk-section {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .pd-risk-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+    }
+    
+    .pd-risk-list {
         list-style: none;
         padding: 0;
         margin: 0;
     }
     
-    .risk-list li {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        padding: var(--space-1) 0;
-    }
-    
-    .verification-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-2);
-        margin-bottom: var(--space-3);
-    }
-    
-    .verify-item {
-        padding: var(--space-2);
-        border-radius: var(--radius-sm);
-        font-size: 0.85rem;
-        text-align: center;
-    }
-    
-    .verify-item.ok { background: rgba(16, 185, 129, 0.1); }
-    .verify-item.fail { background: rgba(239, 68, 68, 0.1); }
-    
-    .verify-notes {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
-    }
-    
-    .verify-notes p {
-        margin: var(--space-1) 0;
-    }
-    
-    .airdrop-info {
-        margin-top: var(--space-3);
-        padding-top: var(--space-3);
-        border-top: 1px solid var(--border);
-    }
-    
-    .airdrop-info .airdrop-badge {
-        background: rgba(236, 72, 153, 0.15);
-        color: #EC4899;
-        padding: var(--space-1) var(--space-2);
-        border-radius: var(--radius-sm);
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    
-    .airdrop-info .note {
-        display: block;
+    .pd-risk-list li {
         font-size: 0.8rem;
         color: var(--text-muted);
-        margin-top: var(--space-2);
+        padding: 4px 0;
     }
     
-    .pool-detail-actions {
+    /* Trust Links Row */
+    .pd-trust-row {
         display: flex;
-        gap: var(--space-2);
-        margin-top: var(--space-3);
+        justify-content: center;
+        gap: 16px;
+        margin-bottom: 16px;
     }
     
-    .btn-primary-large {
+    .pd-trust-row a {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        padding: 8px 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+    
+    .pd-trust-row a:hover {
+        color: var(--gold);
+        border-color: rgba(212, 168, 83, 0.4);
+        background: rgba(212, 168, 83, 0.1);
+    }
+    
+    .pd-trust-row a svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    /* Action Buttons */
+    .pd-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .pd-btn-primary {
         flex: 2;
-        padding: var(--space-3) var(--space-4);
-        background: var(--gradient-gold);
+        padding: 14px 20px;
+        background: linear-gradient(135deg, #D4A853, #C49A47);
         border: none;
-        border-radius: var(--radius-lg);
-        color: var(--bg-void);
+        border-radius: 10px;
+        color: #000;
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 0.9rem;
         text-decoration: none;
         text-align: center;
         cursor: pointer;
-        transition: var(--transition-base);
+        transition: all 0.2s;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
-    .btn-primary-large:hover {
-        filter: brightness(1.1);
+    .pd-btn-primary:hover {
+        background: linear-gradient(135deg, #E5B95F, #D4A853);
         transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(212, 168, 83, 0.3);
     }
     
-    .btn-secondary-large, .btn-outline-large {
+    .pd-btn-secondary,
+    .pd-btn-outline {
         flex: 1;
-        padding: var(--space-4) var(--space-3);
-        background: var(--bg-elevated);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        color: var(--text-primary);
+        padding: 14px 16px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        color: var(--text-secondary);
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         cursor: pointer;
-        transition: var(--transition-base);
+        transition: all 0.2s;
     }
     
-    .btn-secondary-large:hover, .btn-outline-large:hover {
+    .pd-btn-secondary:hover,
+    .pd-btn-outline:hover {
         border-color: var(--gold);
         color: var(--gold);
+        background: rgba(212, 168, 83, 0.1);
     }
     
+    /* Responsive */
     @media (max-width: 600px) {
-        .pool-detail-grid {
+        .pd-metrics-row {
             grid-template-columns: repeat(2, 1fr);
         }
         
-        .pool-detail-actions {
+        .pd-data-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .pd-actions {
+            flex-direction: column;
+        }
+        
+        .pd-header {
+            flex-direction: column;
+            text-align: center;
+            gap: 16px;
+        }
+        
+        .pd-header-main {
             flex-direction: column;
         }
     }

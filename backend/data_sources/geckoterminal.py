@@ -128,6 +128,7 @@ class GeckoTerminalClient:
     def _normalize_pool_data(self, pool_data: Dict, chain: str) -> Dict[str, Any]:
         """Convert GeckoTerminal format to our standard format"""
         attrs = pool_data.get("attributes", {})
+        relationships = pool_data.get("relationships", {})
         
         # Parse reserve USD (TVL)
         reserve_usd = attrs.get("reserve_in_usd")
@@ -140,29 +141,54 @@ class GeckoTerminalClient:
         # Parse price change
         price_change_24h = attrs.get("price_change_percentage", {}).get("h24")
         
-        # Parse base APY from fee data if available
+        # Get DEX name (project)
+        dex_data = relationships.get("dex", {}).get("data", {})
+        dex_id = dex_data.get("id", "")
+        # Extract DEX name from ID format "network_dex-name"
+        project = dex_id.split("_")[-1].replace("-", " ").title() if dex_id else "Unknown"
+        
+        # Calculate APY from fee data
         fee_24h = attrs.get("fee_24h_usd")
         apy_base = 0
         if fee_24h and tvl > 0:
-            # Annualize 24h fees
+            # Annualize 24h fees (fee_24h is trading fees collected)
             apy_base = (float(fee_24h) / tvl) * 365 * 100
+        
+        # Get trading fee percentage (if available)
+        # Some pools have swap_fee or fee attribute
+        trading_fee = None
+        pool_name = attrs.get("name", "")
+        
+        # Extract fee from pool name if present (e.g., "WETH / cbBTC 0.05%")
+        import re
+        fee_match = re.search(r'(\d+\.?\d*)\s*%', pool_name)
+        if fee_match:
+            trading_fee = float(fee_match.group(1))
         
         return {
             "source": "geckoterminal",
             "address": attrs.get("address", ""),
             "name": attrs.get("name", ""),
             "symbol": attrs.get("name", "").replace(" / ", "-"),
-            "chain": chain,
+            "project": project,
+            "chain": chain.capitalize(),
             "tvlUsd": tvl,
             "tvl": tvl,
             "volume_24h": volume,
-            "volume_24h_formatted": f"${volume/1e6:.2f}M" if volume >= 1e6 else f"${volume/1e3:.1f}K",
+            "volume_24h_formatted": f"${volume/1e6:.2f}M" if volume >= 1e6 else f"${volume/1e3:.1f}K" if volume >= 1e3 else f"${volume:.0f}",
             "apy": apy_base,
             "apyBase": apy_base,
             "apyReward": 0,  # GeckoTerminal doesn't have reward APY
+            "apy_base": apy_base,
+            "apy_reward": 0,
             "priceChange24h": float(price_change_24h) if price_change_24h else 0,
             "baseTokenPrice": attrs.get("base_token_price_usd"),
             "quoteTokenPrice": attrs.get("quote_token_price_usd"),
+            "trading_fee": trading_fee,
+            "fee_24h_usd": float(fee_24h) if fee_24h else None,
+            # IL risk based on pool type
+            "il_risk": "yes",  # Most GeckoTerminal pools have IL risk (volatile pairs)
+            "pool_type": "volatile",
             # Additional metadata
             "fdv_usd": attrs.get("fdv_usd"),
             "market_cap_usd": attrs.get("market_cap_usd"),

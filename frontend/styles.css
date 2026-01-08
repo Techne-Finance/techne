@@ -1105,7 +1105,7 @@ body.section-verify .main-content {
 }
 
 /* ============================================
-   VERIFY POOLS SECTION
+   VERIFY POOLS SECTION - MATRIX GOLD THEME
    ============================================ */
 
 #section-verify {
@@ -1114,13 +1114,22 @@ body.section-verify .main-content {
 }
 
 /* ====================================================
-   Verify Pool - Professional Redesign
+   Verify Pool - Professional Matrix Gold Redesign
    ==================================================== */
+
+/* Main Container */
+.verify-container {
+    background: linear-gradient(180deg, rgba(20, 20, 20, 0.95), rgba(10, 10, 10, 0.98));
+    border: 1px solid rgba(212, 168, 83, 0.2);
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 0 40px rgba(212, 168, 83, 0.05);
+}
 
 /* Header with gradient badge */
 .verify-header {
-    margin-bottom: var(--space-5);
-    padding-bottom: var(--space-4);
+    margin-bottom: 24px;
+    padding-bottom: 20px;
     border-bottom: 1px solid rgba(212, 168, 83, 0.15);
 }
 
@@ -1129,76 +1138,87 @@ body.section-verify .main-content {
     justify-content: space-between;
     align-items: flex-start;
     flex-wrap: wrap;
-    gap: var(--space-4);
+    gap: 16px;
 }
 
 .verify-title-row {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    gap: 16px;
 }
 
 .verify-icon-badge {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, rgba(212, 168, 83, 0.2), rgba(212, 168, 83, 0.05));
-    border: 1px solid rgba(212, 168, 83, 0.4);
-    border-radius: var(--radius-xl);
+    width: 52px;
+    height: 52px;
+    background: linear-gradient(135deg, rgba(212, 168, 83, 0.15), rgba(212, 168, 83, 0.03));
+    border: 1px solid rgba(212, 168, 83, 0.35);
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--gold);
+    font-size: 1.4rem;
 }
 
 .verify-main-title {
-    font-size: 1.75rem;
+    font-size: 1.6rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--text);
     margin: 0;
+    background: linear-gradient(135deg, #fff, #ccc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .verify-subtitle {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--text-muted);
-    margin: var(--space-1) 0 0 0;
+    margin: 6px 0 0 0;
 }
 
 /* Data Source Status Bar */
 .data-source-status {
     display: flex;
-    gap: var(--space-2);
+    gap: 10px;
     flex-wrap: wrap;
 }
 
 .status-item {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-2) var(--space-3);
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-full);
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
     font-size: 0.75rem;
+    transition: all 0.2s;
+}
+
+.status-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .status-dot {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: #888;
 }
 
 .status-item.status-online .status-dot {
     background: #22c55e;
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
-    animation: pulse-green 2s ease-in-out infinite;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
+    animation: vfy-pulse 2s ease-in-out infinite;
 }
 
 .status-item.status-offline .status-dot {
     background: #ef4444;
 }
 
-@keyframes pulse-green {
+@keyframes vfy-pulse {
 
     0%,
     100% {
@@ -1228,22 +1248,22 @@ body.section-verify .main-content {
 
 /* Verify Input Card */
 .verify-card {
-    background: linear-gradient(135deg, rgba(212, 168, 83, 0.05), rgba(0, 0, 0, 0.2));
-    border: 1px solid rgba(212, 168, 83, 0.25);
-    border-radius: var(--radius-xl);
-    padding: var(--space-5);
-    margin-bottom: var(--space-6);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 24px;
 }
 
 .verify-card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-4);
+    margin-bottom: 18px;
 }
 
 .card-badge {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: var(--gold);
 }
@@ -1251,28 +1271,25 @@ body.section-verify .main-content {
 .card-cost {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: 8px;
     font-size: 0.8rem;
     color: var(--gold);
-    background: rgba(212, 168, 83, 0.12);
-    border: 1px solid rgba(212, 168, 83, 0.4);
-    padding: 6px 12px;
-    border-radius: var(--radius-full);
-    font-weight: 500;
+    background: rgba(212, 168, 83, 0.1);
+    border: 1px solid rgba(212, 168, 83, 0.35);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
 }
 
 .credits-icon {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     object-fit: contain;
-    background: rgba(212, 168, 83, 0.2);
-    border-radius: 50%;
-    padding: 3px;
 }
 
 .verify-input-row {
     display: flex;
-    gap: var(--space-3);
+    gap: 12px;
 }
 
 .input-with-icon {
@@ -1282,28 +1299,28 @@ body.section-verify .main-content {
 
 .input-icon {
     position: absolute;
-    left: 16px;
+    left: 18px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-muted);
-    opacity: 0.5;
+    opacity: 0.4;
 }
 
 .verify-input-pro {
     width: 100%;
     background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-lg);
-    padding: 16px 18px 16px 48px;
-    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px 20px 16px 50px;
+    color: var(--text);
     font-size: 0.95rem;
-    transition: var(--transition-base);
+    transition: all 0.2s;
 }
 
 .verify-input-pro:focus {
     outline: none;
-    border-color: var(--gold);
-    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.15);
+    border-color: rgba(212, 168, 83, 0.5);
+    box-shadow: 0 0 0 3px rgba(212, 168, 83, 0.1);
     background: rgba(0, 0, 0, 0.5);
 }
 
@@ -1315,33 +1332,34 @@ body.section-verify .main-content {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--gold), #b8860b);
+    background: linear-gradient(135deg, #D4A853, #C49A47);
     color: #000;
     border: none;
-    border-radius: var(--radius-lg);
-    padding: 0 28px;
+    border-radius: 12px;
+    padding: 0 32px;
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     cursor: pointer;
-    transition: var(--transition-base);
-    min-width: 130px;
+    transition: all 0.2s;
+    min-width: 140px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.5px;
 }
 
 .btn-verify-pro .btn-content {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 8px;
 }
 
 .btn-verify-pro:hover {
+    background: linear-gradient(135deg, #E5B95F, #D4A853);
     transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(234, 179, 8, 0.4);
+    box-shadow: 0 8px 24px rgba(212, 168, 83, 0.3);
 }
 
 .btn-verify-pro:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
     transform: none;
 }
@@ -1350,44 +1368,51 @@ body.section-verify .main-content {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
-    margin-top: var(--space-4);
-    padding-top: var(--space-3);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    gap: 8px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .supported-label {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
-    margin-right: var(--space-1);
+    margin-right: 4px;
 }
 
 .supported-tag {
-    font-size: 0.7rem;
-    padding: var(--space-1) var(--space-2);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-sm);
+    font-size: 0.68rem;
+    padding: 5px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
     color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.supported-tag:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(212, 168, 83, 0.3);
+    color: var(--gold);
 }
 
 /* History Section */
 .verify-history-section {
-    margin-top: var(--space-5);
+    margin-top: 24px;
 }
 
 .history-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-4);
+    margin-bottom: 18px;
 }
 
 .history-title {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    font-size: 1rem;
+    gap: 10px;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-secondary);
     margin: 0;
@@ -1395,17 +1420,17 @@ body.section-verify .main-content {
 
 .history-title svg {
     color: var(--gold);
-    opacity: 0.7;
+    opacity: 0.6;
 }
 
 .history-clear-btn {
-    background: none;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-md);
-    padding: var(--space-2);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 8px;
     color: var(--text-muted);
     cursor: pointer;
-    transition: var(--transition-base);
+    transition: all 0.2s;
 }
 
 .history-clear-btn:hover {
@@ -1417,7 +1442,9 @@ body.section-verify .main-content {
 .verify-history-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-3);
+    gap: 12px;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 /* Empty State Pro */
@@ -5374,13 +5401,13 @@ textarea:focus {
    Artisan Agent Verdict Banner (Verification Feature)
    ==================================================== */
 .artisan-verdict {
-    margin: var(--space-3);
+    margin: var(--space-2);
     margin-bottom: var(--space-2);
-    padding: var(--space-4);
-    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-3);
     position: relative;
     overflow: hidden;
 }
@@ -5426,8 +5453,8 @@ textarea:focus {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--space-3);
-    min-width: 120px;
+    padding: var(--space-2);
+    min-width: 90px;
     border-right: 1px solid currentColor;
     opacity: 0.3;
     position: relative;
@@ -5435,15 +5462,15 @@ textarea:focus {
 }
 
 .verdict-icon {
-    font-size: 2.5rem;
+    font-size: 1.8rem;
     line-height: 1;
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--space-1);
 }
 
 .verdict-text {
-    font-size: 1rem;
+    font-size: 0.7rem;
     font-weight: 800;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 

@@ -561,17 +561,17 @@ const VerifyPools = {
                 }
             }
 
-            // Use our backend API scout endpoint (proxies DefiLlama, avoids CSP)
-            Toast?.show('Fetching pool data from DefiLlama...', 'info');
+            // Use our backend API scout endpoint
+            Toast?.show('Fetching pool data...', 'info');
 
             try {
                 // Build search URL based on type
                 let searchUrl;
-                if (searchType === 'defillama') {
+                if (searchType === 'address') {
+                    // Use verify-any for address lookups - works with any pool type
+                    searchUrl = `http://localhost:8000/api/scout/verify-any?pool_address=${encodeURIComponent(poolId)}&chain=base`;
+                } else if (searchType === 'defillama') {
                     searchUrl = `http://localhost:8000/api/scout/pool/${encodeURIComponent(poolId)}`;
-                } else if (searchType === 'address') {
-                    // Search by address - may need to search all pools
-                    searchUrl = `http://localhost:8000/api/scout/pool/address/${encodeURIComponent(poolId)}`;
                 } else {
                     searchUrl = `http://localhost:8000/api/scout/pool/${encodeURIComponent(poolId)}`;
                 }
@@ -579,19 +579,32 @@ const VerifyPools = {
                 const response = await fetch(searchUrl);
                 if (response.ok) {
                     const data = await response.json();
-                    if (data && data.pool) {
+                    // Handle verify-any response format
+                    if (data && data.success && data.pool) {
+                        const pool = data.pool;
+                        // Add risk analysis if available
+                        if (data.risk_analysis) {
+                            pool.risk_score = data.risk_analysis.risk_score;
+                            pool.risk_level = data.risk_analysis.risk_level;
+                            pool.risk_reasons = data.risk_analysis.risk_reasons;
+                        }
+                        pool.dataSource = data.source;
+                        console.log('[VerifyPools] Found via verify-any:', pool);
+                        Toast?.show('Pool found!', 'success');
+                        return pool;
+                    } else if (data && data.pool) {
                         console.log('[VerifyPools] Found via backend:', data.pool);
                         Toast?.show('Pool found!', 'success');
                         return data.pool;
                     }
                 } else if (response.status === 404) {
-                    console.log('[VerifyPools] Pool not found in DefiLlama');
+                    console.log('[VerifyPools] Pool not found');
                 }
             } catch (backendError) {
                 console.error('[VerifyPools] Backend error:', backendError);
             }
 
-            Toast?.show('Pool not found in DefiLlama database', 'warning');
+            Toast?.show('Pool not found', 'warning');
             console.log('[VerifyPools] Pool not found');
             return null;
         } catch (error) {
@@ -683,8 +696,13 @@ const VerifyPools = {
     saveToHistory(pool) {
         const history = this.getHistory();
 
+        // Generate consistent ID from pool_address or pool field
+        const poolId = pool.pool_address || pool.address || pool.pool || pool.pool_id || `${pool.symbol}-${pool.chain}`;
+
         const entry = {
-            id: pool.pool || pool.pool_id,
+            id: poolId,
+            pool_address: pool.pool_address || pool.address,
+            address: pool.pool_address || pool.address,
             symbol: pool.symbol,
             project: pool.project,
             chain: pool.chain,
@@ -708,6 +726,13 @@ const VerifyPools = {
         } catch {
             return [];
         }
+    },
+
+    // Clear history
+    clearHistory() {
+        localStorage.removeItem(this.STORAGE_KEY);
+        this.renderHistory([]);
+        Toast?.show('History cleared', 'success');
     },
 
     // Load and render history
@@ -757,15 +782,52 @@ const VerifyPools = {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     },
 
-    // Open pool from history
+    // Open pool from history - refetch fresh data
     async openFromHistory(poolId) {
         console.log('[VerifyPools] Opening from history:', poolId);
         const history = this.getHistory();
-        const cached = history.find(p => p.id === poolId);
+
+        // Match by id, pool_address, or address
+        const cached = history.find(p =>
+            p.id === poolId ||
+            p.pool_address === poolId ||
+            p.address === poolId
+        );
 
         if (cached) {
-            // Use cached data directly (already verified once)
-            // Normalize it before showing modal
+            // Get fresh data using verify-any endpoint
+            const poolAddress = cached.pool_address || cached.address || poolId;
+            const chain = (cached.chain || 'base').toLowerCase();
+
+            Toast?.show('Refreshing pool data...', 'info');
+
+            try {
+                const response = await fetch(
+                    `http://localhost:8000/api/scout/verify-any?pool_address=${poolAddress}&chain=${chain}`
+                );
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.pool) {
+                        // Merge fresh data with cached
+                        const freshPool = {
+                            ...cached,
+                            ...data.pool,
+                            risk_score: data.risk_analysis?.risk_score,
+                            risk_level: data.risk_analysis?.risk_level,
+                            risk_reasons: data.risk_analysis?.risk_reasons || [],
+                            dataSource: data.source
+                        };
+                        const normalized = this.normalizePoolData(freshPool);
+                        this.showVerificationModal(normalized);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.log('[VerifyPools] Fresh fetch failed, using cached:', error);
+            }
+
+            // Fallback to cached data
             const normalized = this.normalizePoolData(cached);
             this.showVerificationModal(normalized);
         } else {

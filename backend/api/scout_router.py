@@ -9,10 +9,14 @@ import logging
 
 from agents.risk_intelligence import risk_engine, get_pool_risk, get_bulk_risk
 from artisan.data_sources import get_aggregated_pools
+from data_sources.onchain import onchain_client
 
 logger = logging.getLogger("ScoutRouter")
 
 router = APIRouter(prefix="/api/scout", tags=["Scout Intelligence"])
+
+# Token price cache (simple in-memory, expires on restart)
+_price_cache = {}
 
 
 @router.get("/pool/{pool_id}")
@@ -109,85 +113,200 @@ async def get_pool_by_pair(
     token0: str = Query(..., description="First token address"),
     token1: str = Query(..., description="Second token address"),
     protocol: str = Query("", description="Optional protocol filter (e.g., aerodrome)"),
-    chain: str = Query("Base", description="Chain filter (e.g., Base)")
+    chain: str = Query("Base", description="Chain filter (e.g., Base)"),
+    stable: bool = Query(False, description="True for stable pool, False for volatile")
 ):
     """
     Search for a pool containing both specified tokens.
-    Uses GeckoTerminal for real-time data, falls back to DefiLlama.
+    AERODROME-FIRST APPROACH: Aerodrome on-chain → GeckoTerminal → DefiLlama → Merge
     """
     import httpx
     from data_sources.geckoterminal import gecko_client
+    from data_sources.aerodrome import aerodrome_client
     
     try:
         token0 = token0.lower()
         token1 = token1.lower()
-        logger.info(f"Searching for pair: {token0[:10]}... / {token1[:10]}... on {chain}")
+        chain_lower = chain.lower() if chain else "base"
+        logger.info(f"[Pool-Pair] Searching: {token0[:10]}.../{token1[:10]}... on {chain}")
         
-        # PRIORITY 1: Try GeckoTerminal first (real-time data)
-        gecko_pool = await gecko_client.search_pool_by_tokens(
-            chain=chain or "base",
-            token0=token0,
-            token1=token1,
-            dex=protocol if protocol else None
-        )
+        merged_data = {
+            "token0": token0,
+            "token1": token1,
+            "chain": chain.capitalize() if chain else "Base",
+            "sources": [],
+        }
         
-        if gecko_pool:
-            logger.info(f"Found pool via GeckoTerminal: {gecko_pool.get('name')}")
-            gecko_pool["dataSource"] = "geckoterminal"
-            return {"success": True, "pool": gecko_pool, "source": "geckoterminal"}
+        # =========================================
+        # STEP 0: AERODROME DIRECT (for Base chain - most accurate TVL)
+        # =========================================
+        if chain_lower == "base":
+            try:
+                aero_pool = await aerodrome_client.get_pool_by_tokens(token0, token1, stable=stable)
+                if aero_pool:
+                    logger.info(f"[Pool-Pair] Aerodrome direct: {aero_pool.get('symbol')}")
+                    merged_data["sources"].append("aerodrome")
+                    merged_data["address"] = aero_pool.get("address")
+                    merged_data["symbol"] = aero_pool.get("symbol")
+                    merged_data["project"] = "Aerodrome"
+                    merged_data["token0_symbol"] = aero_pool.get("symbol0")
+                    merged_data["token1_symbol"] = aero_pool.get("symbol1")
+                    merged_data["reserve0"] = aero_pool.get("reserve0", 0)
+                    merged_data["reserve1"] = aero_pool.get("reserve1", 0)
+                    merged_data["stable"] = aero_pool.get("stable", False)
+                    merged_data["pool_type"] = aero_pool.get("pool_type", "volatile")
+                    
+                    # Calculate TVL from reserves (need prices)
+                    price0 = await get_token_price(aero_pool.get("symbol0", ""), token0)
+                    price1 = await get_token_price(aero_pool.get("symbol1", ""), token1)
+                    tvl = (aero_pool.get("reserve0", 0) * price0) + (aero_pool.get("reserve1", 0) * price1)
+                    merged_data["tvl"] = tvl
+                    merged_data["tvlUsd"] = tvl
+                    merged_data["tvl_formatted"] = f"${tvl/1e6:.2f}M" if tvl >= 1e6 else f"${tvl/1e3:.1f}K" if tvl >= 1e3 else f"${tvl:.0f}"
+                    logger.info(f"[Pool-Pair] Aerodrome TVL: ${tvl:,.0f}")
+            except Exception as e:
+                logger.debug(f"Aerodrome lookup failed: {e}")
         
-        logger.info("GeckoTerminal: not found, trying DefiLlama...")
+        # =========================================
+        # STEP 1: GeckoTerminal (has pool addresses, TVL, volume)
+        # =========================================
+        gecko_pool = None
+        try:
+            gecko_pool = await gecko_client.search_pool_by_tokens(
+                chain=chain_lower,
+                token0=token0,
+                token1=token1,
+                dex=protocol if protocol else None
+            )
+            if gecko_pool:
+                logger.info(f"[Pool-Pair] GeckoTerminal found: {gecko_pool.get('name')}")
+                merged_data["sources"].append("geckoterminal")
+                merged_data["address"] = gecko_pool.get("address")
+                merged_data["name"] = gecko_pool.get("name")
+                merged_data["symbol"] = gecko_pool.get("symbol")
+                merged_data["project"] = gecko_pool.get("project", "Unknown")
+                merged_data["tvl"] = gecko_pool.get("tvl", 0)
+                merged_data["tvlUsd"] = gecko_pool.get("tvlUsd", 0)
+                merged_data["volume_24h"] = gecko_pool.get("volume_24h", 0)
+                merged_data["volume_24h_formatted"] = gecko_pool.get("volume_24h_formatted", "N/A")
+                merged_data["trading_fee"] = gecko_pool.get("trading_fee")
+                merged_data["fee_24h_usd"] = gecko_pool.get("fee_24h_usd")
+                merged_data["apy"] = gecko_pool.get("apy", 0)
+                merged_data["apy_base"] = gecko_pool.get("apy_base", 0)
+                merged_data["il_risk"] = gecko_pool.get("il_risk", "yes")
+                merged_data["pool_type"] = gecko_pool.get("pool_type", "volatile")
+        except Exception as e:
+            logger.debug(f"GeckoTerminal lookup failed: {e}")
         
-        # PRIORITY 2: Fall back to DefiLlama
-        
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get("https://yields.llama.fi/pools")
-            
-            if response.status_code != 200:
-                raise HTTPException(status_code=502, detail="DefiLlama API unavailable")
-            
-            data = response.json()
-            pools = data.get("data", [])
-            
-            # Filter by protocol if specified (use contains for partial match like aerodrome -> aerodrome-slipstream)
-            if protocol:
-                protocol_lower = protocol.lower()
-                # Filter pools where protocol name contains the search term
-                pools = [p for p in pools if protocol_lower in p.get("project", "").lower()]
-                logger.info(f"After protocol filter: {len(pools)} pools")
-            
-            # Filter by chain if specified
-            if chain:
-                chain_lower = chain.lower()
-                pools = [p for p in pools if chain_lower in p.get("chain", "").lower()]
-            
-            logger.info(f"Searching {len(pools)} pools for tokens: {token0[:10]}... / {token1[:10]}...")
-            
-            # Search for pool containing both tokens
-            for p in pools:
-                pool_id = (p.get("pool") or "").lower()
-                underlying = p.get("underlyingTokens") or []
-                underlying_lower = [str(t).lower() for t in underlying if t]
+        # =========================================
+        # STEP 2: On-chain RPC (accurate TVL from reserves)
+        # =========================================
+        if merged_data.get("address") and onchain_client.is_chain_available(chain_lower):
+            try:
+                pool_address = merged_data["address"]
+                onchain_data = await onchain_client.get_any_pool_data(chain_lower, pool_address)
                 
-                # Check if both tokens are in underlyingTokens (exact match)
-                has_token0 = token0 in underlying_lower
-                has_token1 = token1 in underlying_lower
-                
-                # Also check pool ID (partial match)
-                if not has_token0:
-                    has_token0 = token0 in pool_id
-                if not has_token1:
-                    has_token1 = token1 in pool_id
-                
-                if has_token0 and has_token1:
-                    logger.info(f"Found pair pool via DefiLlama: {p.get('symbol')} on {p.get('chain')}")
-                    p["dataSource"] = "defillama"
-                    return {"success": True, "pool": p, "source": "defillama"}
-            
-            logger.warning(f"Pool pair not found after checking all pools")
-            
-            raise HTTPException(status_code=404, detail="Pool pair not found")
-            
+                if onchain_data:
+                    logger.info(f"[Pool-Pair] On-chain data found: {onchain_data.get('pool_type')}")
+                    merged_data["sources"].append("onchain")
+                    merged_data["pool_type_detail"] = onchain_data.get("pool_type")
+                    
+                    # Calculate on-chain TVL
+                    if onchain_data.get("pool_type") == "v2":
+                        price0 = await get_token_price(onchain_data.get("symbol0", ""), token0)
+                        price1 = await get_token_price(onchain_data.get("symbol1", ""), token1)
+                        onchain_tvl = (onchain_data.get("reserve0", 0) * price0) + (onchain_data.get("reserve1", 0) * price1)
+                        merged_data["tvl_onchain"] = onchain_tvl
+                        # Use on-chain TVL if significantly different (>20%)
+                        if onchain_tvl > 0:
+                            current_tvl = merged_data.get("tvl", 0)
+                            if current_tvl == 0 or abs(onchain_tvl - current_tvl) / max(onchain_tvl, current_tvl) > 0.2:
+                                merged_data["tvl"] = onchain_tvl
+                                merged_data["tvlUsd"] = onchain_tvl
+                                logger.info(f"[Pool-Pair] Using on-chain TVL: ${onchain_tvl:,.0f}")
+                    elif onchain_data.get("pool_type") == "cl":
+                        price0 = await get_token_price(onchain_data.get("symbol0", ""), onchain_data.get("token0"))
+                        price1 = await get_token_price(onchain_data.get("symbol1", ""), onchain_data.get("token1"))
+                        onchain_tvl = (onchain_data.get("balance0", 0) * price0) + (onchain_data.get("balance1", 0) * price1)
+                        merged_data["tvl_onchain"] = onchain_tvl
+                        if onchain_tvl > 0:
+                            current_tvl = merged_data.get("tvl", 0)
+                            if current_tvl == 0 or abs(onchain_tvl - current_tvl) / max(onchain_tvl, current_tvl) > 0.2:
+                                merged_data["tvl"] = onchain_tvl
+                                merged_data["tvlUsd"] = onchain_tvl
+                                logger.info(f"[Pool-Pair] Using CL on-chain TVL: ${onchain_tvl:,.0f}")
+                    
+                    # Set symbols if not already set
+                    if not merged_data.get("symbol"):
+                        merged_data["symbol"] = f"{onchain_data.get('symbol0', '???')}-{onchain_data.get('symbol1', '???')}"
+            except Exception as e:
+                logger.debug(f"On-chain lookup failed: {e}")
+        
+        # =========================================
+        # STEP 3: DefiLlama (historical APY, more metadata)
+        # =========================================
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.get("https://yields.llama.fi/pools")
+                if response.status_code == 200:
+                    data = response.json()
+                    pools = data.get("data", [])
+                    
+                    # Filter by chain
+                    pools = [p for p in pools if chain_lower in p.get("chain", "").lower()]
+                    
+                    # Search for matching pool
+                    for p in pools:
+                        pool_id = (p.get("pool") or "").lower()
+                        underlying = [str(t).lower() for t in (p.get("underlyingTokens") or []) if t]
+                        
+                        has_token0 = token0 in underlying or token0 in pool_id
+                        has_token1 = token1 in underlying or token1 in pool_id
+                        
+                        if has_token0 and has_token1:
+                            logger.info(f"[Pool-Pair] DefiLlama found: {p.get('symbol')}")
+                            merged_data["sources"].append("defillama")
+                            
+                            # Add APY from DefiLlama if not already set or if DefiLlama has higher value
+                            defillama_apy = p.get("apy", 0)
+                            if defillama_apy and (not merged_data.get("apy") or defillama_apy > merged_data.get("apy", 0)):
+                                merged_data["apy"] = defillama_apy
+                                merged_data["apy_base"] = p.get("apyBase", 0)
+                                merged_data["apy_reward"] = p.get("apyReward", 0)
+                            
+                            # Add TVL change
+                            merged_data["tvl_change_1d"] = p.get("apyPct1D", 0)
+                            merged_data["tvl_change_7d"] = p.get("apyPct7D", 0)
+                            
+                            # Set project if not already set
+                            if not merged_data.get("project") or merged_data.get("project") == "Unknown":
+                                merged_data["project"] = p.get("project", "Unknown")
+                            
+                            break
+        except Exception as e:
+            logger.debug(f"DefiLlama lookup failed: {e}")
+        
+        # =========================================
+        # STEP 4: Finalize merged data
+        # =========================================
+        if not merged_data.get("sources"):
+            raise HTTPException(status_code=404, detail="Pool not found on any data source")
+        
+        # Format TVL
+        tvl = merged_data.get("tvl", 0)
+        merged_data["tvl_formatted"] = f"${tvl/1e6:.2f}M" if tvl >= 1e6 else f"${tvl/1e3:.1f}K" if tvl >= 1e3 else f"${tvl:.0f}"
+        
+        # Calculate estimated APR from trading fee if no APY
+        if not merged_data.get("apy") and merged_data.get("trading_fee"):
+            # Simple estimation: trading_fee * 365 (daily trading volume basis)
+            merged_data["apy_estimated"] = merged_data["trading_fee"] * 365
+        
+        merged_data["dataSource"] = "+".join(merged_data["sources"])
+        
+        logger.info(f"[Pool-Pair] Final: TVL=${tvl:,.0f}, APY={merged_data.get('apy', 0):.2f}%, sources={merged_data['dataSource']}")
+        
+        return {"success": True, "pool": merged_data, "source": merged_data["dataSource"]}
+        
     except HTTPException:
         raise
     except Exception as e:
@@ -507,4 +626,583 @@ async def get_chat_suggestions():
                 "Is this pool audited?"
             ]
         }
+    }
+
+
+# ============================================
+# ON-CHAIN DATA ENDPOINTS
+# ============================================
+
+async def get_token_price(symbol: str, address: str = None) -> float:
+    """
+    Get token price in USD using CoinGecko API.
+    Falls back to known prices for common tokens.
+    """
+    import httpx
+    
+    symbol = symbol.upper()
+    
+    # Known token prices (fallback)
+    KNOWN_PRICES = {
+        "WETH": 3400.0,
+        "ETH": 3400.0,
+        "USDC": 1.0,
+        "USDT": 1.0,
+        "DAI": 1.0,
+        "WBTC": 98000.0,
+        "BTC": 98000.0,
+    }
+    
+    # Check cache first
+    cache_key = f"{symbol}_{address or ''}"
+    if cache_key in _price_cache:
+        return _price_cache[cache_key]
+    
+    # Try CoinGecko API
+    try:
+        # Map common symbols to CoinGecko IDs
+        id_map = {
+            "WETH": "ethereum",
+            "ETH": "ethereum",
+            "USDC": "usd-coin",
+            "USDT": "tether",
+            "DAI": "dai",
+            "WBTC": "wrapped-bitcoin",
+            "CBETH": "coinbase-wrapped-staked-eth",
+            "WSTETH": "wrapped-steth",
+            "RETH": "rocket-pool-eth",
+            "AERO": "aerodrome-finance",
+        }
+        
+        coin_id = id_map.get(symbol)
+        if coin_id:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if coin_id in data:
+                        price = data[coin_id]["usd"]
+                        _price_cache[cache_key] = price
+                        return price
+    except Exception as e:
+        logger.warning(f"CoinGecko price fetch failed for {symbol}: {e}")
+    
+    # Fallback to known prices
+    if symbol in KNOWN_PRICES:
+        return KNOWN_PRICES[symbol]
+    
+    # Unknown token - estimate based on address if available
+    return 0.0
+
+
+@router.get("/onchain-tvl")
+async def get_onchain_tvl(
+    pool_address: str = Query(..., description="Pool contract address"),
+    chain: str = Query("base", description="Chain name (base, ethereum, etc.)")
+):
+    """
+    Get real-time TVL for a pool.
+    Priority: GeckoTerminal API (works for CL pools) -> On-chain reserves (V2 pools)
+    """
+    from data_sources.geckoterminal import gecko_client
+    
+    try:
+        chain = chain.lower()
+        pool_address = pool_address.lower()
+        
+        logger.info(f"Fetching TVL for {pool_address} on {chain}")
+        
+        # PRIORITY 1: Try GeckoTerminal (works for all pool types including CL)
+        gecko_data = await gecko_client.get_pool_by_address(chain, pool_address)
+        
+        if gecko_data and gecko_data.get("tvl", 0) > 0:
+            tvl = gecko_data["tvl"]
+            logger.info(f"GeckoTerminal TVL for {pool_address}: ${tvl:,.2f}")
+            return {
+                "success": True,
+                "tvl": tvl,
+                "tvl_formatted": f"${tvl/1e6:.2f}M" if tvl >= 1e6 else f"${tvl/1e3:.1f}K" if tvl >= 1e3 else f"${tvl:.0f}",
+                "volume_24h": gecko_data.get("volume_24h", 0),
+                "volume_24h_formatted": gecko_data.get("volume_24h_formatted", "N/A"),
+                "apy_estimated": gecko_data.get("apy", 0),
+                "name": gecko_data.get("name", ""),
+                "source": "geckoterminal",
+                "chain": chain
+            }
+        
+        logger.info("GeckoTerminal: no data, trying on-chain...")
+        
+        # PRIORITY 2: Try on-chain reserves (V2 style pools)
+        if not onchain_client.is_chain_available(chain):
+            return {
+                "success": False,
+                "error": f"Chain {chain} RPC not available",
+                "fallback": True
+            }
+        
+        reserves = await onchain_client.get_lp_reserves(chain, pool_address)
+        
+        if not reserves:
+            return {
+                "success": False,
+                "error": "Could not fetch pool data from any source",
+                "fallback": True
+            }
+        
+        # Get token prices
+        price0 = await get_token_price(reserves["symbol0"], reserves["token0"])
+        price1 = await get_token_price(reserves["symbol1"], reserves["token1"])
+        
+        # Calculate TVL
+        tvl_token0 = reserves["reserve0"] * price0
+        tvl_token1 = reserves["reserve1"] * price1
+        total_tvl = tvl_token0 + tvl_token1
+        
+        logger.info(f"On-chain TVL for {pool_address}: ${total_tvl:,.2f}")
+        
+        return {
+            "success": True,
+            "tvl": total_tvl,
+            "tvl_formatted": f"${total_tvl/1e6:.2f}M" if total_tvl >= 1e6 else f"${total_tvl/1e3:.1f}K" if total_tvl >= 1e3 else f"${total_tvl:.0f}",
+            "reserves": {
+                "token0": {
+                    "symbol": reserves["symbol0"],
+                    "amount": reserves["reserve0"],
+                    "price_usd": price0,
+                    "value_usd": tvl_token0
+                },
+                "token1": {
+                    "symbol": reserves["symbol1"],
+                    "amount": reserves["reserve1"],
+                    "price_usd": price1,
+                    "value_usd": tvl_token1
+                }
+            },
+            "source": "onchain",
+            "chain": chain
+        }
+        
+    except Exception as e:
+        logger.error(f"TVL fetch error: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "fallback": True
+        }
+
+
+@router.get("/chains-status")
+async def get_chains_status():
+    """
+    Get status of all RPC connections.
+    """
+    return {
+        "available_chains": onchain_client.get_available_chains(),
+        "all_chains": ["base", "ethereum", "arbitrum", "optimism", "polygon"]
+    }
+
+
+# ============================================
+# SMART VERIFY (Intelligent Factory-Based Routing)
+# ============================================
+
+@router.get("/smart-verify")
+async def smart_verify_pool(
+    input: str = Query(..., description="Pool address or URL"),
+    chain: str = Query("base", description="Chain hint (auto-detected from URL if possible)")
+):
+    """
+    🧠 Smart Pool Verification with Factory-Based Protocol Detection.
+    
+    The "Brain" of the system that:
+    1. Parses input (address or URL)
+    2. Detects protocol via pool.factory() call
+    3. Routes to optimal adapter:
+       - Tier 1 (Premium): Aerodrome - Full APY, Gauge, Epoch
+       - Tier 2 (High): Uniswap V3 - Fee APY
+       - Tier 3 (Basic): Universal - TVL only
+    4. Patches with DefiLlama APY if needed
+    
+    Returns data quality tier indicator.
+    """
+    from api.smart_router import smart_router
+    
+    result = await smart_router.smart_route_pool_check(input, chain)
+    
+    # Add risk analysis if we have pool data
+    if result.get("success") and result.get("pool"):
+        pool = result["pool"]
+        
+        # Generate risk analysis
+        risk_score = 50  # Base score
+        risk_reasons = []
+        
+        tvl = pool.get("tvl", 0) or pool.get("tvlUsd", 0)
+        apy = pool.get("apy", 0)
+        
+        # TVL risk
+        if tvl < 100000:
+            risk_score += 25
+            risk_reasons.append(f"Low TVL (<$100K) - liquidity risk")
+        elif tvl > 10000000:
+            risk_score -= 15
+            risk_reasons.append(f"High TVL (>${tvl/1e6:.1f}M) - strong liquidity")
+        
+        # APY risk
+        if apy > 1000:
+            risk_score += 20
+            risk_reasons.append(f"Very high APY ({apy:.0f}%) - sustainability concern")
+        elif apy > 100:
+            risk_score += 10
+            risk_reasons.append(f"High APY ({apy:.0f}%) - verify sources")
+        
+        # Data quality warning
+        if result.get("data_quality") == "basic":
+            risk_score += 10
+            risk_reasons.append("Unverified protocol - limited analysis")
+        
+        risk_score = max(0, min(100, risk_score))
+        risk_level = "Low" if risk_score < 40 else "Medium" if risk_score < 70 else "High"
+        
+        result["risk_analysis"] = {
+            "risk_score": risk_score,
+            "risk_level": risk_level,
+            "risk_reasons": risk_reasons
+        }
+    
+    return result
+
+
+@router.get("/verify-any")
+async def verify_any_pool(
+    pool_address: str = Query(..., description="Pool contract address"),
+    chain: str = Query("base", description="Chain name")
+):
+    """
+    Universal pool verification endpoint.
+    NOW USES SmartRouter with factory-based protocol detection.
+    Fallback: GeckoTerminal -> DefiLlama -> On-chain RPC.
+    Always returns risk analysis.
+    """
+    from api.smart_router import smart_router
+    
+    chain = chain.lower()
+    pool_address = pool_address.lower()
+    
+    logger.info(f"🧠 SmartRouter verify for {pool_address} on {chain}")
+    
+    # PRIMARY: Use SmartRouter (factory-based detection)
+    try:
+        smart_result = await smart_router.smart_route_pool_check(pool_address, chain)
+        
+        if smart_result.get("success") and smart_result.get("pool"):
+            pool = smart_result["pool"]
+            
+            # Generate risk analysis
+            risk_score = 50
+            risk_reasons = []
+            
+            tvl = pool.get("tvl", 0) or pool.get("tvlUsd", 0)
+            apy = pool.get("apy", 0)
+            
+            if tvl < 100000:
+                risk_score += 25
+                risk_reasons.append("Low TVL (<$100K) - liquidity risk")
+            elif tvl > 10000000:
+                risk_score -= 15
+                risk_reasons.append(f"High TVL (>${tvl/1e6:.1f}M) - strong liquidity")
+            
+            if apy > 1000:
+                risk_score += 20
+                risk_reasons.append(f"Very high APY ({apy:.0f}%) - sustainability concern")
+            elif apy > 100:
+                risk_score += 10
+                risk_reasons.append(f"High APY ({apy:.0f}%) - verify sources")
+            
+            if smart_result.get("data_quality") == "basic":
+                risk_score += 10
+                risk_reasons.append("Unverified protocol - limited analysis")
+            
+            risk_score = max(0, min(100, risk_score))
+            risk_level = "Low" if risk_score < 40 else "Medium" if risk_score < 70 else "High"
+            
+            return {
+                "success": True,
+                "pool": pool,
+                "risk_analysis": {
+                    "risk_score": risk_score,
+                    "risk_level": risk_level,
+                    "risk_reasons": risk_reasons
+                },
+                "source": smart_result.get("source", "smart_router"),
+                "data_quality": smart_result.get("data_quality", "unknown"),
+                "chain": chain
+            }
+    except Exception as e:
+        logger.warning(f"SmartRouter failed, using legacy: {e}")
+    
+    # FALLBACK: Legacy logic (GeckoTerminal -> DefiLlama -> On-chain)
+    from data_sources.geckoterminal import gecko_client
+    import httpx
+    
+    pool_data = None
+    source = "unknown"
+    symbol_for_search = ""
+    
+    # PRIORITY 1: GeckoTerminal (real-time, works for CL - most complete data)
+    try:
+        gecko_data = await gecko_client.get_pool_by_address(chain, pool_address)
+        if gecko_data and gecko_data.get("tvl", 0) > 0:
+            symbol_for_search = gecko_data.get("symbol", "")
+            pool_data = {
+                "symbol": gecko_data.get("symbol", ""),
+                "name": gecko_data.get("name", ""),
+                "project": gecko_data.get("project", "Unknown"),  # Now included from _normalize_pool_data
+                "chain": chain.capitalize(),
+                "tvl": gecko_data.get("tvl", 0),
+                "tvlUsd": gecko_data.get("tvlUsd", 0),
+                "apy": gecko_data.get("apy", 0),
+                "apy_base": gecko_data.get("apy_base", 0),
+                "apy_reward": gecko_data.get("apy_reward", 0),
+                "volume_24h": gecko_data.get("volume_24h", 0),
+                "volume_24h_formatted": gecko_data.get("volume_24h_formatted", "N/A"),
+                "trading_fee": gecko_data.get("trading_fee"),
+                "fee_24h_usd": gecko_data.get("fee_24h_usd"),
+                "il_risk": gecko_data.get("il_risk", "yes"),
+                "pool_type": gecko_data.get("pool_type", "volatile"),
+                "pool_address": pool_address,
+            }
+            source = "geckoterminal"
+            logger.info(f"Found in GeckoTerminal: {pool_data['symbol']}, project: {pool_data['project']}")
+    except Exception as e:
+        logger.debug(f"GeckoTerminal lookup failed: {e}")
+    
+    # PRIORITY 2: DefiLlama (ALWAYS check for APY, even if GeckoTerminal found pool)
+    defillama_apy = 0
+    defillama_found = False
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get("https://yields.llama.fi/pools")
+            if response.status_code == 200:
+                data = response.json()
+                pools = data.get("data", [])
+                
+                # Filter to chain first
+                chain_pools = [p for p in pools if chain in p.get("chain", "").lower()]
+                
+                # Strategy 1: Search for pool by address in pool ID
+                for p in chain_pools:
+                    if pool_address in p.get("pool", "").lower():
+                        defillama_apy = p.get("apy", 0)
+                        defillama_found = True
+                        
+                        if pool_data:
+                            # Merge APY from DefiLlama with existing data
+                            if defillama_apy and (not pool_data.get("apy") or defillama_apy > pool_data.get("apy", 0)):
+                                pool_data["apy"] = defillama_apy
+                                pool_data["apy_base"] = p.get("apyBase", 0)
+                                pool_data["apy_reward"] = p.get("apyReward", 0)
+                            pool_data["project"] = p.get("project", pool_data.get("project", "Unknown"))
+                            pool_data["il_risk"] = p.get("ilRisk", "no")
+                            source = f"{source}+defillama" if source != "unknown" else "defillama"
+                        else:
+                            pool_data = {
+                                "symbol": p.get("symbol", ""),
+                                "project": p.get("project", "Unknown"),
+                                "chain": p.get("chain", chain.capitalize()),
+                                "tvl": p.get("tvlUsd", 0),
+                                "apy": defillama_apy,
+                                "apy_base": p.get("apyBase", 0),
+                                "apy_reward": p.get("apyReward", 0),
+                                "pool_address": pool_address,
+                                "il_risk": p.get("ilRisk", "no"),
+                            }
+                            source = "defillama"
+                        
+                        logger.info(f"DefiLlama found by address, APY: {defillama_apy}%")
+                        break
+                
+                # Strategy 2: If not found by address, search by symbol (e.g., "SOL-USDC")
+                if not defillama_found and symbol_for_search:
+                    # Normalize symbol for matching (remove fee tier like "0.05%")
+                    clean_symbol = symbol_for_search.split(" ")[0].upper().replace("-", "")
+                    
+                    for p in chain_pools:
+                        pool_symbol = (p.get("symbol", "") or "").upper().replace("-", "")
+                        # Check if symbols match (order insensitive)
+                        if clean_symbol == pool_symbol or set(clean_symbol.split("/")) == set(pool_symbol.split("/")):
+                            defillama_apy = p.get("apy", 0)
+                            defillama_found = True
+                            
+                            if pool_data and defillama_apy:
+                                if not pool_data.get("apy") or defillama_apy > pool_data.get("apy", 0):
+                                    pool_data["apy"] = defillama_apy
+                                    pool_data["apy_base"] = p.get("apyBase", 0)
+                                    pool_data["apy_reward"] = p.get("apyReward", 0)
+                                pool_data["project"] = p.get("project", pool_data.get("project", "Unknown"))
+                                source = f"{source}+defillama" if "defillama" not in source else source
+                            
+                            logger.info(f"DefiLlama found by symbol '{symbol_for_search}', APY: {defillama_apy}%")
+                            break
+    except Exception as e:
+        logger.debug(f"DefiLlama lookup failed: {e}")
+    
+    # PRIORITY 2.5: AERODROME ON-CHAIN APY (Base only - most accurate)
+    # Override DefiLlama APY if discrepancy > 5%
+    if chain == "base" and pool_data:
+        try:
+            from data_sources.aerodrome import aerodrome_client
+            onchain_apy_data = await aerodrome_client.get_real_time_apy(pool_address)
+            
+            if onchain_apy_data and onchain_apy_data.get("apy", 0) > 0:
+                onchain_apy = onchain_apy_data.get("apy", 0)
+                current_apy = pool_data.get("apy", 0) or 0
+                
+                # Calculate discrepancy
+                if current_apy > 0:
+                    discrepancy = abs(onchain_apy - current_apy) / current_apy
+                else:
+                    discrepancy = 1.0  # If no API APY, always use on-chain
+                
+                # Override if >5% discrepancy or no APY
+                if discrepancy > 0.05 or current_apy == 0:
+                    logger.info(f"APY Override: {current_apy:.2f}% → {onchain_apy:.2f}% (on-chain, diff: {discrepancy*100:.1f}%)")
+                    pool_data["apy"] = onchain_apy
+                    pool_data["apy_reward"] = onchain_apy_data.get("apy_reward", 0)
+                    pool_data["apy_base"] = onchain_apy_data.get("apy_base", 0)
+                    pool_data["apy_source"] = "aerodrome_onchain"
+                    pool_data["gauge_address"] = onchain_apy_data.get("gauge_address")
+                    pool_data["aero_price"] = onchain_apy_data.get("aero_price")
+                    pool_data["epoch_remaining"] = onchain_apy_data.get("epoch_remaining") or aerodrome_client.get_epoch_time_remaining()
+                    source = f"{source}+aerodrome_onchain" if "aerodrome" not in source else source
+                    
+                # Set project to Aerodrome if has gauge
+                if onchain_apy_data.get("has_gauge"):
+                    pool_data["project"] = pool_data.get("project") or "Aerodrome"
+                    
+        except Exception as e:
+            logger.debug(f"Aerodrome on-chain APY failed: {e}")
+    
+    # PRIORITY 3: On-chain RPC (universal)
+    if not pool_data:
+        try:
+            onchain_data = await onchain_client.get_any_pool_data(chain, pool_address)
+            if onchain_data:
+                symbol0 = onchain_data.get("symbol0", "???")
+                symbol1 = onchain_data.get("symbol1", "???")
+                pool_type = onchain_data.get("pool_type", "unknown")
+                
+                # Calculate TVL from balances
+                tvl = 0
+                if pool_type == "v2":
+                    price0 = await get_token_price(symbol0, onchain_data.get("token0"))
+                    price1 = await get_token_price(symbol1, onchain_data.get("token1"))
+                    tvl = (onchain_data.get("reserve0", 0) * price0) + (onchain_data.get("reserve1", 0) * price1)
+                elif pool_type == "cl":
+                    price0 = await get_token_price(symbol0, onchain_data.get("token0"))
+                    price1 = await get_token_price(symbol1, onchain_data.get("token1"))
+                    tvl = (onchain_data.get("balance0", 0) * price0) + (onchain_data.get("balance1", 0) * price1)
+                
+                pool_data = {
+                    "symbol": f"{symbol0}-{symbol1}",
+                    "project": "Unknown Protocol",
+                    "chain": chain.capitalize(),
+                    "tvl": tvl,
+                    "apy": 0,  # Can't determine APY from on-chain only
+                    "pool_type": pool_type,
+                    "pool_address": pool_address,
+                    "token0": symbol0,
+                    "token1": symbol1,
+                }
+                source = "onchain"
+                logger.info(f"Found on-chain ({pool_type}): {symbol0}-{symbol1}")
+        except Exception as e:
+            logger.error(f"On-chain lookup failed: {e}")
+    
+    # PRIORITY LAST: Universal Scanner (fingerprinting for ANY unknown contract)
+    if not pool_data:
+        try:
+            from data_sources.universal_adapter import universal_scanner
+            logger.info(f"Trying UniversalScanner for {pool_address[:10]}...")
+            scan_result = await universal_scanner.scan(pool_address, chain)
+            
+            if scan_result and scan_result.get("tvl", 0) > 0:
+                pool_data = scan_result
+                source = f"universal_{scan_result.get('contract_type', 'unknown')}"
+                logger.info(f"UniversalScanner found: {scan_result.get('symbol')} (type: {scan_result.get('contract_type')})")
+            elif scan_result:
+                # Even with 0 TVL, return the data
+                pool_data = scan_result
+                source = f"universal_{scan_result.get('contract_type', 'unknown')}"
+                logger.info(f"UniversalScanner identified: {scan_result.get('contract_type')} (TVL: 0)")
+        except Exception as e:
+            logger.error(f"UniversalScanner failed: {e}")
+    
+    # If still no data, return error
+    if not pool_data:
+        return {
+            "success": False,
+            "error": "Pool not found on any data source",
+            "chain": chain,
+            "pool_address": pool_address,
+            "available_chains": onchain_client.get_available_chains()
+        }
+    
+    # Generate risk analysis
+    risk_level = "Medium"
+    risk_score = 50
+    risk_reasons = []
+    
+    tvl = pool_data.get("tvl", 0)
+    apy = pool_data.get("apy", 0)
+    
+    # TVL-based risk
+    if tvl < 100000:
+        risk_level = "High"
+        risk_score += 25
+        risk_reasons.append("Low TVL (<$100K) - potential liquidity issues")
+    elif tvl < 500000:
+        risk_score += 10
+        risk_reasons.append("Moderate TVL - monitor liquidity")
+    elif tvl > 10000000:
+        risk_score -= 15
+    
+    # APY-based risk
+    if apy > 100:
+        risk_level = "High"
+        risk_score += 20
+        risk_reasons.append(f"Very high APY ({apy:.1f}%) - verify sustainability")
+    elif apy > 50:
+        risk_score += 10
+        risk_reasons.append(f"High APY ({apy:.1f}%) - check token emissions")
+    
+    # IL risk
+    if pool_data.get("il_risk") == "yes" or pool_data.get("pool_type") in ["v2", "cl"]:
+        risk_reasons.append("Impermanent loss risk for non-stablecoin pairs")
+    
+    # Unknown protocol
+    if pool_data.get("project") == "Unknown Protocol" or source == "onchain":
+        risk_score += 15
+        risk_reasons.append("Unknown protocol - DYOR (do your own research)")
+    
+    # Clamp score
+    risk_score = max(10, min(90, risk_score))
+    
+    if risk_score >= 60:
+        risk_level = "High"
+    elif risk_score <= 35:
+        risk_level = "Low"
+    
+    return {
+        "success": True,
+        "pool": pool_data,
+        "risk_analysis": {
+            "risk_level": risk_level,
+            "risk_score": risk_score,
+            "risk_reasons": risk_reasons,
+        },
+        "source": source,
+        "chain": chain
     }
