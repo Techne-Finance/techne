@@ -92,15 +92,26 @@
                     </div>
                     <div class="agent-status">
                         <div class="agent-row">
-                            <span class="agent-name">🔍 Scout</span>
+                            <span class="agent-name"><svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                                    <circle cx="7" cy="7" r="5.5" stroke="#d4a853" stroke-width="1.5" />
+                                    <path d="M11 11L14 14" stroke="#d4a853" stroke-width="1.5" stroke-linecap="round" />
+                                </svg> Scout</span>
                             <span class="agent-state active">Active</span>
                         </div>
                         <div class="agent-row">
-                            <span class="agent-name">🛡️ Guardian</span>
+                            <span class="agent-name"><svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                                    <path d="M8 1L2 3.5V7C2 11 5 14 8 15C11 14 14 11 14 7V3.5L8 1Z" stroke="#d4a853"
+                                        stroke-width="1.5" fill="rgba(212,168,83,0.1)" stroke-linejoin="round" />
+                                </svg> Guardian</span>
                             <span class="agent-state active">Active</span>
                         </div>
                         <div class="agent-row">
-                            <span class="agent-name">🎁 Airdrop</span>
+                            <span class="agent-name"><svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                                    <rect x="2" y="7" width="12" height="7" rx="1" stroke="#d4a853" stroke-width="1.5"
+                                        fill="rgba(212,168,83,0.1)" />
+                                    <path d="M8 3V7M5 3C5 3 5 6 8 6C11 6 11 3 11 3" stroke="#d4a853" stroke-width="1.5"
+                                        stroke-linecap="round" />
+                                </svg> Airdrop</span>
                             <span class="agent-state active">Active</span>
                         </div>
                         <div class="agent-row agent-more">
@@ -114,9 +125,16 @@
                 <!-- Filter Credits System -->
                 <div class="filters-section">
                     <div class="credits-header">
-                        <h3 class="section-title">🔍 Filters</h3>
+                        <h3 class="section-title"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"
+                                style="vertical-align: middle; margin-right: 6px;">
+                                <circle cx="7" cy="7" r="5.5" stroke="#d4a853" stroke-width="1.5" />
+                                <path d="M11 11L14 14" stroke="#d4a853" stroke-width="1.5" stroke-linecap="round" />
+                            </svg>Filters</h3>
                         <div class="credits-badge" id="creditsDisplay">
-                            <span class="credits-icon">⚡</span>
+                            <span class="credits-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                                    <path d="M9 1L3 9H8L7 15L13 7H8L9 1Z" stroke="#d4a853" stroke-width="1.5"
+                                        fill="rgba(212,168,83,0.15)" stroke-linejoin="round" />
+                                </svg></span>
                             <span class="credits-count" id="creditsCount">0</span>
                             <span class="credits-label">credits</span>
                         </div>
@@ -1894,7 +1912,15 @@
                     <div class="section-header">
                         <div class="builder-header-row">
                             <div>
-                                <h1>🤖 Agent Builder</h1>
+                                <h1><svg width="24" height="24" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 8px;">
+                                        <rect x="2" y="2" width="12" height="12" rx="2" stroke="#d4a853"
+                                            stroke-width="1.3" fill="rgba(212,168,83,0.1)" />
+                                        <circle cx="5.5" cy="5.5" r="1" fill="#d4a853" />
+                                        <circle cx="10.5" cy="5.5" r="1" fill="#d4a853" />
+                                        <path d="M5 10C5 10 6.5 12 8 12C9.5 12 11 10 11 10" stroke="#d4a853"
+                                            stroke-width="1.3" stroke-linecap="round" />
+                                    </svg> Agent Builder</h1>
                                 <p class="section-desc">Configure your AI agent to manage your DeFi investments</p>
                             </div>
                             <!-- Mode Toggle -->
@@ -1902,11 +1928,25 @@
                                 <span class="mode-label">Mode:</span>
                                 <div class="mode-toggle" id="builderModeToggle">
                                     <button class="mode-btn active" data-mode="basic">
-                                        <span class="mode-icon">🍎</span>
+                                        <span class="mode-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.5"
+                                                    fill="rgba(212,168,83,0.1)" />
+                                                <path d="M8 5V8" stroke="#d4a853" stroke-width="1.5"
+                                                    stroke-linecap="round" />
+                                            </svg></span>
                                         <span>Basic</span>
                                     </button>
                                     <button class="mode-btn" data-mode="pro">
-                                        <span class="mode-icon">📊</span>
+                                        <span class="mode-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <rect x="2" y="6" width="3" height="8" fill="rgba(212,168,83,0.3)"
+                                                    stroke="#d4a853" stroke-width="1" />
+                                                <rect x="6.5" y="4" width="3" height="10" fill="rgba(212,168,83,0.5)"
+                                                    stroke="#d4a853" stroke-width="1" />
+                                                <rect x="11" y="2" width="3" height="12" fill="rgba(212,168,83,0.7)"
+                                                    stroke="#d4a853" stroke-width="1" />
+                                            </svg></span>
                                         <span>Pro</span>
                                     </button>
                                 </div>
@@ -1929,7 +1969,11 @@
                         <div class="agent-config-panel">
                             <!-- Chain Selection -->
                             <div class="config-card">
-                                <h3>⛓️ Chain</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <path d="M4 8L8 4L12 8M4 12L8 8L12 12" stroke="#d4a853" stroke-width="1.5"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>Chain</h3>
                                 <div class="chain-selector-build">
                                     <button class="chain-btn-build active" data-chain="base">
                                         <img src="/icons/base.png" alt="Base">
@@ -1955,20 +1999,40 @@
 
                             <!-- Pool Type Selection -->
                             <div class="config-card">
-                                <h3>🏊 Pool Type</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <circle cx="8" cy="10" r="4" stroke="#d4a853" stroke-width="1.5"
+                                            fill="rgba(212,168,83,0.1)" />
+                                        <path d="M5 6C5 4 6.5 2 8 2C9.5 2 11 4 11 6" stroke="#d4a853" stroke-width="1.5"
+                                            stroke-linecap="round" />
+                                    </svg>Pool Type</h3>
                                 <div class="pool-type-selector-build">
                                     <button class="pool-type-btn-build active" data-pool-type="single">
-                                        <span class="type-icon">🛡️</span>
+                                        <span class="type-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <path d="M8 1L2 3.5V7C2 11 5 14 8 15C11 14 14 11 14 7V3.5L8 1Z"
+                                                    stroke="#d4a853" stroke-width="1.3" fill="rgba(212,168,83,0.1)" />
+                                            </svg></span>
                                         <span class="type-name">Single-Sided</span>
                                         <span class="type-desc">Lending, staking - No IL risk</span>
                                     </button>
                                     <button class="pool-type-btn-build" data-pool-type="dual">
-                                        <span class="type-icon">💧</span>
+                                        <span class="type-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <path
+                                                    d="M8 2C8 2 4 6 4 10C4 12.5 6 14 8 14C10 14 12 12.5 12 10C12 6 8 2 8 2Z"
+                                                    stroke="#3b82f6" stroke-width="1.3" fill="rgba(59,130,246,0.15)" />
+                                            </svg></span>
                                         <span class="type-name">Dual-Sided (LP)</span>
                                         <span class="type-desc">Higher yields, IL exposure</span>
                                     </button>
                                     <button class="pool-type-btn-build" data-pool-type="all">
-                                        <span class="type-icon">🔀</span>
+                                        <span class="type-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <path d="M2 8H6M10 8H14M8 2V6M8 10V14" stroke="#d4a853"
+                                                    stroke-width="1.5" stroke-linecap="round" />
+                                                <circle cx="8" cy="8" r="2" fill="#d4a853" />
+                                            </svg></span>
                                         <span class="type-name">All Pools</span>
                                         <span class="type-desc">Mixed strategy</span>
                                     </button>
@@ -1977,7 +2041,15 @@
 
                             <!-- TVL Filter (Both Basic & Pro) -->
                             <div class="config-card">
-                                <h3>📊 TVL Filter</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <rect x="2" y="6" width="3" height="8" fill="rgba(212,168,83,0.3)"
+                                            stroke="#d4a853" stroke-width="1" />
+                                        <rect x="6.5" y="4" width="3" height="10" fill="rgba(212,168,83,0.5)"
+                                            stroke="#d4a853" stroke-width="1" />
+                                        <rect x="11" y="2" width="3" height="12" fill="rgba(212,168,83,0.7)"
+                                            stroke="#d4a853" stroke-width="1" />
+                                    </svg>TVL Filter</h3>
                                 <div class="tvl-range-container">
                                     <div class="tvl-range-header">
                                         <span class="tvl-range-label">TVL Range</span>
@@ -2025,35 +2097,72 @@
 
                             <!-- Strategy Presets -->
                             <div class="config-card">
-                                <h3>🎯 Strategy Presets</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.5" />
+                                        <circle cx="8" cy="8" r="2" fill="#d4a853" />
+                                    </svg>Strategy Presets</h3>
                                 <div class="strategy-presets">
                                     <button class="preset-btn" data-preset="stable-farmer">
-                                        <span class="preset-icon">💰</span>
+                                        <span class="preset-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <circle cx="8" cy="8" r="5.5" stroke="#d4a853" stroke-width="1.3"
+                                                    fill="rgba(212,168,83,0.1)" /><text x="8" y="11"
+                                                    text-anchor="middle" fill="#d4a853" font-size="7">$</text>
+                                            </svg></span>
                                         <span class="preset-name">Stable Farmer</span>
                                         <span class="preset-desc">Safe stablecoin yields 8-15% APY</span>
                                     </button>
                                     <button class="preset-btn active" data-preset="balanced-growth">
-                                        <span class="preset-icon">📊</span>
+                                        <span class="preset-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <rect x="2" y="6" width="3" height="8" fill="rgba(212,168,83,0.3)"
+                                                    stroke="#d4a853" stroke-width="1" />
+                                                <rect x="6.5" y="4" width="3" height="10" fill="rgba(212,168,83,0.5)"
+                                                    stroke="#d4a853" stroke-width="1" />
+                                                <rect x="11" y="2" width="3" height="12" fill="rgba(212,168,83,0.7)"
+                                                    stroke="#d4a853" stroke-width="1" />
+                                            </svg></span>
                                         <span class="preset-name">Balanced Growth</span>
                                         <span class="preset-desc">Mix of stable & volatile 15-25% APY</span>
                                     </button>
                                     <button class="preset-btn" data-preset="yield-maximizer">
-                                        <span class="preset-icon">🚀</span>
+                                        <span class="preset-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <path d="M8 1L3 6H6V10H10V6H13L8 1Z" stroke="#d4a853" stroke-width="1.3"
+                                                    fill="rgba(212,168,83,0.15)" />
+                                                <path d="M6 12H10V14H6V12Z" fill="#d4a853" />
+                                            </svg></span>
                                         <span class="preset-name">Yield Maximizer</span>
                                         <span class="preset-desc">Aggressive returns 25-50%+ APY</span>
                                     </button>
                                     <button class="preset-btn" data-preset="airdrop-hunter">
-                                        <span class="preset-icon">🎁</span>
+                                        <span class="preset-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <rect x="2" y="7" width="12" height="7" rx="1" stroke="#d4a853"
+                                                    stroke-width="1.3" fill="rgba(212,168,83,0.1)" />
+                                                <path d="M8 3V7M5 3C5 3 5 6 8 6C11 6 11 3 11 3" stroke="#d4a853"
+                                                    stroke-width="1.3" stroke-linecap="round" />
+                                            </svg></span>
                                         <span class="preset-name">Airdrop Hunter</span>
                                         <span class="preset-desc">Farm emerging protocols for drops</span>
                                     </button>
                                     <button class="preset-btn" data-preset="eth-maxi">
-                                        <span class="preset-icon">💎</span>
+                                        <span class="preset-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <path d="M8 2L6 6L2 7L5 10L4 14L8 12L12 14L11 10L14 7L10 6L8 2Z"
+                                                    stroke="#d4a853" stroke-width="1.3" fill="rgba(212,168,83,0.15)" />
+                                            </svg></span>
                                         <span class="preset-name">ETH Maxi</span>
                                         <span class="preset-desc">ETH & LSTs only 5-12% APY</span>
                                     </button>
                                     <button class="preset-btn" data-preset="custom">
-                                        <span class="preset-icon">⚙️</span>
+                                        <span class="preset-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                fill="none">
+                                                <circle cx="8" cy="8" r="5" stroke="#d4a853" stroke-width="1.3" />
+                                                <path d="M8 5V8L10 10" stroke="#d4a853" stroke-width="1.3"
+                                                    stroke-linecap="round" />
+                                            </svg></span>
                                         <span class="preset-name">Custom</span>
                                         <span class="preset-desc">Configure everything manually</span>
                                     </button>
@@ -2062,14 +2171,28 @@
 
                             <!-- PRO MODE: Yield Engineering -->
                             <div class="config-card pro-mode-only" id="yieldEngineeringCard">
-                                <h3>⚡ Yield Engineering</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <path d="M9 1L3 9H8L7 15L13 7H8L9 1Z" stroke="#d4a853" stroke-width="1.3"
+                                            fill="rgba(212,168,83,0.15)" />
+                                    </svg>Yield Engineering</h3>
 
                                 <!-- Smart Loop Engine (Single-Sided) -->
                                 <div class="pro-section" id="smartLoopSection">
                                     <div class="pro-section-header">
-                                        <span class="pro-badge">🔄 Smart Loop Engine</span>
+                                        <span class="pro-badge"><svg width="12" height="12" viewBox="0 0 16 16"
+                                                fill="none" style="vertical-align: middle; margin-right: 4px;">
+                                                <path d="M2 8H6L8 4L10 12L12 8H14" stroke="#d4a853" stroke-width="1.5"
+                                                    stroke-linecap="round" stroke-linejoin="round" />
+                                            </svg> Smart Loop Engine</span>
                                         <span class="pro-tooltip"
-                                            title="Automatically loop your position for amplified yields">ⓘ</span>
+                                            title="Automatically loop your position for amplified yields"><svg
+                                                width="12" height="12" viewBox="0 0 16 16" fill="none"
+                                                style="vertical-align: middle;">
+                                                <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3" />
+                                                <path d="M8 5V9M8 11V11.5" stroke="#d4a853" stroke-width="1.5"
+                                                    stroke-linecap="round" />
+                                            </svg></span>
                                     </div>
                                     <div class="leverage-control">
                                         <label>Leverage Level</label>
@@ -2101,21 +2224,44 @@
                                 <!-- Active Liquidity Manager (Dual-Sided) -->
                                 <div class="pro-section hidden" id="liquidityManagerSection">
                                     <div class="pro-section-header">
-                                        <span class="pro-badge">💧 Active Liquidity Manager</span>
-                                        <span class="pro-tooltip"
-                                            title="Automatically rebalance your LP position">ⓘ</span>
+                                        <span class="pro-badge"><svg width="12" height="12" viewBox="0 0 16 16"
+                                                fill="none" style="vertical-align: middle; margin-right: 4px;">
+                                                <circle cx="6" cy="8" r="4" stroke="#d4a853" stroke-width="1.3"
+                                                    fill="rgba(212,168,83,0.1)" />
+                                                <circle cx="10" cy="8" r="4" stroke="#d4a853" stroke-width="1.3"
+                                                    fill="rgba(212,168,83,0.15)" />
+                                            </svg> Active Liquidity Manager</span>
+                                        <span class="pro-tooltip" title="Automatically rebalance your LP position"><svg
+                                                width="12" height="12" viewBox="0 0 16 16" fill="none"
+                                                style="vertical-align: middle;">
+                                                <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3" />
+                                                <path d="M8 5V9M8 11V11.5" stroke="#d4a853" stroke-width="1.5"
+                                                    stroke-linecap="round" />
+                                            </svg></span>
                                     </div>
                                     <div class="liquidity-strategy-toggle">
                                         <button class="liq-btn active" data-strategy="passive">
-                                            <span class="btn-icon">🧘</span>
+                                            <span class="btn-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                    fill="none">
+                                                    <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3" />
+                                                    <circle cx="8" cy="8" r="2" fill="#d4a853" />
+                                                </svg></span>
                                             <span class="btn-text">Passive (Fixed)</span>
                                         </button>
                                         <button class="liq-btn" data-strategy="active">
-                                            <span class="btn-icon">🎯</span>
+                                            <span class="btn-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                    fill="none">
+                                                    <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3" />
+                                                    <circle cx="8" cy="8" r="2" fill="#d4a853" />
+                                                </svg></span>
                                             <span class="btn-text">Active (Auto-Rebalance)</span>
                                         </button>
                                         <button class="liq-btn" data-strategy="jit">
-                                            <span class="btn-icon">⚡</span>
+                                            <span class="btn-icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                    fill="none">
+                                                    <path d="M9 1L3 9H8L7 15L13 7H8L9 1Z" stroke="#d4a853"
+                                                        stroke-width="1.3" fill="rgba(212,168,83,0.15)" />
+                                                </svg></span>
                                             <span class="btn-text">JIT Liquidity</span>
                                         </button>
                                     </div>
@@ -2131,7 +2277,12 @@
 
                             <!-- PRO MODE: Precision Duration -->
                             <div class="config-card pro-mode-only" id="precisionDurationCard">
-                                <h3>⏱️ Precision Timing</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3" />
+                                        <path d="M8 4V8L11 10" stroke="#d4a853" stroke-width="1.3"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg> Precision Timing</h3>
 
                                 <div class="duration-mode-toggle">
                                     <button class="dur-mode-btn" data-mode="preset">Preset</button>
@@ -2149,12 +2300,20 @@
                                             <option value="months">Months</option>
                                         </select>
                                     </div>
-                                    <p class="duration-hint">⚡ Snipe mode: Farm for exactly 24 hours</p>
+                                    <p class="duration-hint"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"
+                                            style="vertical-align: middle; margin-right: 4px;">
+                                            <path d="M9 1L3 9H8L7 15L13 7H8L9 1Z" stroke="#d4a853" stroke-width="1.3"
+                                                fill="rgba(212,168,83,0.15)" />
+                                        </svg> Snipe mode: Farm for exactly 24 hours</p>
                                 </div>
 
                                 <!-- Exit Targets -->
                                 <div class="exit-targets">
-                                    <h4>🎯 Exit Targets</h4>
+                                    <h4><svg width="14" height="14" viewBox="0 0 16 16" fill="none"
+                                            style="vertical-align: middle; margin-right: 4px;">
+                                            <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3" />
+                                            <circle cx="8" cy="8" r="2" fill="#d4a853" />
+                                        </svg> Exit Targets</h4>
                                     <div class="exit-target">
                                         <label class="checkbox-label">
                                             <input type="checkbox" id="takeProfitEnabled">
@@ -2194,13 +2353,25 @@
 
                             <!-- PRO MODE: Safety & Gas -->
                             <div class="config-card pro-mode-only" id="safetyGasCard">
-                                <h3>🛡️ Safety & Gas</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <path d="M8 1L2 3.5V7C2 11 5 14 8 15C11 14 14 11 14 7V3.5L8 1Z" stroke="#d4a853"
+                                            stroke-width="1.3" fill="rgba(212,168,83,0.1)" stroke-linejoin="round" />
+                                        <path d="M6 8L7.5 9.5L10 6.5" stroke="#d4a853" stroke-width="1.3"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg> Safety & Gas</h3>
 
                                 <div class="config-group toggle-group">
                                     <label>
                                         <span>Volatility Guard</span>
                                         <span class="pro-tooltip"
-                                            title="Emergency exit to stablecoins if market volatility exceeds 200%">ⓘ</span>
+                                            title="Emergency exit to stablecoins if market volatility exceeds 200%"><svg
+                                                width="12" height="12" viewBox="0 0 16 16" fill="none"
+                                                style="vertical-align: middle;">
+                                                <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3" />
+                                                <path d="M8 5V9M8 11V11.5" stroke="#d4a853" stroke-width="1.5"
+                                                    stroke-linecap="round" />
+                                            </svg></span>
                                     </label>
                                     <label class="toggle-switch">
                                         <input type="checkbox" id="volatilityGuard" checked>
@@ -2220,7 +2391,13 @@
 
                             <!-- PRO MODE: Custom Instructions -->
                             <div class="config-card pro-mode-only" id="customInstructionsCard">
-                                <h3>💬 Agent Command Interface</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <rect x="2" y="3" width="12" height="10" rx="2" stroke="#d4a853"
+                                            stroke-width="1.3" fill="rgba(212,168,83,0.1)" />
+                                        <path d="M5 7H11M5 10H9" stroke="#d4a853" stroke-width="1"
+                                            stroke-linecap="round" />
+                                    </svg> Agent Command Interface</h3>
                                 <p class="card-desc">Give your agent natural language instructions</p>
                                 <textarea id="customInstructions" class="custom-instructions-input"
                                     placeholder="Example: Keep farming until ETH hits $4000, then withdraw everything to USDC. Prioritize Aave and Morpho for safety."
@@ -2229,29 +2406,60 @@
 
                             <!-- Risk & Returns -->
                             <div class="config-card">
-                                <h3>⚖️ Risk & Returns</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <path d="M8 2L3 8L8 14L13 8L8 2Z" stroke="#d4a853" stroke-width="1.3"
+                                            fill="rgba(212,168,83,0.1)" stroke-linejoin="round" />
+                                        <path d="M6 8H10" stroke="#d4a853" stroke-width="1.3" stroke-linecap="round" />
+                                    </svg> Risk & Returns</h3>
 
                                 <!-- Risk Tolerance -->
                                 <div class="config-group">
                                     <label>Risk Tolerance</label>
                                     <div class="risk-selector">
                                         <button class="risk-option" data-risk="low">
-                                            <span class="icon">🛡️</span>
+                                            <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                    fill="none">
+                                                    <path d="M8 1L2 3.5V7C2 11 5 14 8 15C11 14 14 11 14 7V3.5L8 1Z"
+                                                        stroke="#d4a853" stroke-width="1.3" fill="rgba(212,168,83,0.1)"
+                                                        stroke-linejoin="round" />
+                                                </svg></span>
                                             <span class="label">Low</span>
                                             <span class="desc">5-15% APY</span>
                                         </button>
                                         <button class="risk-option active" data-risk="medium">
-                                            <span class="icon">⚖️</span>
+                                            <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                    fill="none">
+                                                    <path d="M8 2L3 8L8 14L13 8L8 2Z" stroke="#d4a853"
+                                                        stroke-width="1.3" fill="rgba(212,168,83,0.1)"
+                                                        stroke-linejoin="round" />
+                                                    <path d="M6 8H10" stroke="#d4a853" stroke-width="1.3"
+                                                        stroke-linecap="round" />
+                                                </svg></span>
                                             <span class="label">Mid</span>
                                             <span class="desc">15-30% APY</span>
                                         </button>
                                         <button class="risk-option" data-risk="high">
-                                            <span class="icon">🚀</span>
+                                            <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                    fill="none">
+                                                    <path d="M10 6C10 6 12 4 12 2C12 2 10 2 8 4C6 2 4 2 4 2C4 4 6 6 6 6"
+                                                        stroke="#d4a853" stroke-width="1.3" stroke-linecap="round"
+                                                        stroke-linejoin="round" />
+                                                    <path d="M6 6L3 14L8 11L13 14L10 6" stroke="#d4a853"
+                                                        stroke-width="1.3" fill="rgba(212,168,83,0.15)"
+                                                        stroke-linejoin="round" />
+                                                </svg></span>
                                             <span class="label">High</span>
                                             <span class="desc">30-50% APY</span>
                                         </button>
                                         <button class="risk-option" data-risk="critical">
-                                            <span class="icon">⚠️</span>
+                                            <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16"
+                                                    fill="none">
+                                                    <path d="M8 1L15 14H1L8 1Z" stroke="#eab308" stroke-width="1.3"
+                                                        fill="rgba(234,179,8,0.15)" stroke-linejoin="round" />
+                                                    <path d="M8 6V9M8 11.5V12" stroke="#eab308" stroke-width="1.5"
+                                                        stroke-linecap="round" />
+                                                </svg></span>
                                             <span class="label">Critical</span>
                                             <span class="desc">50%+ APY (Very Risky)</span>
                                         </button>
@@ -2618,14 +2826,25 @@
             <!-- Section: Portfolio -->
             <section class="section" id="section-portfolio">
                 <div class="section-header">
-                    <h1>💼 Portfolio Dashboard</h1>
+                    <h1><svg width="24" height="24" viewBox="0 0 16 16" fill="none"
+                            style="vertical-align: middle; margin-right: 8px;">
+                            <rect x="1" y="3" width="14" height="11" rx="2" stroke="#d4a853" stroke-width="1.3"
+                                fill="rgba(212,168,83,0.1)" />
+                            <path d="M5 3V2C5 1.5 5.5 1 6 1H10C10.5 1 11 1.5 11 2V3" stroke="#d4a853"
+                                stroke-width="1.3" />
+                            <path d="M1 6H15" stroke="#d4a853" stroke-width="1" />
+                        </svg> Portfolio Dashboard</h1>
                     <p class="section-desc">Track your positions, earnings, and agent activity</p>
                 </div>
 
                 <!-- Portfolio Stats Overview -->
                 <div class="portfolio-stats-grid">
                     <div class="portfolio-stat-card primary">
-                        <div class="stat-icon">💰</div>
+                        <div class="stat-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+                                <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3"
+                                    fill="rgba(212,168,83,0.1)" /><text x="8" y="11" text-anchor="middle" fill="#d4a853"
+                                    font-size="8" font-weight="bold">$</text>
+                            </svg></div>
                         <div class="stat-content">
                             <span class="stat-label">Total Value</span>
                             <span class="stat-value" id="portfolioTotalValue">$0.00</span>
@@ -2633,7 +2852,12 @@
                         </div>
                     </div>
                     <div class="portfolio-stat-card">
-                        <div class="stat-icon">📈</div>
+                        <div class="stat-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+                                <path d="M2 14L6 8L9 11L14 4" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                                <path d="M10 4H14V8" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                            </svg></div>
                         <div class="stat-content">
                             <span class="stat-label">Total P&L</span>
                             <span class="stat-value" id="portfolioPnL">$0.00</span>
@@ -2641,7 +2865,10 @@
                         </div>
                     </div>
                     <div class="portfolio-stat-card">
-                        <div class="stat-icon">🎯</div>
+                        <div class="stat-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+                                <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3" />
+                                <circle cx="8" cy="8" r="2" fill="#d4a853" />
+                            </svg></div>
                         <div class="stat-content">
                             <span class="stat-label">Avg APY</span>
                             <span class="stat-value" id="portfolioAvgApy">0%</span>
@@ -2649,7 +2876,12 @@
                         </div>
                     </div>
                     <div class="portfolio-stat-card">
-                        <div class="stat-icon">🏦</div>
+                        <div class="stat-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+                                <path d="M8 1L1 5V7H15V5L8 1Z" stroke="#d4a853" stroke-width="1.3"
+                                    fill="rgba(212,168,83,0.1)" />
+                                <path d="M2 7V14H14V7" stroke="#d4a853" stroke-width="1.3" />
+                                <path d="M6 14V10H10V14" stroke="#d4a853" stroke-width="1.3" />
+                            </svg></div>
                         <div class="stat-content">
                             <span class="stat-label">Active Vaults</span>
                             <span class="stat-value" id="portfolioVaultCount">0</span>
@@ -2665,9 +2897,22 @@
                         <!-- Asset Holdings Table -->
                         <div class="portfolio-card">
                             <div class="card-header">
-                                <h3>💎 Asset Holdings</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <path d="M8 2L6 6L2 7L5 10L4 14L8 12L12 14L11 10L14 7L10 6L8 2Z"
+                                            stroke="#d4a853" stroke-width="1.3" fill="rgba(212,168,83,0.15)" />
+                                    </svg> Asset Holdings</h3>
                                 <div class="card-actions">
-                                    <button class="btn-sm" id="refreshPortfolio">🔄 Refresh</button>
+                                    <button class="btn-sm" id="refreshPortfolio"><svg width="12" height="12"
+                                            viewBox="0 0 16 16" fill="none"
+                                            style="vertical-align: middle; margin-right: 4px;">
+                                            <path d="M2 8C2 4.5 5 2 8 2C11 2 13.5 4.5 14 8M14 8L11 5M14 8L11 11"
+                                                stroke="#d4a853" stroke-width="1.5" stroke-linecap="round"
+                                                stroke-linejoin="round" />
+                                            <path d="M14 8C14 11.5 11 14 8 14C5 14 2.5 11.5 2 8M2 8L5 11M2 8L5 5"
+                                                stroke="#d4a853" stroke-width="1.5" stroke-linecap="round"
+                                                stroke-linejoin="round" />
+                                        </svg> Refresh</button>
                                 </div>
                             </div>
                             <div class="holdings-table" id="holdingsTable">
@@ -2688,7 +2933,13 @@
                         <!-- Vault Positions -->
                         <div class="portfolio-card">
                             <div class="card-header">
-                                <h3>🏦 Vault Positions</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <path d="M8 1L1 5V7H15V5L8 1Z" stroke="#d4a853" stroke-width="1.3"
+                                            fill="rgba(212,168,83,0.1)" />
+                                        <path d="M2 7V14H14V7" stroke="#d4a853" stroke-width="1.3" />
+                                        <path d="M6 14V10H10V14" stroke="#d4a853" stroke-width="1.3" />
+                                    </svg> Vault Positions</h3>
                                 <span class="card-badge" id="positionsCount">0 Active</span>
                             </div>
                             <div class="vault-positions" id="vaultPositions">
@@ -2703,7 +2954,13 @@
                         <!-- Transaction History -->
                         <div class="portfolio-card">
                             <div class="card-header">
-                                <h3>📜 Transaction History</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <rect x="2" y="2" width="12" height="12" rx="1" stroke="#d4a853"
+                                            stroke-width="1.3" fill="rgba(212,168,83,0.1)" />
+                                        <path d="M5 5H11M5 8H11M5 11H9" stroke="#d4a853" stroke-width="1"
+                                            stroke-linecap="round" />
+                                    </svg> Transaction History</h3>
                                 <div class="card-actions">
                                     <select id="txFilter" class="select-sm">
                                         <option value="all">All</option>
@@ -2728,7 +2985,15 @@
                         <!-- Agent Status -->
                         <div class="portfolio-card agent-card">
                             <div class="card-header">
-                                <h3>🤖 Agent Status</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <rect x="2" y="2" width="12" height="12" rx="2" stroke="#d4a853"
+                                            stroke-width="1.3" fill="rgba(212,168,83,0.1)" />
+                                        <circle cx="5.5" cy="5.5" r="1" fill="#d4a853" />
+                                        <circle cx="10.5" cy="5.5" r="1" fill="#d4a853" />
+                                        <path d="M5 10C5 10 6.5 12 8 12C9.5 12 11 10 11 10" stroke="#d4a853"
+                                            stroke-width="1.3" stroke-linecap="round" />
+                                    </svg> Agent Status</h3>
                                 <span class="status-badge inactive" id="agentStatusBadge">Inactive</span>
                             </div>
                             <div class="agent-info">
@@ -2750,8 +3015,22 @@
                                 </div>
                             </div>
                             <div class="agent-actions">
-                                <button class="btn-fund" id="btnFundAgent">💳 Fund Agent</button>
-                                <button class="btn-withdraw-all" id="btnWithdrawAll">📤 Withdraw All</button>
+                                <button class="btn-fund" id="btnFundAgent"><svg width="14" height="14"
+                                        viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 4px;">
+                                        <rect x="1" y="4" width="14" height="9" rx="1" stroke="currentColor"
+                                            stroke-width="1.3" fill="rgba(212,168,83,0.1)" />
+                                        <path d="M1 7H15" stroke="currentColor" stroke-width="1" />
+                                        <rect x="10" y="9" width="3" height="2" rx="0.5" fill="currentColor" />
+                                    </svg> Fund Agent</button>
+                                <button class="btn-withdraw-all" id="btnWithdrawAll"><svg width="14" height="14"
+                                        viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 4px;">
+                                        <path d="M3 11V13H13V11" stroke="currentColor" stroke-width="1.3"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                        <path d="M8 10V3M8 3L5 6M8 3L11 6" stroke="currentColor" stroke-width="1.3"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg> Withdraw All</button>
                             </div>
                         </div>
 
@@ -2832,7 +3111,12 @@
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-brand">
-                <span class="logo-icon">🏛️</span>
+                <span class="logo-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M9 1L1 6V8H17V6L9 1Z" stroke="#d4a853" stroke-width="1.5"
+                            fill="rgba(212,168,83,0.1)" />
+                        <path d="M3 8V16H15V8" stroke="#d4a853" stroke-width="1.5" />
+                        <path d="M6 16V11H12V16" stroke="#d4a853" stroke-width="1.5" />
+                    </svg></span>
                 <span>Techne Protocol</span>
             </div>
             <div class="footer-links">
@@ -2850,6 +3134,7 @@
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.9.0/ethers.umd.min.js"></script>
+    <script src="/techne-icons.js"></script>
     <script src="/protocol-icons.js"></script>
     <script src="/app.js"></script>
     <script src="/credits.js"></script>

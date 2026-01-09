@@ -99,7 +99,7 @@ PROTOCOL_CATEGORIES = {
         "protocols": ["aave", "compound", "morpho", "moonwell", "seamless", "sonne", 
                       "exactly", "radiant", "benqi", "solend", "marginfi", "kamino",
                       "spark", "maker", "frax-lend"],
-        "icon": "🏦",
+        "icon": "bank",
         "label": "Lending",
         "is_single": True
     },
@@ -107,7 +107,7 @@ PROTOCOL_CATEGORIES = {
     "vault": {
         "protocols": ["beefy", "yearn", "convex", "origin", "infinifi", "stargate",
                       "peapods", "meme-dollar", "memedollar"],
-        "icon": "🏛️",
+        "icon": "vault",
         "label": "Vault",
         "is_single": True
     },
@@ -115,7 +115,7 @@ PROTOCOL_CATEGORIES = {
     "staking": {
         "protocols": ["lido", "rocketpool", "marinade", "jito", "sanctum", "frax",
                       "eigenlayer", "mango"],
-        "icon": "💎",
+        "icon": "diamond",
         "label": "Staking",
         "is_single": True
     },
@@ -123,21 +123,21 @@ PROTOCOL_CATEGORIES = {
     "amm": {
         "protocols": ["uniswap", "curve", "balancer", "aerodrome", "velodrome", 
                       "raydium", "orca", "meteora", "sushiswap", "jupiter"],
-        "icon": "🔄",
+        "icon": "amm",
         "label": "AMM",
         "is_single": False  # IL RISK!
     },
     # Perpetuals/Derivatives (Single-sided usually)
     "perps": {
         "protocols": ["gmx", "drift", "avantis", "jupiter-perps"],
-        "icon": "📊",
+        "icon": "chart",
         "label": "Perps",
         "is_single": True
     },
     # Reward Aggregators (Depends on underlying)
     "rewards": {
         "protocols": ["merkl", "pendle", "extra"],
-        "icon": "🎁",
+        "icon": "rewards",
         "label": "Rewards",
         "is_single": False  # Usually on top of LP = IL Risk
     }
@@ -162,14 +162,14 @@ def get_pool_category(project: str, symbol: str = "") -> dict:
     if has_separator:
         return {
             "category": "lp",
-            "category_icon": "💧",
+            "category_icon": "lp",
             "category_label": "LP Pool",
             "is_single_sided": False
         }
     
     return {
         "category": "unknown",
-        "category_icon": "❓",
+        "category_icon": "defi",
         "category_label": "DeFi",
         "is_single_sided": True
     }

@@ -56,7 +56,7 @@ const AgentWalletUI = {
         container.innerHTML = `
             <div class="agent-vault-card">
                 <div class="vault-header">
-                    <div class="vault-icon">🤖</div>
+                    <div class="vault-icon"><span class="techne-icon">${TechneIcons.get('robot', 24)}</span></div>
                     <div class="vault-title">
                         <h2>Techne Agent Vault</h2>
                         <span class="vault-badge">Base • Single-Sided</span>
@@ -89,10 +89,10 @@ const AgentWalletUI = {
                 
                 <div class="vault-actions">
                     <button class="btn-vault-deposit" onclick="AgentWalletUI.showDepositModal()">
-                        <span>⬆️</span> Deposit
+                        <span class="techne-icon">${TechneIcons.deposit}</span> Deposit
                     </button>
                     <button class="btn-vault-withdraw" onclick="AgentWalletUI.showWithdrawModal()">
-                        <span>⬇️</span> Withdraw
+                        <span class="techne-icon">${TechneIcons.withdraw}</span> Withdraw
                     </button>
                 </div>
                 
@@ -124,7 +124,7 @@ const AgentWalletUI = {
                 <button class="modal-close" onclick="document.getElementById('vaultModal').remove()">✕</button>
                 
                 <div class="vault-modal-header">
-                    <span class="modal-icon">⬆️</span>
+                    <span class="modal-icon techne-icon">${TechneIcons.get('deposit', 24)}</span>
                     <h2>Deposit to Agent Vault</h2>
                 </div>
                 
@@ -158,7 +158,7 @@ const AgentWalletUI = {
                     </div>
                     
                     <button class="btn-deposit-confirm" id="depositBtn" onclick="AgentWalletUI.executeDeposit()">
-                        <span>🔐</span> Approve & Deposit
+                        <span class="techne-icon">${TechneIcons.lock}</span> Approve & Deposit
                     </button>
                     
                     <p class="modal-disclaimer">
@@ -191,7 +191,7 @@ const AgentWalletUI = {
                 <button class="modal-close" onclick="document.getElementById('vaultModal').remove()">✕</button>
                 
                 <div class="vault-modal-header">
-                    <span class="modal-icon">⬇️</span>
+                    <span class="modal-icon techne-icon">${TechneIcons.get('withdraw', 24)}</span>
                     <h2>Withdraw from Agent Vault</h2>
                 </div>
                 
@@ -222,7 +222,7 @@ const AgentWalletUI = {
                     </div>
                     
                     <button class="btn-withdraw-confirm" id="withdrawBtn" onclick="AgentWalletUI.executeWithdraw()">
-                        <span>💰</span> Withdraw
+                        <span class="techne-icon">${TechneIcons.coin}</span> Withdraw
                     </button>
                 </div>
             </div>
@@ -328,10 +328,10 @@ const AgentWalletUI = {
             const depositTx = await wallet.deposit(amountWei);
             await depositTx.wait();
 
-            btn.innerHTML = '<span>✅</span> Deposited!';
+            btn.innerHTML = '<span class="techne-icon">' + TechneIcons.success + '</span> Deposited!';
             btn.style.background = 'var(--success)';
 
-            Toast?.show('✅ Successfully deposited to Agent Vault!', 'success');
+            Toast?.show('Successfully deposited to Agent Vault!', 'success');
 
             // Refresh stats
             await this.refreshStats();
@@ -343,7 +343,7 @@ const AgentWalletUI = {
         } catch (e) {
             console.error('[AgentWallet] Deposit error:', e);
             alert('Deposit failed: ' + (e.reason || e.message));
-            btn.innerHTML = '<span>🔐</span> Approve & Deposit';
+            btn.innerHTML = '<span class="techne-icon">' + TechneIcons.lock + '</span> Approve & Deposit';
             btn.disabled = false;
         }
     },
@@ -375,10 +375,10 @@ const AgentWalletUI = {
             const tx = await wallet.withdraw(BigInt(shares));
             await tx.wait();
 
-            btn.innerHTML = '<span>✅</span> Withdrawn!';
+            btn.innerHTML = '<span class="techne-icon">' + TechneIcons.success + '</span> Withdrawn!';
             btn.style.background = 'var(--success)';
 
-            Toast?.show('✅ Successfully withdrawn from Agent Vault!', 'success');
+            Toast?.show('Successfully withdrawn from Agent Vault!', 'success');
 
             await this.refreshStats();
 
@@ -389,7 +389,7 @@ const AgentWalletUI = {
         } catch (e) {
             console.error('[AgentWallet] Withdraw error:', e);
             alert('Withdraw failed: ' + (e.reason || e.message));
-            btn.innerHTML = '<span>💰</span> Withdraw';
+            btn.innerHTML = '<span class="techne-icon">' + TechneIcons.coin + '</span> Withdraw';
             btn.disabled = false;
         }
     },

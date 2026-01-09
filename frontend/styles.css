@@ -77,6 +77,126 @@
 }
 
 /* ===========================================
+   TECHNE ICON SYSTEM
+   =========================================== */
+.techne-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.techne-icon svg {
+    display: block;
+}
+
+.techne-icon.icon-sm {
+    width: 14px;
+    height: 14px;
+}
+
+.techne-icon.icon-md {
+    width: 18px;
+    height: 18px;
+}
+
+.techne-icon.icon-lg {
+    width: 24px;
+    height: 24px;
+}
+
+.techne-icon.icon-xl {
+    width: 32px;
+    height: 32px;
+}
+
+/* Icon badge (like verify-icon-badge) */
+.techne-icon-badge {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, rgba(212, 168, 83, 0.15), rgba(212, 168, 83, 0.03));
+    border: 1px solid rgba(212, 168, 83, 0.35);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold);
+}
+
+.techne-icon-badge.badge-sm {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+}
+
+.techne-icon-badge.badge-lg {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+}
+
+/* ===========================================
+   UNIFIED CARD COMPONENT
+   =========================================== */
+.techne-card {
+    background: linear-gradient(180deg, rgba(20, 20, 20, 0.95), rgba(10, 10, 10, 0.98));
+    border: 1px solid rgba(212, 168, 83, 0.2);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 0 40px rgba(212, 168, 83, 0.05);
+}
+
+.techne-card-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(212, 168, 83, 0.15);
+}
+
+.techne-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+    background: linear-gradient(135deg, #fff, #ccc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.techne-card-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 4px 0 0 0;
+}
+
+/* Card variants */
+.techne-card.card-compact {
+    padding: 16px;
+}
+
+.techne-card.card-transparent {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.techne-card.card-interactive {
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.techne-card.card-interactive:hover {
+    border-color: rgba(212, 168, 83, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 40px rgba(212, 168, 83, 0.1);
+}
+
+/* ===========================================
    RESET & BASE
    =========================================== */
 *,
@@ -2144,17 +2264,19 @@ body.section-verify .main-content {
    POOL CARDS
    =========================================== */
 .pool-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    transition: var(--transition-base);
+    background: linear-gradient(180deg, rgba(20, 20, 20, 0.95), rgba(10, 10, 10, 0.98));
+    border: 1px solid rgba(212, 168, 83, 0.2);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    box-shadow: 0 0 30px rgba(212, 168, 83, 0.03);
 }
 
 .pool-card:hover {
-    border-color: var(--gold);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-gold);
+    border-color: rgba(212, 168, 83, 0.5);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(212, 168, 83, 0.15);
 }
 
 .pool-header {
@@ -3780,10 +3902,15 @@ body.section-verify .main-content {
 }
 
 .config-card {
-    background: linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.8) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
     padding: 24px;
+    transition: all 0.2s ease;
+}
+
+.config-card:hover {
+    border-color: rgba(212, 168, 83, 0.3);
 }
 
 .config-card h3 {
@@ -4589,10 +4716,15 @@ body.section-verify .main-content {
 
 /* Portfolio Cards */
 .portfolio-card {
-    background: linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.8) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
     padding: 20px;
+    transition: all 0.2s ease;
+}
+
+.portfolio-card:hover {
+    border-color: rgba(212, 168, 83, 0.3);
 }
 
 .portfolio-card .card-header {

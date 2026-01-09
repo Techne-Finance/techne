@@ -548,7 +548,7 @@ What would you like to configure?`;
 
         // Check if wallet is connected (required for deployment)
         if (!window.connectedWallet) {
-            this.addAgentMessage('⚠️ Please connect your wallet first to deploy an agent.');
+            this.addAgentMessage('<span class="techne-icon">' + TechneIcons.warning + '</span> Please connect your wallet first to deploy an agent.');
             return;
         }
 
@@ -567,8 +567,8 @@ What would you like to configure?`;
                 // Validate Pro Mode settings
                 const validation = proHelper.validate();
                 if (!validation.valid) {
-                    this.addAgentMessage(`❌ Validation failed:\n${validation.errors.join('\n')}`);
-                    btn.innerHTML = '<span>🚀</span> Deploy Agent';
+                    this.addAgentMessage('<span class="techne-icon">' + TechneIcons.error + '</span> Validation failed:\\n' + validation.errors.join('\\n'));
+                    btn.innerHTML = '<span class="techne-icon">' + TechneIcons.rocket + '</span> Deploy Agent';
                     btn.disabled = false;
                     return;
                 }
@@ -594,10 +594,10 @@ What would you like to configure?`;
             document.getElementById('agentBalance').textContent = '0 ETH';
 
             statusBar.style.display = 'flex';
-            btn.innerHTML = '<span>✅</span> Agent Deployed';
+            btn.innerHTML = '<span class="techne-icon">' + TechneIcons.success + '</span> Agent Deployed';
 
             // Build configuration summary
-            let configSummary = `🚀 Agent deployed successfully on **Base**!
+            let configSummary = `<span class="techne-icon" style="vertical-align: middle;">${TechneIcons.rocket}</span> Agent deployed successfully on **Base**!
 
 **Agent Wallet:** \`${address.slice(0, 10)}...${address.slice(-6)}\`
 
@@ -614,7 +614,7 @@ What would you like to configure?`;
             if (isProMode && proConfig) {
                 configSummary += `
 
-**🔥 Pro Mode Settings:**`;
+**<span class="techne-icon">${TechneIcons.fire}</span> Pro Mode Settings:**`;
                 if (proConfig.leverage > 1) {
                     configSummary += `\n• Leverage: ${proConfig.leverage.toFixed(1)}x`;
                 }
@@ -635,7 +635,7 @@ What would you like to configure?`;
 
             configSummary += `
 
-⚠️ Send USDC or ETH to the agent address on Base to start. The agent will automatically allocate to single-sided pools based on your settings.`;
+<span class="techne-icon">${TechneIcons.warning}</span> Send USDC or ETH to the agent address on Base to start. The agent will automatically allocate to single-sided pools based on your settings.`;
 
             this.addAgentMessage(configSummary);
 
@@ -643,7 +643,7 @@ What would you like to configure?`;
             this.logDeploymentToBackend(address, isProMode, proConfig);
 
         } catch (error) {
-            btn.innerHTML = '<span>❌</span> Deploy Failed';
+            btn.innerHTML = '<span class="techne-icon">' + TechneIcons.error + '</span> Deploy Failed';
             this.addAgentMessage(`Deployment failed: ${error.message}. Please try again.`);
 
             if (window.NeuralTerminal) {
@@ -678,7 +678,7 @@ What would you like to configure?`;
         const btn = document.getElementById('deployAgentBtn');
 
         statusBar.style.display = 'none';
-        btn.innerHTML = '<span>🚀</span> Deploy Agent';
+        btn.innerHTML = '<span class="techne-icon">' + TechneIcons.rocket + '</span> Deploy Agent';
         btn.disabled = false;
 
         this.addAgentMessage("Agent stopped. All positions will remain until you manually withdraw. You can redeploy anytime with new settings.");
@@ -690,7 +690,7 @@ What would you like to configure?`;
 
         messagesContainer.innerHTML += `
             <div class="chat-message agent">
-                <div class="message-avatar">🤖</div>
+                <div class="message-avatar"><span class="techne-icon">${TechneIcons.get('robot', 20)}</span></div>
                 <div class="message-content">
                     <p>${text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</p>
                 </div>

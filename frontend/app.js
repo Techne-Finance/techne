@@ -672,7 +672,7 @@ async function connectWallet() {
                 }
 
                 updateWalletUI();
-                Toast?.show('✅ Wallet connected: ' + connectedWallet.slice(0, 6) + '...' + connectedWallet.slice(-4), 'success');
+                Toast?.show('Wallet connected: ' + connectedWallet.slice(0, 6) + '...' + connectedWallet.slice(-4), 'success');
 
                 // Load user data
                 loadUserPoolHistory();
@@ -708,17 +708,17 @@ async function connectWallet() {
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <a href="https://metamask.io/download/" target="_blank" 
                        style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f6851b20; border: 1px solid #f6851b; border-radius: 8px; color: #fff; text-decoration: none;">
-                        <span style="font-size: 24px;">🦊</span>
+                        <span class="techne-icon">${TechneIcons.metamask}</span>
                         <span>MetaMask (Recommended)</span>
                     </a>
                     <a href="https://www.coinbase.com/wallet" target="_blank"
                        style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #0052ff20; border: 1px solid #0052ff; border-radius: 8px; color: #fff; text-decoration: none;">
-                        <span style="font-size: 24px;">🔵</span>
+                        <span class="techne-icon">${TechneIcons.coinbase}</span>
                         <span>Coinbase Wallet</span>
                     </a>
                     <a href="https://rabby.io/" target="_blank"
                        style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #8697ff20; border: 1px solid #8697ff; border-radius: 8px; color: #fff; text-decoration: none;">
-                        <span style="font-size: 24px;">🐰</span>
+                        <span class="techne-icon">${TechneIcons.rabby}</span>
                         <span>Rabby Wallet</span>
                     </a>
                 </div>
@@ -777,10 +777,10 @@ function showWalletMenu() {
             <div style="font-family: monospace; font-size: 0.9rem;">${connectedWallet}</div>
         </div>
         <button onclick="showPoolHistory()" style="width: 100%; padding: 10px; background: var(--bg-surface); border: none; border-radius: 8px; color: var(--text); cursor: pointer; margin-bottom: 8px; text-align: left;">
-            📜 Pool Order History
+            <span class="techne-icon">${TechneIcons.history}</span> Pool Order History
         </button>
         <button onclick="disconnectWallet()" style="width: 100%; padding: 10px; background: var(--danger); border: none; border-radius: 8px; color: white; cursor: pointer;">
-            🔌 Disconnect
+            <span class="techne-icon">${TechneIcons.error}</span> Disconnect
         </button>
     `;
 
@@ -835,7 +835,7 @@ function showPoolHistoryButton() {
         gap: 6px;
         margin-right: 8px;
     `;
-    btn.innerHTML = '📜 <span>History</span>';
+    btn.innerHTML = '<span class="techne-icon">' + TechneIcons.history + '</span> <span>History</span>';
     btn.onclick = showPoolHistory;
 
     headerRight.insertBefore(btn, headerRight.firstChild);
@@ -945,7 +945,7 @@ function updateWalletGatedSections() {
                     backdrop-filter: blur(8px);
                 `;
                 overlay.innerHTML = `
-                    <div style="font-size: 64px; margin-bottom: 20px;">🔒</div>
+                    <div class="techne-icon-badge badge-lg" style="margin-bottom: 20px;">${TechneIcons.get('lock', 32)}</div>
                     <h2 style="margin: 0 0 12px;">Connect Wallet</h2>
                     <p style="color: var(--text-secondary); margin-bottom: 24px; text-align: center;">
                         Connect your wallet to access this section
@@ -1210,16 +1210,16 @@ function createPoolCard(pool, isUnlocked, index, freeIndices = new Set()) {
 
             
             <div class="pool-badges">
-                ${pool.category_icon && pool.category_label ? `<span class="badge category" title="${pool.category}">${pool.category_icon} ${pool.category_label}</span>` : ''}
-                ${isVerified ? `<span class="badge verified">🤖 Verified</span>` : ''}
-                ${airdropPotential ? `<span class="badge airdrop">🎁 Airdrop</span>` : ''}
+                ${pool.category_icon && pool.category_label ? `<span class="badge category" title="${pool.category}"><span class="techne-icon">${TechneIcons.get(pool.category_icon, 12) || ''}</span> ${pool.category_label}</span>` : ''}
+                ${isVerified ? `<span class="badge verified"><span class="techne-icon">${TechneIcons.robot}</span> Verified</span>` : ''}
+                ${airdropPotential ? `<span class="badge airdrop"><span class="techne-icon">${TechneIcons.get('deposit', 12)}</span> Airdrop</span>` : ''}
                 ${pool.stablecoin ? `<span class="badge stable">Stable</span>` : ''}
             </div>
             
             ${isUnlocked ? `
                 <div class="pool-actions">
                     <button class="btn-deposit" onclick="event.stopPropagation(); handleDeposit('${pool.id || pool.pool}')">Deposit</button>
-                    <button class="btn-compare" onclick='event.stopPropagation(); YieldComparison?.addPool(${poolData})'>📊</button>
+                    <button class="btn-compare" onclick='event.stopPropagation(); YieldComparison?.addPool(${poolData})'><span class="techne-icon">${TechneIcons.get('chart', 14)}</span></button>
                     <button class="btn-add-strategy" onclick="event.stopPropagation(); addToStrategy('${pool.id || pool.pool}')">+</button>
                 </div>
             ` : ''}
