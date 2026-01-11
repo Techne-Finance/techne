@@ -93,43 +93,54 @@ const CreditsManager = {
 
         const modal = document.createElement('div');
         modal.id = 'buyCreditsModal';
-        modal.className = 'modal-overlay';
+        modal.className = 'credits-modal';
         modal.innerHTML = `
-            <div class="modal-container" style="max-width: 400px;">
-                <button class="modal-close" onclick="document.getElementById('buyCreditsModal').remove()">✕</button>
-                <h2 style="margin-bottom: 16px;">⚡ Buy Filter Credits</h2>
+            <div class="modal-overlay" onclick="document.getElementById('buyCreditsModal').remove()"></div>
+            <div class="modal-content">
+                <button class="modal-close-btn" onclick="document.getElementById('buyCreditsModal').remove()">✕</button>
                 
-                <div style="background: var(--bg-elevated); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
-                    <div style="font-size: 3rem; margin-bottom: 8px;">100</div>
-                    <div style="color: var(--text-muted);">filter credits</div>
-                    <div style="color: var(--gold); font-size: 0.85rem; margin-top: 8px;">= 4 filter searches</div>
+                <div class="modal-header">
+                    <svg width="32" height="32" viewBox="0 0 16 16" fill="none" class="modal-icon">
+                        <path d="M9 1L3 9H8L7 15L13 7H8L9 1Z" stroke="#d4a853" stroke-width="1.5" fill="rgba(212,168,83,0.15)" stroke-linejoin="round"/>
+                    </svg>
+                    <h2>Buy Filter Credits</h2>
                 </div>
-                
-                <div style="display: flex; justify-content: space-between; margin-bottom: 20px; color: var(--text-secondary);">
-                    <span>Price:</span>
-                    <span style="color: var(--gold); font-weight: 700;">0.10 USDC</span>
-                </div>
-                
-                <button id="confirmBuyCreditsBtn" class="btn-apply-filters" style="width: 100%;">
-                    <span>Pay with Wallet</span>
-                </button>
-                
-                <p style="text-align: center; margin-top: 16px; font-size: 0.8rem; color: var(--text-muted);">
-                    Payment via x402 protocol
-                </p>
-                
-                <hr style="border: none; border-top: 1px solid var(--border); margin: 20px 0;">
-                
-                <div style="text-align: center;">
-                    <p style="color: var(--gold); font-weight: 600; margin-bottom: 8px;">👑 Go Premium</p>
-                    <p style="color: var(--text-muted); font-size: 0.85rem;">Get 3000 free credits every day!</p>
-                    <a href="#premium" onclick="document.getElementById('buyCreditsModal').remove()" 
-                       style="color: var(--gold); font-size: 0.8rem;">Learn more →</a>
+
+                <div class="modal-body">
+                    <div class="credits-package">
+                        <div class="package-amount">100</div>
+                        <div class="package-label">filter credits</div>
+                        <div class="package-info">= 4 filter searches</div>
+                    </div>
+
+                    <div class="price-row">
+                        <span class="price-label">Price:</span>
+                        <span class="price-value">0.10 USDC</span>
+                    </div>
+
+                    <button id="confirmBuyCreditsBtn" class="btn-pay-wallet">
+                        Pay with Wallet
+                    </button>
+
+                    <p class="payment-method" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <img src="/meridian-logo.png" alt="Meridian" style="width: 18px; height: 18px;">
+                        Payment via Meridian x402 protocol
+                    </p>
+
+                    <div class="premium-cta">
+                        <div class="premium-icon">👑</div>
+                        <div class="premium-text">
+                            <strong>Go Premium</strong>
+                            <p>Get 3000 free credits every day!</p>
+                        </div>
+                        <a href="#premium" class="premium-link" onclick="document.getElementById('buyCreditsModal').remove()">Learn more →</a>
+                    </div>
                 </div>
             </div>
         `;
 
         document.body.appendChild(modal);
+        setTimeout(() => modal.classList.add('show'), 10);
 
         modal.addEventListener('click', (e) => {
             if (e.target === modal) modal.remove();
@@ -248,6 +259,18 @@ const CreditsManager = {
         document.getElementById('buyCreditsBtn')?.addEventListener('click', () => {
             this.showBuyModal();
         });
+
+        // Header credits balance click
+        const balanceEl = document.getElementById('creditsBalance');
+        if (balanceEl) {
+            console.log('[Credits] creditsBalance element found, adding click listener');
+            balanceEl.addEventListener('click', () => {
+                console.log('[Credits] Balance clicked, opening modal');
+                this.showBuyModal();
+            });
+        } else {
+            console.error('[Credits] creditsBalance element NOT found!');
+        }
 
         document.getElementById('applyFiltersBtn')?.addEventListener('click', () => {
             this.handleApplyFilters();

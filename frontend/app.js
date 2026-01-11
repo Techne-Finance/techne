@@ -1210,7 +1210,7 @@ function createPoolCard(pool, isUnlocked, index, freeIndices = new Set()) {
 
             
             <div class="pool-badges">
-                ${pool.category_icon && pool.category_label ? `<span class="badge category" title="${pool.category}"><span class="techne-icon">${TechneIcons.get(pool.category_icon, 12) || ''}</span> ${pool.category_label}</span>` : ''}
+                ${pool.category_icon && pool.category_label ? `<span class="badge category ${pool.category_icon}" title="${pool.category}">${pool.category_label}</span>` : ''}
                 ${isVerified ? `<span class="badge verified"><span class="techne-icon">${TechneIcons.robot}</span> Verified</span>` : ''}
                 ${airdropPotential ? `<span class="badge airdrop"><span class="techne-icon">${TechneIcons.get('deposit', 12)}</span> Airdrop</span>` : ''}
                 ${pool.stablecoin ? `<span class="badge stable">Stable</span>` : ''}

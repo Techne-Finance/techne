@@ -185,10 +185,12 @@ class ScoutAgent:
                 # 1. Fetch DeFiLlama Pools
                 llama_pools = await self._fetch_defillama_pools()
                 
-                # 2. Fetch Beefy Vaults (New Source)
+                # 2. Fetch Beefy Vaults
                 beefy_vaults = await self._fetch_beefy_vaults()
                 
-                # Merge and Filter
+                # 3. Fetch Merkl Incentivized Pools (Real-time APR)
+                merkl_pools = await self._fetch_merkl_pools("base")
+                
                 # Map Beefy format to our internal format
                 mapped_beefy = []
                 for vault in beefy_vaults:
@@ -197,24 +199,25 @@ class ScoutAgent:
                         "project": "beefy", 
                         "symbol": vault.get("name", "Unknown"),
                         "tvlUsd": vault.get("tvl", 0),
-                        "apy": (vault.get("apy", 0) or 0) * 100, # Beefy APY is decimal often
+                        "apy": (vault.get("apy", 0) or 0) * 100,
                         "pool": vault.get("id"),
                         "stablecoin": True,
                         "exposure": "single"
                     })
 
-                # Combine lists
-                all_pools = llama_pools + mapped_beefy
+                # Combine all sources
+                all_pools = llama_pools + mapped_beefy + merkl_pools
                 
                 # Update Cache
                 self.cache["pools"] = all_pools
+                self.cache["merkl_pools"] = merkl_pools  # Separate cache for Merkl
                 self.cache["last_update"] = datetime.now()
                 
                 # Notify subscribers
                 for callback in self.subscribers:
                     await callback(self.cache["pools"])
                     
-                logger.info(f"✅ Updated pool data: {len(self.cache['pools'])} pools tracked (Llama: {len(llama_pools)}, Beefy: {len(mapped_beefy)})")
+                logger.info(f"✅ Updated pool data: {len(all_pools)} pools (Llama: {len(llama_pools)}, Beefy: {len(mapped_beefy)}, Merkl: {len(merkl_pools)})")
                 
             except Exception as e:
                 logger.error(f"Error polling pools: {str(e)}")
@@ -353,6 +356,74 @@ class ScoutAgent:
         except Exception as e:
             logger.error(f"Beefy fetch failed: {e}")
             return self.cache.get("beefy_vaults", [])
+    
+    # ===========================================
+    # MERKL INTEGRATION (Real-time APR)
+    # ===========================================
+    
+    async def _fetch_merkl_pools(self, chain: str = "base") -> List[Dict]:
+        """Fetch Merkl incentivized pools with real-time APR data"""
+        try:
+            from data_sources.merkl import merkl_client
+            
+            opportunities = await merkl_client.get_opportunities(chain)
+            
+            if not opportunities:
+                logger.debug("No Merkl opportunities found")
+                return []
+            
+            merkl_pools = []
+            for opp in opportunities:
+                try:
+                    # Parse APR from breakdowns
+                    apr = 0.0
+                    breakdowns = opp.get("breakdowns", [])
+                    for bd in breakdowns:
+                        if isinstance(bd, dict):
+                            apr += float(bd.get("value", 0))
+                    
+                    # Get TVL
+                    tvl = float(opp.get("tvl", 0))
+                    
+                    # Skip low TVL pools
+                    if tvl < 10000:
+                        continue
+                    
+                    # Get pool name from identifier or tokens
+                    name = opp.get("name", "")
+                    if not name:
+                        tokens = opp.get("tokens", [])
+                        if tokens:
+                            symbols = [t.get("symbol", "?") for t in tokens if isinstance(t, dict)]
+                            name = "/".join(symbols)
+                    
+                    merkl_pools.append({
+                        "id": opp.get("identifier", ""),
+                        "chain": chain,
+                        "project": "merkl",
+                        "symbol": name or "Merkl Pool",
+                        "apy": round(apr, 2),
+                        "apyReward": round(apr, 2),
+                        "tvl": tvl,
+                        "tvlUsd": tvl,
+                        "tvl_formatted": self._format_tvl(tvl) if hasattr(self, '_format_tvl') else f"${tvl/1e6:.1f}M",
+                        "stablecoin": False,
+                        "exposure": "multi",
+                        "source": "merkl",
+                        "source_name": "Merkl",
+                        "source_badge": "🎯",
+                        "merkl_data": True,  # Flag for real-time APR
+                    })
+                except Exception as e:
+                    logger.debug(f"Error parsing Merkl opportunity: {e}")
+                    continue
+            
+            logger.info(f"🎯 Fetched {len(merkl_pools)} Merkl pools on {chain}")
+            return merkl_pools
+            
+        except Exception as e:
+            logger.error(f"Merkl fetch failed: {e}")
+            return []
     
     # ===========================================
     # GECKOTERMINAL INTEGRATION
@@ -567,6 +638,59 @@ class ScoutAgent:
         if self.cache.get("last_update"):
             return int((datetime.now() - self.cache["last_update"]).total_seconds())
         return None
+    
+    def get_merkl_pools(self) -> List[Dict]:
+        """Get cached Merkl pools with real-time APR data"""
+        return self.cache.get("merkl_pools", [])
+    
+    async def verify_pool_before_deposit(self, pool_address: str, chain: str = "base") -> Dict:
+        """
+        Verify pool with real-time on-chain data before deposit.
+        Uses SmartRouter's verify-any logic for:
+        - Real-time APY (on-chain for Aerodrome, API for Merkl)
+        - TVL confirmation
+        - Gauge status check
+        
+        Returns:
+            dict with verified pool data including real-time APY
+        """
+        try:
+            from api.smart_router import smart_router
+            
+            result = await smart_router.smart_route_pool_check(pool_address, chain)
+            
+            if result.get("success"):
+                pool_data = result.get("pool", {})
+                
+                # Add verification metadata
+                pool_data["verified"] = True
+                pool_data["verified_at"] = datetime.now().isoformat()
+                pool_data["data_quality"] = result.get("data_quality", "unknown")
+                
+                # Log verification result
+                logger.info(f"✅ Pool verified: {pool_address[:10]}... APY={pool_data.get('apy', 0):.2f}%")
+                
+                return {
+                    "success": True,
+                    "pool": pool_data,
+                    "can_deposit": pool_data.get("apy", 0) > 0 and pool_data.get("tvl", 0) > 10000,
+                    "warnings": result.get("warning")
+                }
+            else:
+                logger.warning(f"⚠️ Pool verification failed: {result.get('error')}")
+                return {
+                    "success": False,
+                    "error": result.get("error", "Verification failed"),
+                    "can_deposit": False
+                }
+                
+        except Exception as e:
+            logger.error(f"Pool verification error: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "can_deposit": False
+            }
 
 
 # Singleton instance

@@ -1,62 +1,71 @@
-# Techne.finance
+# Techne Protocol
 
-**AI-Powered Yield Optimizer on Base**
+**No-Code Builder for DeFi Trading Agents on Base**
 
-Pay $1 USDC → Get 5 verified yield pools for 24 hours.
+Build, deploy, and monitor AI-powered yield farming agents without writing code.
 
-## Features
+## 🚀 Features
 
-- **Multi-Chain Support**: Base, Ethereum, Solana, Hyperliquid
-- **Data Sources**: DefiLlama + GeckoTerminal
-- **Risk Analysis**: Tooltips explaining why pools are Low/Medium/High risk
-- **x402 Payments**: Pay with USDC on Base via Meridian
-- **Direct Pool Links**: Jump straight to the pool on the DEX
+### 🔍 **Explore**
+- Browse 100+ verified yield pools from Aerodrome, Beefy, Moonwell, Aave, Morpho
+- Real-time APY from on-chain gauge data
+- TVL, volume, and risk analysis
+- Filter by chain, protocol, asset type
 
-## Quick Start (Local)
+### ✅ **Verify Any Pool**
+- Paste any pool URL (Aerodrome, Uniswap, Curve, SushiSwap, Beefy, Moonwell, Morpho)
+- Get instant risk analysis & APY verification
+- On-chain verified APY using gauge contracts
+- GoPlus security screening for rug risks
+
+### 🤖 **Build (Agent Builder)**
+- No-code trading agent configuration
+- Strategy presets: Stable Farmer, Balanced Growth, Yield Maximizer, Airdrop Hunter
+- Protocol selection: Aerodrome, Beefy, Moonwell, Aave, Morpho, Compound
+- Risk controls: Max drawdown, APY range, slippage limits
+- Pro mode: Leverage, stop loss, volatility guard
+
+### 📊 **Portfolio**
+- Track all DeFi positions across protocols
+- Real-time P&L monitoring
+- Epoch rewards countdown
+
+## Supported Protocols
+
+| Protocol | Chain | APY Source |
+|----------|-------|------------|
+| Aerodrome | Base | ✅ On-chain gauge |
+| Beefy | Multi | ✅ API |
+| Moonwell | Base | ✅ API |
+| Aave | Base | ✅ API |
+| Morpho | Base | ✅ API |
+| Curve | Multi | ✅ API |
+| Uniswap V3 | Base | ✅ API |
+| SushiSwap | Base | ✅ API |
+
+## Quick Start
 
 ```bash
 # Backend
 cd backend
-python -m venv venv
-.\venv\Scripts\activate  # Windows
 pip install -r requirements.txt
-python main.py
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
 
-# Open http://localhost:8000/app
+# Open http://localhost:8000
 ```
 
-## Environment Variables
+## Environment
 
 ```env
 ALCHEMY_RPC_URL=https://base-mainnet.g.alchemy.com/v2/YOUR_KEY
-MERIDIAN_WALLET=0xYourWalletAddress
-PORT=8000
 ```
-
-## Deploy to Railway
-
-1. Push to GitHub
-2. Connect Railway to repo
-3. Set environment variables
-4. Deploy
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/yields` | GET | Get aggregated yields |
-| `/api/pro-pack/create` | POST | Create $1/5 pools session |
-| `/api/pro-pack/status/{id}` | GET | Check session status |
-| `/api/pro-pack/dismiss` | POST | Dismiss a pool |
-| `/api/chains` | GET | List supported chains |
-| `/health` | GET | Health check |
 
 ## Tech Stack
 
-- **Backend**: Python, FastAPI, httpx
+- **Backend**: Python, FastAPI, Web3.py
 - **Frontend**: Vanilla JS, HTML, CSS
-- **Blockchain**: ethers.js, web3.py
-- **Data**: DefiLlama API, GeckoTerminal API
+- **Data**: GeckoTerminal, DefiLlama, On-chain gauges
+- **RPC**: Alchemy (Base)
 
 ## License
 

@@ -289,6 +289,793 @@ const PoolDetailModal = {
         }
     },
 
+    // =========================================
+    // APY EXPLAINER - Source and Confidence
+    // =========================================
+
+    /**
+     * Render APY source explanation
+     * Shows user where APY comes from and any caveats
+     */
+    renderApyExplainer(pool) {
+        const apySource = pool.apy_source || 'unknown';
+        const hasGauge = pool.gauge_address || pool.has_gauge;
+        const isEpoch = this.isEpochProtocol(pool.project);
+        const isCL = (pool.pool_type === 'cl') || (pool.project || '').toLowerCase().includes('slipstream');
+
+        // Determine source label and explanation
+        let sourceLabel, sourceIcon, explanation, confidence;
+
+        if (apySource.includes('gauge') || apySource.includes('v2_onchain')) {
+            sourceLabel = 'Gauge Emissions';
+            sourceIcon = '🎯';
+            explanation = 'APY from AERO token rewards distributed to stakers';
+            confidence = 'high';
+        } else if (apySource.includes('cl_calculated')) {
+            sourceLabel = 'Gauge + Total TVL';
+            sourceIcon = '📊';
+            explanation = 'Emissions ÷ total pool TVL. Actual staker APR may be higher if not all liquidity is staked.';
+            confidence = 'medium';
+        } else if (apySource.includes('defillama')) {
+            sourceLabel = 'DefiLlama Aggregate';
+            sourceIcon = '📈';
+            explanation = 'Historical yield data from aggregator';
+            confidence = 'medium';
+        } else if (apySource.includes('geckoterminal')) {
+            sourceLabel = 'GeckoTerminal';
+            sourceIcon = '🦎';
+            explanation = 'Market-derived APY estimate';
+            confidence = 'medium';
+        } else {
+            sourceLabel = 'Estimated';
+            sourceIcon = '⚙️';
+            explanation = 'Calculated from available data';
+            confidence = 'low';
+        }
+
+        // Build caveats based on pool characteristics
+        const caveats = [];
+        if (isEpoch) caveats.push('Epoch-based: changes weekly');
+        if (isCL) caveats.push('CL pool: gauge APR may differ');
+        if (hasGauge) caveats.push('Requires gauge staking');
+        if (pool.apy > 100) caveats.push('High APY: verify sustainability');
+
+        // If APY is N/A, explain why
+        if (!pool.apy || pool.apy === 0) {
+            const reason = pool.apy_reason || pool.apy_status || 'Data unavailable';
+            return `
+                <div class="pd-apy-explainer unavailable">
+                    <div class="pd-apy-source">
+                        <span class="pd-source-icon">❓</span>
+                        <span class="pd-source-label">APY Unavailable</span>
+                    </div>
+                    <div class="pd-apy-reason">${this.formatApyReason(reason)}</div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="pd-apy-explainer">
+                <div class="pd-apy-source">
+                    <span class="pd-source-icon">${sourceIcon}</span>
+                    <span class="pd-source-label">Source: ${sourceLabel}</span>
+                    <span class="pd-confidence ${confidence}">${confidence.toUpperCase()}</span>
+                </div>
+                <div class="pd-apy-explanation">${explanation}</div>
+                ${caveats.length > 0 ? `
+                    <div class="pd-apy-caveats">
+                        ${caveats.map(c => `<span class="pd-caveat">• ${c}</span>`).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    },
+
+    /**
+     * Render "Why this APY can change" expandable section
+     * Educates user about volatility factors
+     */
+    renderApyChangeExplainer(pool) {
+        const isCL = (pool.pool_type === 'cl') || (pool.project || '').toLowerCase().includes('slipstream');
+        const isEpoch = this.isEpochProtocol(pool.project);
+        const hasGauge = pool.gauge_address || pool.has_gauge;
+
+        const reasons = [];
+
+        // Epoch-based emissions
+        if (isEpoch) {
+            reasons.push({
+                icon: '⏰',
+                title: 'Epoch-based emissions',
+                desc: 'Rewards reset each epoch (typically weekly). New votes determine emission levels.'
+            });
+        }
+
+        // CL liquidity dependency
+        if (isCL) {
+            reasons.push({
+                icon: '🎯',
+                title: 'Active liquidity dependency',
+                desc: 'CL pool APY depends on your position range. Out-of-range = 0 rewards.'
+            });
+        }
+
+        // Gauge re-weighting
+        if (hasGauge) {
+            reasons.push({
+                icon: '🗳️',
+                title: 'Gauge can be re-weighted',
+                desc: 'veAERO/veVELO voters decide emissions. Gauge weight changes weekly.'
+            });
+        }
+
+        // TVL changes
+        reasons.push({
+            icon: '💧',
+            title: 'TVL fluctuations',
+            desc: 'Same rewards ÷ more TVL = lower APY. Large deposits dilute returns.'
+        });
+
+        // Token price
+        if (pool.apy_reward > 0 || hasGauge) {
+            reasons.push({
+                icon: '📉',
+                title: 'Reward token price',
+                desc: 'APY is calculated at current token prices. Token value changes affect real returns.'
+            });
+        }
+
+        if (reasons.length === 0) return '';
+
+        return `
+            <details class="pd-apy-change-section">
+                <summary class="pd-apy-change-header">
+                    <span class="pd-change-icon">⚡</span>
+                    <span>Why this APY can change</span>
+                    <span class="pd-expand-arrow">▶</span>
+                </summary>
+                <div class="pd-apy-change-content">
+                    ${reasons.map(r => `
+                        <div class="pd-change-reason">
+                            <span class="pd-reason-icon">${r.icon}</span>
+                            <div class="pd-reason-text">
+                                <strong>${r.title}</strong>
+                                <span>${r.desc}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </details>
+        `;
+    },
+
+    /**
+     * Render Liquidity Stress Indicator
+     * Simulates impact of TVL drops since we don't have historical data
+     */
+    renderLiquidityStress(pool) {
+        const tvl = pool.tvl || pool.tvlUsd || 0;
+        if (!tvl || tvl <= 0) return '';
+
+        // Format TVL helper
+        const formatTvl = (val) => {
+            if (val >= 1e9) return `$${(val / 1e9).toFixed(1)}B`;
+            if (val >= 1e6) return `$${(val / 1e6).toFixed(1)}M`;
+            if (val >= 1e3) return `$${(val / 1e3).toFixed(0)}K`;
+            return `$${val.toFixed(0)}`;
+        };
+
+        // Calculate stress scenarios
+        const scenarios = [
+            { drop: 10, level: 'low', label: 'Low impact', color: '#22C55E' },
+            { drop: 30, level: 'medium', label: 'Medium impact', color: '#F59E0B' },
+            { drop: 50, level: 'high', label: 'High slippage risk', color: '#EF4444' }
+        ];
+
+        // Determine current stress level based on absolute TVL
+        let currentStress = 'healthy';
+        let stressColor = '#22C55E';
+        if (tvl < 100000) {
+            currentStress = 'critical';
+            stressColor = '#EF4444';
+        } else if (tvl < 500000) {
+            currentStress = 'stressed';
+            stressColor = '#F59E0B';
+        } else if (tvl < 2000000) {
+            currentStress = 'moderate';
+            stressColor = '#84CC16';
+        }
+
+        return `
+            <div class="pd-liquidity-stress">
+                <div class="pd-stress-header">
+                    <span class="pd-stress-icon">💧</span>
+                    <span class="pd-stress-title">Liquidity Stress Test</span>
+                    <span class="pd-stress-current" style="color: ${stressColor}">
+                        ${currentStress.charAt(0).toUpperCase() + currentStress.slice(1)}
+                    </span>
+                </div>
+                <div class="pd-stress-scenarios">
+                    ${scenarios.map(s => {
+            const newTvl = tvl * (1 - s.drop / 100);
+            return `
+                            <div class="pd-stress-row ${s.level}">
+                                <div class="pd-stress-drop">-${s.drop}% TVL</div>
+                                <div class="pd-stress-bar-container">
+                                    <div class="pd-stress-bar" style="width: ${100 - s.drop}%; background: ${s.color}"></div>
+                                </div>
+                                <div class="pd-stress-result">
+                                    <span class="pd-stress-tvl">${formatTvl(newTvl)}</span>
+                                    <span class="pd-stress-impact" style="color: ${s.color}">${s.label}</span>
+                                </div>
+                            </div>
+                        `;
+        }).join('')}
+                </div>
+                <div class="pd-stress-footer">
+                    Simulated impact if liquidity exits. Current: ${formatTvl(tvl)}
+                </div>
+            </div>
+        `;
+    },
+
+    formatApyReason(reason) {
+        const reasons = {
+            'CL_POOL_NO_ONCHAIN_TVL': 'Concentrated liquidity - TVL data unavailable',
+            'NO_GAUGE': 'No gauge - no emission rewards',
+            'GAUGE_METHODS_FAILED': 'Unable to read gauge contract',
+            'LP_PRICE_ZERO': 'Could not determine LP token value',
+            'requires_external_tvl': 'Waiting for external TVL data',
+            'unsupported': 'Pool type not supported for APY calculation',
+            'error': 'Error during calculation'
+        };
+        return reasons[reason] || reason || 'Calculation not available';
+    },
+
+    // =========================================
+    // DATA COVERAGE - Transparency Section
+    // =========================================
+
+    /**
+     * Render data coverage section
+     * Shows what data is available vs unavailable
+     */
+    renderDataCoverage(pool) {
+        const coverage = [];
+
+        // On-chain state - green if we have gauge verification
+        const hasGaugeVerification = pool.has_gauge || pool.gauge_address;
+        const hasAddress = pool.pool_address || pool.address;
+
+        coverage.push({
+            label: 'On-chain State',
+            status: hasGaugeVerification ? 'available' : (hasAddress ? 'partial' : 'unavailable'),
+            detail: hasGaugeVerification ? 'Gauge verified' : (hasAddress ? 'Address found' : 'Not verified')
+        });
+
+        // APY
+        if (pool.apy && pool.apy > 0) {
+            const source = (pool.apy_source || '').toLowerCase();
+            // Gauge, V2 on-chain, CL calculated, and Merkl are all "our" calculations
+            const isOnchain = source.includes('gauge') ||
+                source.includes('onchain') ||
+                source.includes('v2_') ||
+                source.includes('cl_calculated') ||
+                source.includes('merkl') ||
+                source.includes('aerodrome');
+            // External = defillama, geckoterminal, etc
+            const isExternal = source.includes('defillama') ||
+                source.includes('gecko') ||
+                source.includes('external');
+
+            let status, detail;
+            if (isOnchain) {
+                status = 'available';
+                detail = 'On-chain verified';
+            } else if (isExternal) {
+                status = 'partial';
+                detail = 'Aggregator data';
+            } else {
+                status = 'partial';
+                detail = 'Calculated estimate';
+            }
+
+            coverage.push({
+                label: 'APY Calculation',
+                status: status,
+                detail: detail
+            });
+        } else {
+            coverage.push({
+                label: 'APY Calculation',
+                status: 'unavailable',
+                detail: this.formatApyReason(pool.apy_reason || pool.apy_status)
+            });
+        }
+
+        // TVL
+        coverage.push({
+            label: 'TVL',
+            status: pool.tvl > 0 ? 'available' : 'unavailable',
+            detail: pool.tvl > 0 ? 'Real-time data' : 'No data'
+        });
+
+        // Volume
+        coverage.push({
+            label: '24h Volume',
+            status: pool.volume_24h || pool.volume_24h_formatted !== 'N/A' ? 'available' : 'unavailable',
+            detail: pool.volume_24h ? 'Market data' : 'Not tracked'
+        });
+
+        // Historical
+        coverage.push({
+            label: 'TVL History',
+            status: typeof pool.tvl_change_7d === 'number' ? 'available' : 'unavailable',
+            detail: typeof pool.tvl_change_7d === 'number' ? '7-day trend' : 'No history'
+        });
+
+        const availableCount = coverage.filter(c => c.status === 'available').length;
+        const totalCount = coverage.length;
+        const coveragePercent = Math.round((availableCount / totalCount) * 100);
+
+        return `
+            <div class="pd-data-coverage">
+                <div class="pd-coverage-header">
+                    <span class="pd-coverage-title">📋 Data Coverage</span>
+                    <span class="pd-coverage-score">${availableCount}/${totalCount} (${coveragePercent}%)</span>
+                </div>
+                <div class="pd-coverage-grid">
+                    ${coverage.map(c => `
+                        <div class="pd-coverage-item ${c.status}">
+                            <span class="pd-coverage-dot ${c.status}"></span>
+                            <span class="pd-coverage-label">${c.label}</span>
+                            <span class="pd-coverage-detail">${c.detail}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    // =========================================
+    // CONFIDENCE LEVEL - How Certain Are We?
+    // =========================================
+
+    // Render confidence level based on data completeness
+    // Shows user how reliable our estimates are
+    renderConfidenceLevel(pool) {
+        // Calculate confidence score based on available data
+        let confidencePoints = 0;
+        let maxPoints = 0;
+        const factors = [];
+
+        // APY Source (most important)
+        maxPoints += 40;
+        const apySource = (pool.apy_source || '').toLowerCase();
+
+        // Tier 1: On-chain verified sources (gauge data used for APY)
+        if (apySource.includes('onchain') || apySource.includes('gauge') ||
+            apySource.includes('aerodrome') || apySource.includes('velodrome') ||
+            apySource.includes('v2_onchain') || apySource.includes('staker') ||
+            apySource.includes('tvl_fallback')) {
+            confidencePoints += 40;
+            factors.push({ label: 'APY', status: 'high', text: 'On-chain verified' });
+        }
+        // Tier 2: Calculated from emissions/rewards
+        else if (apySource.includes('merkl') || apySource.includes('cl_calculated') ||
+            apySource.includes('cl_staker') || apySource.includes('reward')) {
+            confidencePoints += 35;
+            factors.push({ label: 'APY', status: 'high', text: 'Calculated from rewards' });
+        }
+        // Tier 3: Verified API sources (known protocols with reliable APY data)
+        else if (apySource.includes('beefy') || apySource.includes('moonwell') ||
+            apySource.includes('aave') || apySource.includes('compound') ||
+            apySource.includes('morpho') || apySource.includes('curve') ||
+            apySource.includes('sushi') || apySource.includes('uniswap')) {
+            confidencePoints += 30;
+            factors.push({ label: 'APY', status: 'high', text: 'Protocol API verified' });
+        }
+        // Tier 4: Aggregator data
+        else if (apySource.includes('defillama') || apySource.includes('gecko') ||
+            apySource.includes('llama')) {
+            confidencePoints += 25;
+            factors.push({ label: 'APY', status: 'medium', text: 'Third-party aggregator' });
+        }
+        // Tier 5: Has APY but unknown source
+        else if (pool.apy > 0) {
+            confidencePoints += 15;
+            factors.push({ label: 'APY', status: 'low', text: 'Source unverified' });
+        }
+        // No APY
+        else {
+            factors.push({ label: 'APY', status: 'unavailable', text: 'Unknown source' });
+        }
+
+        // TVL Data
+        maxPoints += 25;
+        if (pool.tvl > 0) {
+            confidencePoints += 25;
+            factors.push({ label: 'TVL', status: 'high', text: `$${(pool.tvl / 1e6).toFixed(2)}M verified` });
+        } else {
+            factors.push({ label: 'TVL', status: 'unavailable', text: 'Not available' });
+        }
+
+        // Historical Data
+        maxPoints += 20;
+        if (pool.tvl_change_7d !== undefined && pool.tvl_change_7d !== 0) {
+            confidencePoints += 20;
+            factors.push({ label: 'History', status: 'high', text: '7-day data available' });
+        } else {
+            factors.push({ label: 'History', status: 'unavailable', text: 'No historical data' });
+        }
+
+        // Protocol Recognition
+        maxPoints += 15;
+        const knownProtocols = ['aerodrome', 'velodrome', 'uniswap', 'aave', 'compound', 'moonwell', 'beefy', 'morpho', 'curve', 'sushiswap', 'sushi'];
+        const projectLower = (pool.project || '').toLowerCase();
+        if (knownProtocols.some(p => projectLower.includes(p))) {
+            confidencePoints += 15;
+            factors.push({ label: 'Protocol', status: 'high', text: 'Verified protocol' });
+        } else {
+            confidencePoints += 5;
+            factors.push({ label: 'Protocol', status: 'medium', text: 'Less known' });
+        }
+
+        const confidencePercent = Math.round((confidencePoints / maxPoints) * 100);
+        let confidenceLabel, confidenceColor, confidenceEmoji;
+
+        if (confidencePercent >= 80) {
+            confidenceLabel = 'High';
+            confidenceColor = '#22C55E';
+            confidenceEmoji = '🟢';
+        } else if (confidencePercent >= 50) {
+            confidenceLabel = 'Medium';
+            confidenceColor = '#F59E0B';
+            confidenceEmoji = '🟡';
+        } else {
+            confidenceLabel = 'Low';
+            confidenceColor = '#EF4444';
+            confidenceEmoji = '🔴';
+        }
+
+        return `
+            <div class="pd-confidence-section">
+                <div class="pd-confidence-header">
+                    <span class="pd-confidence-title">🔍 Data Confidence</span>
+                    <span class="pd-confidence-badge" style="background: ${confidenceColor}20; color: ${confidenceColor}">
+                        ${confidenceEmoji} ${confidenceLabel} (${confidencePercent}%)
+                    </span>
+                </div>
+                <div class="pd-confidence-subtitle">How reliable are our estimates?</div>
+                <div class="pd-confidence-factors">
+                    ${factors.map(f => `
+                        <div class="pd-confidence-factor ${f.status}">
+                            <span class="pd-conf-label">${f.label}</span>
+                            <span class="pd-conf-status ${f.status}">
+                                ${f.status === 'high' ? '✓' : f.status === 'medium' ? '~' : '?'}
+                            </span>
+                            <span class="pd-conf-text">${f.text}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    // =========================================
+    // DECISION GUIDANCE - Is This Right For Me?
+    // =========================================
+
+    // Render decision guidance based on pool characteristics
+    // Helps user understand if pool matches their profile
+    renderDecisionGuidance(pool) {
+        const recommendations = [];
+        const warnings = [];
+
+        // Analyze APY sustainability
+        const apy = pool.apy || 0;
+        const apyReward = pool.apy_reward || 0;
+        const rewardPercent = apy > 0 ? (apyReward / apy) * 100 : 0;
+
+        if (rewardPercent > 80) {
+            warnings.push({
+                icon: '⚠️',
+                text: 'APY heavily depends on token emissions',
+                detail: 'May decrease as incentives are reduced'
+            });
+        }
+
+        if (apy > 50) {
+            warnings.push({
+                icon: '🔥',
+                text: `High APY (${apy.toFixed(0)}%) is likely temporary`,
+                detail: 'Based on current incentive rates'
+            });
+        }
+
+        // Analyze TVL
+        const tvl = pool.tvl || 0;
+        if (tvl < 500000) {
+            warnings.push({
+                icon: '💧',
+                text: 'Lower liquidity pool',
+                detail: 'May have slippage on larger positions'
+            });
+        } else if (tvl > 10000000) {
+            recommendations.push({
+                icon: '✓',
+                text: 'Deep liquidity',
+                detail: 'Suitable for larger positions'
+            });
+        }
+
+        // Analyze pool type
+        const poolType = pool.pool_type || '';
+        const isConcentrated = poolType === 'cl' || (pool.protocol || '').includes('slipstream');
+
+        if (isConcentrated) {
+            warnings.push({
+                icon: '📊',
+                text: 'Requires active management',
+                detail: 'Concentrated liquidity - rebalance needed'
+            });
+        }
+
+        // Stable vs volatile
+        if (pool.il_risk === 'yes') {
+            warnings.push({
+                icon: '📉',
+                text: 'Impermanent loss risk',
+                detail: 'One asset may depreciate vs the other'
+            });
+        } else if (pool.pool_type === 'stable') {
+            recommendations.push({
+                icon: '✓',
+                text: 'Stablecoin pair',
+                detail: 'Minimal IL risk'
+            });
+        }
+
+        // Good for scenarios
+        const goodFor = [];
+        if (apy < 15 && tvl > 5000000 && pool.il_risk !== 'yes') {
+            goodFor.push('Conservative yield farming');
+        }
+        if (apy > 30 && tvl > 1000000) {
+            goodFor.push('Short-term yield optimization');
+        }
+        if (pool.pool_type === 'stable') {
+            goodFor.push('Stable yield with low IL');
+        }
+        if (rewardPercent < 50 && apy > 5) {
+            goodFor.push('Sustainable long-term holding');
+        }
+
+        return `
+            <div class="pd-decision-section">
+                <div class="pd-decision-header">
+                    <span class="pd-decision-title">💡 Decision Guidance</span>
+                </div>
+                
+                ${warnings.length > 0 ? `
+                    <div class="pd-decision-warnings">
+                        <div class="pd-decision-subtitle">⚠️ Consider Before Depositing</div>
+                        ${warnings.map(w => `
+                            <div class="pd-decision-item warning">
+                                <span class="pd-decision-icon">${w.icon}</span>
+                                <div class="pd-decision-content">
+                                    <span class="pd-decision-text">${w.text}</span>
+                                    <span class="pd-decision-detail">${w.detail}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                
+                ${recommendations.length > 0 ? `
+                    <div class="pd-decision-recs">
+                        <div class="pd-decision-subtitle">✅ Positive Factors</div>
+                        ${recommendations.map(r => `
+                            <div class="pd-decision-item positive">
+                                <span class="pd-decision-icon">${r.icon}</span>
+                                <div class="pd-decision-content">
+                                    <span class="pd-decision-text">${r.text}</span>
+                                    <span class="pd-decision-detail">${r.detail}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                
+                ${goodFor.length > 0 ? `
+                    <div class="pd-decision-goodfor">
+                        <span class="pd-goodfor-label">Good for:</span>
+                        ${goodFor.map(g => `<span class="pd-goodfor-tag">${g}</span>`).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    },
+
+    // =========================================
+    // EXIT STRATEGY - How Do I Withdraw?
+    // =========================================
+
+    // Render exit strategy section
+    // Shows user how to withdraw and any constraints
+    renderExitStrategy(pool) {
+        const exitInfo = [];
+        const projectLower = (pool.project || '').toLowerCase();
+        const poolType = pool.pool_type || 'lp';
+
+        // Determine withdrawal method based on protocol
+        if (projectLower.includes('aerodrome') || projectLower.includes('velodrome')) {
+            exitInfo.push({
+                icon: '🏊',
+                label: 'Withdraw at',
+                value: `${pool.project || 'Protocol'} app`,
+                link: pool.pool_link || `https://${projectLower.includes('aero') ? 'aerodrome.finance' : 'velodrome.finance'}`
+            });
+            if (pool.has_gauge) {
+                exitInfo.push({
+                    icon: '🎯',
+                    label: 'Claim rewards',
+                    value: 'Unstake from gauge first',
+                    link: null
+                });
+            }
+        } else if (projectLower.includes('moonwell')) {
+            exitInfo.push({
+                icon: '🌙',
+                label: 'Redeem at',
+                value: 'Moonwell app',
+                link: pool.pool_link || 'https://moonwell.fi'
+            });
+            exitInfo.push({
+                icon: '📊',
+                label: 'Availability',
+                value: `${100 - (pool.utilization_rate || 0)}% available for withdrawal`,
+                link: null
+            });
+        } else if (projectLower.includes('beefy')) {
+            exitInfo.push({
+                icon: '🐄',
+                label: 'Withdraw at',
+                value: 'Beefy vault page',
+                link: pool.pool_link || 'https://app.beefy.com'
+            });
+            if (pool.vault_withdrawal_fee) {
+                exitInfo.push({
+                    icon: '💸',
+                    label: 'Withdrawal fee',
+                    value: `${pool.vault_withdrawal_fee}%`,
+                    link: null
+                });
+            }
+        } else {
+            exitInfo.push({
+                icon: '🔗',
+                label: 'Withdraw via',
+                value: pool.project || 'Protocol app',
+                link: pool.pool_link || null
+            });
+        }
+
+        // Epoch-based rewards
+        if (this.isEpochProtocol(pool.project)) {
+            const epoch = this.getEpochCountdown();
+            exitInfo.push({
+                icon: '⏰',
+                label: 'Claim before',
+                value: `Epoch ends in ${epoch.display}`,
+                link: null
+            });
+        }
+
+        // Slippage warning for low TVL
+        const tvl = pool.tvl || 0;
+        if (tvl < 500000) {
+            exitInfo.push({
+                icon: '⚠️',
+                label: 'Slippage warning',
+                value: 'Exit in smaller chunks for large positions',
+                link: null
+            });
+        }
+
+        return `
+            <div class="pd-exit-section">
+                <div class="pd-exit-header">
+                    <span class="pd-exit-title">🚪 Exit Strategy</span>
+                </div>
+                <div class="pd-exit-items">
+                    ${exitInfo.map(e => `
+                        <div class="pd-exit-item">
+                            <span class="pd-exit-icon">${e.icon}</span>
+                            <span class="pd-exit-label">${e.label}:</span>
+                            ${e.link ?
+                `<a href="${e.link}" target="_blank" class="pd-exit-value link">${e.value}</a>` :
+                `<span class="pd-exit-value">${e.value}</span>`
+            }
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    // =========================================
+    // VERIFY FLAGS - Concrete Risk Indicators
+    // =========================================
+
+
+    /**
+     * Render concrete risk flags (not generic "Medium")
+     * Uses backend risk_flags when available, falls back to frontend detection
+     */
+    renderVerifyFlags(pool) {
+        let flags = [];
+
+        // PRIORITY: Use backend risk_flags if available (from SmartRouter)
+        if (pool.risk_flags && pool.risk_flags.length > 0) {
+            flags = pool.risk_flags.map(rf => ({
+                icon: rf.icon || '⚠️',
+                text: rf.label,
+                type: rf.severity === 'high' ? 'warning' : (rf.severity === 'medium' ? 'caution' : 'info'),
+                tooltip: rf.description
+            }));
+        } else {
+            // FALLBACK: Frontend detection (for pools without backend flags)
+            const isCL = (pool.pool_type === 'cl') || (pool.project || '').toLowerCase().includes('slipstream');
+            const isStable = pool.pool_type === 'stable' || pool.stablecoin;
+
+            // Pool type flags
+            if (isCL) {
+                flags.push({ icon: '🎯', text: 'Concentrated Liquidity', type: 'info', tooltip: 'Active liquidity mgmt required' });
+            }
+            if (pool.gauge_address) {
+                flags.push({ icon: '⚡', text: 'Emissions-based yield', type: 'info', tooltip: 'APY from token rewards' });
+            }
+            if (this.isEpochProtocol(pool.project)) {
+                flags.push({ icon: '⏰', text: 'Epoch-based rewards', type: 'info', tooltip: 'Rewards reset weekly' });
+            }
+
+            // Risk flags
+            if (!isStable && (pool.il_risk === 'yes' || pool.il_risk !== 'no')) {
+                flags.push({ icon: '📉', text: 'Impermanent Loss risk', type: 'warning', tooltip: 'Volatile token pair' });
+            }
+            if (pool.apy > 200) {
+                flags.push({ icon: '🔥', text: 'Very high APY', type: 'warning', tooltip: 'Verify sustainability' });
+            }
+            if (pool.tvl < 100000) {
+                flags.push({ icon: '💧', text: 'Low liquidity', type: 'warning', tooltip: 'May have slippage issues' });
+            }
+
+            // External dependency
+            if (pool.apy_source && (pool.apy_source.includes('external') || pool.apy_source.includes('cl_calculated'))) {
+                flags.push({ icon: '🔗', text: 'External data dependency', type: 'info', tooltip: 'APY uses off-chain data' });
+            }
+        }
+
+        if (flags.length === 0) {
+            return ''; // No flags to show
+        }
+
+        return `
+            <div class="pd-verify-flags">
+                <div class="pd-flags-title">🚩 Risk Flags</div>
+                <div class="pd-flags-grid">
+                    ${flags.map(f => `
+                        <div class="pd-flag ${f.type}" title="${f.tooltip}">
+                            <span class="pd-flag-icon">${f.icon}</span>
+                            <span class="pd-flag-text">${f.text}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    },
+
     // Render Artisan Agent verdict banner for verified pools
     // Greek Gold Gaming Matrix style - elegant circular score
     renderVerdictBanner(pool) {
@@ -439,11 +1226,14 @@ const PoolDetailModal = {
                             </div>
                         </div>
                     </div>
-                    <div class="pd-apy-block">
+                    <div class="pd-apy-block" ${pool.apy_optimal ? `title="Up to ${pool.apy_optimal.toFixed(0)}% for narrow tick ranges (Aerodrome-style). Displayed APY is realistic average."` : ''}>
                         <span class="pd-apy-value">${pool.apy > 0 ? pool.apy.toFixed(2) + '%' : (pool.trading_fee ? `~${(pool.trading_fee * 365).toFixed(0)}%*` : 'N/A')}</span>
-                        <span class="pd-apy-label">${pool.apy > 0 ? 'APY' : (pool.trading_fee ? 'Est. APR' : 'APY')}</span>
+                        <span class="pd-apy-label">${pool.apy > 0 ? (pool.apy_optimal ? 'APY ℹ️' : 'APY') : (pool.trading_fee ? 'Est. APR' : 'APY')}</span>
                     </div>
                 </div>
+                
+                <!-- APY Source Explainer (Verified pools only) -->
+                ${pool.isVerified ? this.renderApyExplainer(pool) : ''}
                 
                 <!-- Metrics Grid (tread.fi style) -->
                 <div class="pd-metrics-row">
@@ -470,6 +1260,27 @@ const PoolDetailModal = {
                         <div class="pd-metric-label">Type</div>
                     </div>
                 </div>
+                
+                <!-- Pool Characteristics Flags (Verified pools only) -->
+                ${pool.isVerified ? this.renderVerifyFlags(pool) : ''}
+                
+                <!-- Why APY Can Change (expandable) -->
+                ${this.renderApyChangeExplainer(pool)}
+                
+                <!-- Liquidity Stress Test -->
+                ${this.renderLiquidityStress(pool)}
+                
+                <!-- Data Coverage Section (Verified pools only) -->
+                ${pool.isVerified ? this.renderDataCoverage(pool) : ''}
+                
+                <!-- Confidence Level - How Certain Are We? -->
+                ${pool.isVerified ? this.renderConfidenceLevel(pool) : ''}
+                
+                <!-- Decision Guidance - Is This Right For Me? -->
+                ${pool.isVerified ? this.renderDecisionGuidance(pool) : ''}
+                
+                <!-- Exit Strategy - How Do I Withdraw? -->
+                ${pool.isVerified ? this.renderExitStrategy(pool) : ''}
                 
                 <!-- Market Dynamics Section -->
                 <div class="pd-section">
@@ -510,11 +1321,17 @@ const PoolDetailModal = {
                         ` : ''}
                         
                         <div class="pd-data-card">
-                            <div class="pd-data-label">7D TVL TREND</div>
-                            <div class="pd-trend-value ${(pool.tvl_change_7d || 0) >= 0 ? 'up' : 'down'}">
-                                ${(pool.tvl_change_7d || 0) >= 0 ? PoolIcons.trendUp : PoolIcons.trendDown}
-                                ${Math.abs(pool.tvl_change_7d || 0)}%
-                            </div>
+                            <div class="pd-data-label">TVL STABILITY</div>
+                            ${pool.tvl_change_7d !== undefined && pool.tvl_change_7d !== null && pool.tvl_change_7d !== 0 ? `
+                                <div class="pd-trend-value ${pool.tvl_change_7d >= 0 ? 'up' : 'down'}">
+                                    ${pool.tvl_change_7d >= 0 ? PoolIcons.trendUp : PoolIcons.trendDown}
+                                    ${pool.tvl_change_7d >= 0 ? '+' : ''}${pool.tvl_change_7d.toFixed(1)}% 7d
+                                </div>
+                            ` : `
+                                <div class="pd-trend-value unknown" title="No historical pool-level data available">
+                                    <span style="opacity: 0.5">📊</span> Unknown
+                                </div>
+                            `}
                         </div>
                         
                         <div class="pd-data-card">
@@ -1253,6 +2070,652 @@ detailStyles.textContent = `
         .pd-header-main {
             flex-direction: column;
         }
+    }
+    
+    /* ========================================= */
+    /* APY EXPLAINER - Source and Confidence    */
+    /* ========================================= */
+    
+    .pd-apy-explainer {
+        background: rgba(212, 168, 83, 0.05);
+        border: 1px solid rgba(212, 168, 83, 0.15);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 12px;
+    }
+    
+    .pd-apy-explainer.unavailable {
+        background: rgba(239, 68, 68, 0.05);
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+    
+    .pd-apy-source {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+    
+    .pd-source-icon {
+        font-size: 0.9rem;
+    }
+    
+    .pd-source-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .pd-confidence {
+        font-size: 0.6rem;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .pd-confidence.high {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10B981;
+    }
+    
+    .pd-confidence.medium {
+        background: rgba(251, 191, 36, 0.15);
+        color: #FBBF24;
+    }
+    
+    .pd-confidence.low {
+        background: rgba(239, 68, 68, 0.15);
+        color: #EF4444;
+    }
+    
+    .pd-apy-explanation {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+    }
+    
+    .pd-apy-reason {
+        font-size: 0.7rem;
+        color: #EF4444;
+    }
+    
+    .pd-apy-caveats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .pd-caveat {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    
+    /* ========================================= */
+    /* WHY APY CAN CHANGE - Expandable Section  */
+    /* ========================================= */
+    
+    .pd-apy-change-section {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        margin-bottom: 14px;
+        overflow: hidden;
+    }
+    
+    .pd-apy-change-section[open] {
+        background: rgba(255, 255, 255, 0.03);
+    }
+    
+    .pd-apy-change-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        list-style: none;
+    }
+    
+    .pd-apy-change-header::-webkit-details-marker {
+        display: none;
+    }
+    
+    .pd-apy-change-header:hover {
+        color: var(--gold);
+    }
+    
+    .pd-change-icon {
+        font-size: 1rem;
+    }
+    
+    .pd-expand-arrow {
+        margin-left: auto;
+        font-size: 0.7rem;
+        transition: transform 0.2s;
+    }
+    
+    .pd-apy-change-section[open] .pd-expand-arrow {
+        transform: rotate(90deg);
+    }
+    
+    .pd-apy-change-content {
+        padding: 0 12px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .pd-change-reason {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+    }
+    
+    .pd-reason-icon {
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .pd-reason-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .pd-reason-text strong {
+        font-size: 0.8rem;
+        color: var(--text);
+    }
+    
+    .pd-reason-text span {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        line-height: 1.3;
+    }
+    
+    /* ========================================= */
+    /* LIQUIDITY STRESS TEST                    */
+    /* ========================================= */
+    
+    .pd-liquidity-stress {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 14px;
+    }
+    
+    .pd-stress-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    
+    .pd-stress-icon {
+        font-size: 1rem;
+    }
+    
+    .pd-stress-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .pd-stress-current {
+        margin-left: auto;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .pd-stress-scenarios {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .pd-stress-row {
+        display: grid;
+        grid-template-columns: 70px 1fr 100px;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .pd-stress-drop {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    
+    .pd-stress-bar-container {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    
+    .pd-stress-bar {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+    
+    .pd-stress-result {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+    }
+    
+    .pd-stress-tvl {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+    
+    .pd-stress-impact {
+        font-size: 0.65rem;
+        font-weight: 600;
+    }
+    
+    .pd-stress-footer {
+        margin-top: 8px;
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        text-align: center;
+        font-style: italic;
+    }
+    
+    /* ========================================= */
+    /* DATA COVERAGE - Transparency Section     */
+    /* ========================================= */
+    
+    .pd-data-coverage {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 14px;
+    }
+    
+    .pd-coverage-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .pd-coverage-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .pd-coverage-score {
+        font-size: 0.7rem;
+        color: var(--gold);
+        font-weight: 600;
+    }
+    
+    .pd-coverage-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .pd-coverage-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.7rem;
+    }
+    
+    .pd-coverage-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    
+    .pd-coverage-dot.available {
+        background: #10B981;
+        box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+    }
+    
+    .pd-coverage-dot.partial {
+        background: #FBBF24;
+        box-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+    }
+    
+    .pd-coverage-dot.unavailable {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .pd-coverage-label {
+        color: var(--text);
+        font-weight: 500;
+        min-width: 100px;
+    }
+    
+    .pd-coverage-detail {
+        color: var(--text-muted);
+        font-size: 0.65rem;
+    }
+    
+    .pd-coverage-item.unavailable .pd-coverage-label,
+    .pd-coverage-item.unavailable .pd-coverage-detail {
+        opacity: 0.5;
+    }
+    
+    /* ========================================= */
+    /* VERIFY FLAGS - Pool Characteristics      */
+    /* ========================================= */
+    
+    .pd-verify-flags {
+        margin-bottom: 14px;
+    }
+    
+    .pd-flags-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+    
+    .pd-flags-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .pd-flag {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        cursor: help;
+        transition: all 0.2s;
+    }
+    
+    .pd-flag.info {
+        background: rgba(212, 168, 83, 0.1);
+        border: 1px solid rgba(212, 168, 83, 0.2);
+        color: var(--gold);
+    }
+    
+    .pd-flag.warning {
+        background: rgba(251, 191, 36, 0.1);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        color: #FBBF24;
+    }
+    
+    .pd-flag:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .pd-flag-icon {
+        font-size: 0.8rem;
+    }
+    
+    .pd-flag-text {
+        white-space: nowrap;
+    }
+    
+    /* =========================================
+       CONFIDENCE LEVEL SECTION
+       ========================================= */
+    
+    .pd-confidence-section {
+        background: rgba(30, 30, 35, 0.6);
+        border: 1px solid rgba(212, 168, 83, 0.15);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
+    }
+    
+    .pd-confidence-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+    
+    .pd-confidence-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--gold);
+    }
+    
+    .pd-confidence-badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .pd-confidence-subtitle {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.5);
+        margin-bottom: 12px;
+    }
+    
+    .pd-confidence-factors {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .pd-confidence-factor {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+    }
+    
+    .pd-conf-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.7);
+        width: 60px;
+    }
+    
+    .pd-conf-status {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: bold;
+    }
+    
+    .pd-conf-status.high { background: #22C55E; color: white; }
+    .pd-conf-status.medium { background: #F59E0B; color: white; }
+    .pd-conf-status.low { background: #EF4444; color: white; }
+    .pd-conf-status.unavailable { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+    
+    .pd-conf-text {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    /* =========================================
+       DECISION GUIDANCE SECTION
+       ========================================= */
+    
+    .pd-decision-section {
+        background: rgba(30, 30, 35, 0.6);
+        border: 1px solid rgba(212, 168, 83, 0.15);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
+    }
+    
+    .pd-decision-header {
+        margin-bottom: 12px;
+    }
+    
+    .pd-decision-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--gold);
+    }
+    
+    .pd-decision-subtitle {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 8px;
+    }
+    
+    .pd-decision-warnings, .pd-decision-recs {
+        margin-bottom: 12px;
+    }
+    
+    .pd-decision-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+    }
+    
+    .pd-decision-item.warning {
+        background: rgba(239, 68, 68, 0.08);
+        border-left: 3px solid #EF4444;
+    }
+    
+    .pd-decision-item.positive {
+        background: rgba(34, 197, 94, 0.08);
+        border-left: 3px solid #22C55E;
+    }
+    
+    .pd-decision-icon {
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .pd-decision-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .pd-decision-text {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .pd-decision-detail {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .pd-decision-goodfor {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .pd-goodfor-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.6);
+    }
+    
+    .pd-goodfor-tag {
+        background: rgba(212, 168, 83, 0.15);
+        color: var(--gold);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 500;
+    }
+    
+    /* =========================================
+       EXIT STRATEGY SECTION
+       ========================================= */
+    
+    .pd-exit-section {
+        background: rgba(30, 30, 35, 0.6);
+        border: 1px solid rgba(212, 168, 83, 0.15);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
+    }
+    
+    .pd-exit-header {
+        margin-bottom: 12px;
+    }
+    
+    .pd-exit-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--gold);
+    }
+    
+    .pd-exit-items {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .pd-exit-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+    }
+    
+    .pd-exit-icon {
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .pd-exit-label {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.6);
+        flex-shrink: 0;
+    }
+    
+    .pd-exit-value {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .pd-exit-value.link {
+        color: var(--gold);
+        text-decoration: none;
+    }
+    
+    .pd-exit-value.link:hover {
+        text-decoration: underline;
     }
 `;
 document.head.appendChild(detailStyles);

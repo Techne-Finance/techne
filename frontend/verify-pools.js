@@ -231,6 +231,47 @@ const VerifyPools = {
             }
         }
 
+        // SushiSwap URL: https://www.sushi.com/pool/8453:0x... (chainId:address format)
+        if (input.includes('sushi.com') || input.includes('sushiswap')) {
+            // Format: /pool/8453:0x... or /pools/8453:0x...
+            const poolMatch = input.match(/pool[s]?\/(\d+):(0x[a-fA-F0-9]{40})/i);
+            if (poolMatch) {
+                console.log('[VerifyPools] Parsed SushiSwap pool:', poolMatch[2], 'chainId:', poolMatch[1]);
+                return {
+                    type: 'address',
+                    id: poolMatch[2].toLowerCase(),
+                    protocol: 'sushiswap',
+                    chainId: parseInt(poolMatch[1])
+                };
+            }
+            // Try simple address extraction
+            const simpleMatch = input.match(/(0x[a-fA-F0-9]{40})/i);
+            if (simpleMatch) {
+                return { type: 'address', id: simpleMatch[1].toLowerCase(), protocol: 'sushiswap' };
+            }
+        }
+
+        // Morpho URL: https://app.morpho.org/vault?vault=0x... or https://app.morpho.xyz/...
+        if (input.includes('morpho.org') || input.includes('morpho.xyz')) {
+            // Extract vault address from URL
+            const vaultMatch = input.match(/vault[=\/](0x[a-fA-F0-9]{40})/i);
+            if (vaultMatch) {
+                console.log('[VerifyPools] Parsed Morpho vault:', vaultMatch[1]);
+                return { type: 'address', id: vaultMatch[1].toLowerCase(), protocol: 'morpho' };
+            }
+            // Try market ID format
+            const marketMatch = input.match(/market[=\/](0x[a-fA-F0-9]+)/i);
+            if (marketMatch) {
+                console.log('[VerifyPools] Parsed Morpho market:', marketMatch[1]);
+                return { type: 'market', id: marketMatch[1].toLowerCase(), protocol: 'morpho' };
+            }
+            // Simple address
+            const addressMatch = input.match(/(0x[a-fA-F0-9]{40})/i);
+            if (addressMatch) {
+                return { type: 'address', id: addressMatch[1].toLowerCase(), protocol: 'morpho' };
+            }
+        }
+
         // UNIVERSAL: Any URL with token0 & token1 query params
         if (input.includes('token0=') && input.includes('token1=')) {
             const token0Match = input.match(/token0=(0x[a-fA-F0-9]{40})/i);
@@ -271,9 +312,9 @@ const VerifyPools = {
         const riskScore = this.calculateRiskScore(pool);
         const riskLevel = this.getRiskLevel(pool);
 
-        // Format volume
-        const volume = pool.volumeUsd1d || pool.volumeUsd7d || 0;
-        const volumeFormatted = this.formatNumber(volume);
+        // Format volume - check SmartRouter format (volume_24h) and DefiLlama format (volumeUsd1d)
+        const volume = pool.volume_24h || pool.volumeUsd1d || pool.volumeUsd7d || 0;
+        const volumeFormatted = pool.volume_24h_formatted || (volume > 0 ? '$' + this.formatNumber(volume) : 'N/A');
 
         // Generate premium insights based on pool data
         const premiumInsights = this.generateInsights(pool);
@@ -299,12 +340,13 @@ const VerifyPools = {
             tvl_formatted: '$' + this.formatNumber(pool.tvlUsd || pool.tvl || 0),
             tvl_change_7d: pool.apyPct7D || 0, // Use APY change as proxy for TVL trend
             volume_24h: volume,
-            volume_24h_formatted: volume > 0 ? ('$' + volumeFormatted) : 'N/A',
+            volume_24h_formatted: volumeFormatted,
 
             // APY breakdown - if apyBase/apyReward not available, treat total APY as base
             apy: pool.apy || 0,
             apy_base: this.getApyBase(pool),
             apy_reward: this.getApyReward(pool),
+            apy_optimal: pool.apy_optimal || null,  // For CL pools (narrow range APY)
             apyBase: pool.apyBase || pool.apy || 0,
             apyReward: pool.apyReward || 0,
 
@@ -350,6 +392,9 @@ const VerifyPools = {
 
             // Data source indicator
             dataSource: pool.dataSource || pool.source || 'defillama',
+
+            // Specific risk flags (from SmartRouter)
+            risk_flags: pool.risk_flags || [],
 
             // Keep original data for reference
             _raw: pool
@@ -822,40 +867,11 @@ const VerifyPools = {
         );
 
         if (cached) {
-            // Get fresh data using verify-any endpoint
-            const poolAddress = cached.pool_address || cached.address || poolId;
-            const chain = (cached.chain || 'base').toLowerCase();
-
-            Toast?.show('Refreshing pool data...', 'info');
-
-            try {
-                const response = await fetch(
-                    `http://localhost:8000/api/scout/verify-any?pool_address=${poolAddress}&chain=${chain}`
-                );
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.pool) {
-                        // Merge fresh data with cached
-                        const freshPool = {
-                            ...cached,
-                            ...data.pool,
-                            risk_score: data.risk_analysis?.risk_score,
-                            risk_level: data.risk_analysis?.risk_level,
-                            risk_reasons: data.risk_analysis?.risk_reasons || [],
-                            dataSource: data.source
-                        };
-                        const normalized = this.normalizePoolData(freshPool);
-                        this.showVerificationModal(normalized);
-                        return;
-                    }
-                }
-            } catch (error) {
-                console.log('[VerifyPools] Fresh fetch failed, using cached:', error);
-            }
-
-            // Fallback to cached data
+            // Use cached data directly - no refresh needed for history
+            console.log('[VerifyPools] Using cached data for:', poolId);
             const normalized = this.normalizePoolData(cached);
+            normalized.isVerified = true;  // Mark as verified since it came from history
+            normalized.fromCache = true;    // Flag for UI to show cached indicator
             this.showVerificationModal(normalized);
         } else {
             Toast?.show('Pool not found in history', 'warning');

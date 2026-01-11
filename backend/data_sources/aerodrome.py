@@ -30,8 +30,9 @@ WETH_BASE = "0x4200000000000000000000000000000000000006"
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
-# RPC endpoints with fallback
+# RPC endpoints with fallback (Alchemy first - much higher rate limits)
 RPC_ENDPOINTS = [
+    "https://base-mainnet.g.alchemy.com/v2/Cts9SUVykfnWx2pW5qWWS",  # Alchemy - 300M CU/mo free
     "https://mainnet.base.org",
     "https://base.llamarpc.com",
     "https://base.meowrpc.com"
@@ -323,21 +324,30 @@ class AerodromeOnChain:
     # APY CALCULATION (The Core Logic)
     # =========================================================================
     
-    async def get_real_time_apy(self, pool_address: str, is_cl_pool: bool = False) -> Dict[str, Any]:
+    async def get_real_time_apy(self, pool_address: str, pool_type_hint: str = None) -> Dict[str, Any]:
         """
         Calculate real-time APY from on-chain data.
         
-        For V2 pools:
-        reward_apy = (yearly_rewards_usd / total_staked_usd) * 100
+        Returns APY Capability Response with explicit contract:
+        - pool_type: "cl" | "v2" | "unknown"
+        - apy_status: "ok" | "requires_external_tvl" | "unsupported" | "error"
+        - reason: explicit error/status code
         
-        For CL (Slipstream) pools:
-        reward_apy = (yearly_rewards_usd / staked_liquidity_usd) * 100
-        
-        Where:
-        - yearly_rewards_usd = rewardRate * seconds_per_year * aero_price
-        - total_staked_usd = gauge.totalSupply * lp_token_price (V2)
-        - staked_liquidity_usd = stakedLiquidity from GeckoTerminal TVL (CL)
+        Caller can use pool_type_hint to skip detection (e.g., from SmartRouter).
         """
+        # Base response - always returned
+        response = {
+            "apy": 0,
+            "apy_reward": 0,
+            "apy_base": 0,
+            "has_gauge": False,
+            "pool_type": "unknown",
+            "apy_status": "unknown",
+            "reason": None,
+            "yearly_rewards_usd": 0,
+            "source": "aerodrome_onchain"
+        }
+        
         try:
             pool_address = Web3.to_checksum_address(pool_address)
             
@@ -346,116 +356,159 @@ class AerodromeOnChain:
             
             if gauge_address == ZERO_ADDRESS:
                 logger.debug(f"No gauge for pool {pool_address[:10]}...")
-                return {
-                    "apy": 0,
-                    "apy_reward": 0,
-                    "apy_base": 0,
-                    "has_gauge": False,
-                    "source": "aerodrome_onchain"
-                }
+                response["apy_status"] = "unsupported"
+                response["reason"] = "NO_GAUGE"
+                return response
             
-            # Step 2: Detect pool type and get emission data from Gauge
-            # Try CL gauge first (has stakedLiquidity), fall back to V2
+            response["has_gauge"] = True
+            response["gauge_address"] = gauge_address.lower()
+            
+            # Step 2: Detect pool type and get staked liquidity
             gauge_checksum = Web3.to_checksum_address(gauge_address)
             reward_rate = 0
-            total_staked_usd = 0
-            pool_type = "v2"
+            total_staked = 0
+            pool_type = pool_type_hint or "unknown"
+            staked_ratio = 1.0  # Default: assume all staked
             
-            # Try CL Gauge methods first
-            try:
-                cl_gauge = self.w3.eth.contract(address=gauge_checksum, abi=CL_GAUGE_ABI)
-                reward_rate = cl_gauge.functions.rewardRate().call()
-                # CL Gauge uses stakedLiquidity (uint128) not totalSupply
-                staked_liquidity = cl_gauge.functions.stakedLiquidity().call()
-                pool_type = "cl"
-                logger.info(f"CL Gauge detected: rewardRate={reward_rate}, stakedLiquidity={staked_liquidity}")
-            except Exception as cl_error:
-                logger.debug(f"Not a CL gauge, trying V2: {cl_error}")
-                staked_liquidity = 0
+            # STRATEGY: Try V2 gauge FIRST (more common), then CL
+            # V2 gauges have totalSupply() which returns staked LP tokens
+            # CL gauges use pool.stakedLiquidity() instead
             
-            # Fall back to V2 gauge if CL failed
-            if pool_type == "v2" or reward_rate == 0:
+            v2_gauge_success = False
+            
+            # If hint is V2 or unknown, try V2 gauge first
+            if pool_type in ["v2", "unknown"]:
                 try:
                     v2_gauge = self.w3.eth.contract(address=gauge_checksum, abi=GAUGE_ABI)
                     reward_rate = v2_gauge.functions.rewardRate().call()
                     total_staked = v2_gauge.functions.totalSupply().call()
-                    pool_type = "v2"
+                    
+                    # V2 detection: totalSupply > 0 means LP tokens are staked
+                    if reward_rate > 0 and total_staked > 0:
+                        pool_type = "v2"
+                        v2_gauge_success = True
+                        logger.info(f"V2 Gauge detected: rewardRate={reward_rate}, totalSupply={total_staked}")
                 except Exception as v2_error:
-                    logger.debug(f"V2 gauge methods also failed: {v2_error}")
-                    return {
-                        "apy": 0,
-                        "has_gauge": True,
-                        "gauge_address": gauge_address.lower(),
-                        "reason": "gauge_methods_failed",
-                        "source": "aerodrome_onchain"
-                    }
+                    logger.debug(f"V2 gauge check failed: {v2_error}")
+            
+            # If V2 failed OR hint is CL, try CL gauge
+            if not v2_gauge_success:
+                try:
+                    cl_gauge = self.w3.eth.contract(address=gauge_checksum, abi=CL_GAUGE_ABI)
+                    reward_rate = cl_gauge.functions.rewardRate().call()
+                    
+                    if reward_rate > 0:
+                        pool_type = "cl"
+                        logger.info(f"CL Gauge rewardRate: {reward_rate}")
+                        
+                        # Get stakedLiquidity from POOL contract (not gauge!)
+                        try:
+                            pool_checksum = Web3.to_checksum_address(pool_address)
+                            CL_POOL_ABI = [
+                                {'name': 'liquidity', 'inputs': [], 'outputs': [{'type': 'uint128'}], 'stateMutability': 'view', 'type': 'function'},
+                                {'name': 'stakedLiquidity', 'inputs': [], 'outputs': [{'type': 'uint128'}], 'stateMutability': 'view', 'type': 'function'},
+                            ]
+                            pool_contract = self.w3.eth.contract(address=pool_checksum, abi=CL_POOL_ABI)
+                            
+                            total_liquidity = pool_contract.functions.liquidity().call()
+                            staked_liquidity = pool_contract.functions.stakedLiquidity().call()
+                            
+                            if total_liquidity > 0:
+                                staked_ratio = staked_liquidity / total_liquidity
+                                logger.info(f"CL Pool staked ratio: {staked_ratio:.4f} ({staked_liquidity}/{total_liquidity})")
+                            else:
+                                staked_ratio = 1.0
+                                logger.info("CL Pool liquidity=0, using ratio=1.0")
+                                
+                            response["staked_liquidity"] = staked_liquidity
+                            response["total_liquidity"] = total_liquidity
+                            response["staked_ratio"] = staked_ratio
+                        except Exception as pool_error:
+                            # If stakedLiquidity fails, this might actually be V2!
+                            # V2 pools don't have liquidity/stakedLiquidity methods
+                            logger.info(f"Pool liquidity methods failed (likely V2): {pool_error}")
+                            
+                            # Fallback: try V2 gauge again with fresh call
+                            try:
+                                v2_gauge = self.w3.eth.contract(address=gauge_checksum, abi=GAUGE_ABI)
+                                total_staked = v2_gauge.functions.totalSupply().call()
+                                if total_staked > 0:
+                                    pool_type = "v2"
+                                    logger.info(f"Re-detected as V2 (has totalSupply={total_staked})")
+                            except:
+                                pass
+                            staked_ratio = 1.0  # Fallback
+                except Exception as cl_error:
+                    logger.warning(f"CL gauge methods also failed: {cl_error}")
+                    response["pool_type"] = pool_type
+                    response["apy_status"] = "error"
+                    response["reason"] = "GAUGE_METHODS_FAILED"
+                    return response
+            
+            response["pool_type"] = pool_type
+            response["reward_rate"] = reward_rate
             
             # Step 3: Get AERO price
             aero_price = await self.get_aero_price_onchain()
+            response["aero_price"] = aero_price
             
-            # Step 4: Calculate staked value in USD
-            if pool_type == "cl" and staked_liquidity > 0:
-                # For CL pools, we need TVL from external source or token prices
-                # Use stakedLiquidity as a proxy - it's in liquidity units
-                # We'll get accurate TVL from GeckoTerminal in the calling function
-                # For now, use a rough estimate: assume $10-100M range for major pools
-                # This will be overwritten by caller with accurate TVL
-                total_staked_usd = staked_liquidity / 1e12  # Rough conversion
-                logger.info(f"CL pool stakedLiquidity raw: {staked_liquidity}")
-            else:
-                # V2: Calculate from LP token price
+            # Step 4: Calculate yearly rewards (always possible if we have reward_rate)
+            SECONDS_PER_YEAR = 31_536_000
+            reward_rate_tokens = reward_rate / 1e18
+            yearly_rewards_usd = reward_rate_tokens * SECONDS_PER_YEAR * aero_price
+            response["yearly_rewards_usd"] = yearly_rewards_usd
+            response["reward_rate_per_second"] = reward_rate_tokens
+            
+            # Step 5: Calculate APY based on pool type
+            if pool_type == "cl":
+                # CL pools: Return staked_ratio for caller to calculate APR
+                logger.info(f"CL pool - yearly=${yearly_rewards_usd:,.0f}, staked_ratio={staked_ratio:.4f}")
+                response["apy_status"] = "requires_external_tvl"
+                response["reason"] = "CL_POOL_USE_STAKED_RATIO"
+                response["epoch_end"] = self.get_epoch_end_timestamp()
+                return response
+            
+            elif pool_type == "v2":
+                # V2 pools: Calculate from LP token price
                 lp_price = await self.get_lp_token_price(pool_address)
                 if lp_price == 0:
-                    return {
-                        "apy": 0,
-                        "has_gauge": True,
-                        "gauge_address": gauge_address.lower(),
-                        "reason": "lp_price_zero",
-                        "source": "aerodrome_onchain"
-                    }
+                    # LP price unavailable (RPC issue), let caller use TVL fallback
+                    logger.info(f"V2 pool - LP price unavailable, yearly=${yearly_rewards_usd:,.0f}")
+                    response["apy_status"] = "requires_external_tvl"
+                    response["reason"] = "V2_LP_PRICE_UNAVAILABLE"
+                    response["epoch_end"] = self.get_epoch_end_timestamp()
+                    return response
+                
                 total_staked_tokens = total_staked / 1e18
                 total_staked_usd = total_staked_tokens * lp_price
+                
+                if total_staked_usd > 0:
+                    reward_apy = (yearly_rewards_usd / total_staked_usd) * 100
+                    response["apy"] = reward_apy
+                    response["apy_reward"] = reward_apy
+                    response["total_staked_usd"] = total_staked_usd
+                    response["apy_status"] = "ok"
+                    response["reason"] = "V2_ONCHAIN_CALCULATED"
+                    response["epoch_end"] = self.get_epoch_end_timestamp()
+                    
+                    logger.info(f"V2 APY: {reward_apy:.2f}% (${yearly_rewards_usd:,.0f} / ${total_staked_usd:,.0f})")
+                    return response
+                else:
+                    response["apy_status"] = "error"
+                    response["reason"] = "ZERO_STAKED_USD"
+                    return response
             
-            # Step 5: Calculate APY
-            SECONDS_PER_YEAR = 31_536_000
-            reward_rate_tokens = reward_rate / 1e18  # AERO has 18 decimals
-            yearly_rewards_tokens = reward_rate_tokens * SECONDS_PER_YEAR
-            yearly_rewards_usd = yearly_rewards_tokens * aero_price
-            
-            # For CL pools, we return raw data and let caller supply accurate TVL
-            # For V2 pools, we have accurate staked USD
-            reward_apy = (yearly_rewards_usd / total_staked_usd) * 100 if total_staked_usd > 0 else 0
-            
-            epoch_end = self.get_epoch_end_timestamp()
-            
-            logger.info(f"On-chain APY ({pool_type}) for {pool_address[:10]}: {reward_apy:.2f}% "
-                       f"(rewardRate={reward_rate_tokens:.6f}/sec, yearlyUSD=${yearly_rewards_usd:,.0f}, stakedUSD=${total_staked_usd:,.0f})")
-            
-            return {
-                "apy": reward_apy,
-                "apy_reward": reward_apy,
-                "apy_base": 0,
-                "has_gauge": True,
-                "gauge_address": gauge_address.lower(),
-                "pool_type": pool_type,
-                "reward_rate": reward_rate,
-                "reward_rate_per_second": reward_rate_tokens,
-                "yearly_rewards_usd": yearly_rewards_usd,
-                "total_staked_usd": total_staked_usd,
-                "aero_price": aero_price,
-                "epoch_end": epoch_end,
-                "source": "aerodrome_onchain"
-            }
-            
+            else:
+                # Unknown pool type
+                response["apy_status"] = "unsupported"
+                response["reason"] = "UNKNOWN_POOL_TYPE"
+                return response
+                
         except Exception as e:
             logger.error(f"On-chain APY calculation failed: {e}")
-            return {
-                "apy": 0,
-                "apy_reward": 0,
-                "apy_base": 0,
-                "error": str(e),
-                "source": "aerodrome_onchain_error"
-            }
+            response["apy_status"] = "error"
+            response["reason"] = f"EXCEPTION: {str(e)}"
+            return response
     
     def get_epoch_end_timestamp(self) -> int:
         """

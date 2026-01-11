@@ -96,6 +96,14 @@ except ImportError as e:
     print(f"[Warning] Revenue router not available: {e}")
     REVENUE_AVAILABLE = False
 
+# Import position router (Position Tracking, Alerts)
+try:
+    from api.position_router import router as position_router
+    POSITION_TRACKING_AVAILABLE = True
+except ImportError as e:
+    print(f"[Warning] Position router not available: {e}")
+    POSITION_TRACKING_AVAILABLE = False
+
 app = FastAPI(
     title="Techne.finance API",
     description="AI-powered yield optimizer - Production Grade | Security + AI + Revenue",
@@ -137,6 +145,11 @@ if INTELLIGENCE_AVAILABLE:
 # Include revenue routes (Subscriptions, Fees, Payments)
 if REVENUE_AVAILABLE:
     app.include_router(revenue_router)
+
+# Include position routes (Position Tracking, Alerts)
+if POSITION_TRACKING_AVAILABLE:
+    app.include_router(position_router)
+    print("[Positions] Position tracking router loaded")
 
 # Include Telegram bot API routes
 try:

@@ -65,7 +65,11 @@
 
             <div class="header-right">
                 <!-- Credits Balance -->
-                <div class="credits-balance" id="creditsBalance" onclick="CreditsManager?.showBuyModal?.()">
+                <div class="credits-balance" id="creditsBalance">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="credits-icon">
+                        <path d="M9 1L3 9H8L7 15L13 7H8L9 1Z" stroke="#d4a853" stroke-width="1.5"
+                            fill="rgba(212,168,83,0.15)" stroke-linejoin="round" />
+                    </svg>
                     <span class="credits-amount" id="creditsAmount">--</span>
                     <span class="credits-label">credits</span>
                 </div>
@@ -137,18 +141,6 @@
                                 </svg></span>
                             <span class="credits-count" id="creditsCount">0</span>
                             <span class="credits-label">credits</span>
-                        </div>
-                    </div>
-
-                    <!-- Credits Info Banner -->
-                    <div class="credits-info" id="creditsInfo">
-                        <p class="credits-tip">Each filter search costs <strong>25 credits</strong></p>
-                        <div class="credits-actions">
-                            <button class="btn-buy-credits" id="buyCreditsBtn">
-                                <span>Buy 100 Credits</span>
-                                <span class="credits-price">0.10 USDC</span>
-                            </button>
-                            <a href="#premium" class="premium-link">Premium: 3000 credits/day →</a>
                         </div>
                     </div>
 
@@ -2493,7 +2485,15 @@
 
                             <!-- Protocols - Base Only -->
                             <div class="config-card">
-                                <h3>🔗 Protocols (Base)</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <path d="M6 3H3C2 3 1 4 1 5V13C1 14 2 15 3 15H11C12 15 13 14 13 13V10"
+                                            stroke="#d4a853" stroke-width="1.3" stroke-linecap="round" />
+                                        <path d="M9 1H15V7" stroke="#d4a853" stroke-width="1.3" stroke-linecap="round"
+                                            stroke-linejoin="round" />
+                                        <path d="M6 10L15 1" stroke="#d4a853" stroke-width="1.3"
+                                            stroke-linecap="round" />
+                                    </svg> Protocols (Base)</h3>
                                 <div class="protocol-grid" id="buildProtocolGrid">
                                     <button class="protocol-chip active" data-protocol="morpho" data-pool-side="single">
                                         <img src="/icons/protocols/morpho.png" alt="">
@@ -2565,7 +2565,12 @@
 
                             <!-- Assets -->
                             <div class="config-card">
-                                <h3>💎 Assets</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3"
+                                            fill="rgba(212,168,83,0.1)" /><text x="8" y="11" text-anchor="middle"
+                                            fill="#d4a853" font-size="8" font-weight="bold">$</text>
+                                    </svg> Assets</h3>
 
                                 <div class="asset-category">
                                     <span class="category-label">Stablecoins</span>
@@ -2616,7 +2621,12 @@
 
                             <!-- Duration & Allocation -->
                             <div class="config-card">
-                                <h3>⏱️ Duration & Allocation</h3>
+                                <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        style="vertical-align: middle; margin-right: 6px;">
+                                        <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3" />
+                                        <path d="M8 4V8L11 10" stroke="#d4a853" stroke-width="1.3"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg> Duration & Allocation</h3>
 
                                 <div class="config-group">
                                     <label>Investment Duration</label>
@@ -2762,7 +2772,7 @@
 
                             <!-- Deploy Button -->
                             <button class="btn-deploy-agent" id="deployAgentBtn">
-                                <span>🚀</span> Deploy Agent
+                                Deploy Agent
                             </button>
                             <p class="deploy-note">Agent will manage funds autonomously based on your settings</p>
                         </div>
@@ -3163,7 +3173,9 @@
     <script src="/premium-ui.js"></script>
 
     <!-- UX Polish: Subscription & Button Handlers -->
+    <script src="/credits-manager.js"></script>
     <script src="/subscription-ui.js"></script>
+    <script src="/filter-toast.js"></script>
     <script src="/button-handler.js"></script>
 </body>
 

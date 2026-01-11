@@ -9,11 +9,19 @@ Tiered Adapter System:
 """
 import logging
 import re
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from web3 import Web3
 from enum import Enum
 
 logger = logging.getLogger("SmartRouter")
+
+# Import security checker (GoPlus RugCheck)
+try:
+    from api.security_module import security_checker
+    SECURITY_CHECKER_AVAILABLE = True
+except ImportError:
+    SECURITY_CHECKER_AVAILABLE = False
+    logger.warning("Security checker not available")
 
 
 class Protocol(Enum):
@@ -25,6 +33,13 @@ class Protocol(Enum):
     BASESWAP = "baseswap"
     SUSHISWAP = "sushiswap"
     VELODROME = "velodrome"
+    # Single-sided vaults
+    BEEFY = "beefy"
+    YEARN = "yearn"
+    # Lending protocols
+    MOONWELL = "moonwell"
+    COMPOUND = "compound"
+    AAVE = "aave"
     UNKNOWN = "unknown"
 
 
@@ -126,10 +141,10 @@ class SmartRouter:
     # INPUT PARSING
     # =========================================================================
     
-    def parse_input(self, input_str: str) -> Tuple[Optional[str], Optional[str]]:
+    def parse_input(self, input_str: str) -> Tuple[Optional[str], Optional[str], Optional[Protocol]]:
         """
-        Parse user input - could be address or URL.
-        Returns (pool_address, chain)
+        Parse user input - could be address, URL, or vault ID.
+        Returns (pool_address_or_vault_id, chain, protocol_hint)
         """
         input_str = input_str.strip()
         
@@ -139,36 +154,81 @@ class SmartRouter:
         
         # Check if it's an address
         if input_str.startswith("0x") and len(input_str) == 42:
-            return input_str.lower(), None  # Chain unknown
+            return input_str.lower(), None, None  # Chain and protocol unknown
         
-        return None, None
+        return None, None, None
     
-    def _parse_url(self, url: str) -> Tuple[Optional[str], Optional[str]]:
-        """Parse pool URL to extract address and chain"""
-        url = url.lower()
+    def _parse_url(self, url: str) -> Tuple[Optional[str], Optional[str], Optional[Protocol]]:
+        """
+        Parse pool URL to extract address, chain, and protocol hint.
+        Returns (address_or_vault_id, chain, protocol_hint)
+        """
+        url_lower = url.lower()
+        
+        # =================================================================
+        # SINGLE-SIDED VAULTS
+        # =================================================================
+        
+        # Beefy: app.beefy.com/vault/{vault-id}
+        if "beefy.com/vault/" in url_lower or "beefy.finance/vault/" in url_lower:
+            # Extract vault ID from URL
+            match = re.search(r'/vault/([\w\-]+)', url_lower)
+            if match:
+                vault_id = match.group(1)
+                # Determine chain from vault ID prefix (e.g., base-aerodrome-usdc-weth)
+                chain = "base"  # Default
+                if vault_id.startswith("base-"):
+                    chain = "base"
+                elif vault_id.startswith("op-") or vault_id.startswith("optimism-"):
+                    chain = "optimism"
+                elif vault_id.startswith("arb-") or vault_id.startswith("arbitrum-"):
+                    chain = "arbitrum"
+                elif vault_id.startswith("eth-") or vault_id.startswith("ethereum-"):
+                    chain = "ethereum"
+                elif vault_id.startswith("bsc-"):
+                    chain = "bsc"
+                logger.info(f"🐄 Beefy vault detected: {vault_id} on {chain}")
+                return vault_id, chain, Protocol.BEEFY
+        
+        # Moonwell: moonwell.fi/markets/{chain}/{token}
+        if "moonwell.fi" in url_lower:
+            match = re.search(r'/markets?/([\w]+)/([\w]+)', url_lower)
+            if match:
+                chain = match.group(1).lower()
+                token = match.group(2).upper()
+                logger.info(f"🌙 Moonwell market detected: {token} on {chain}")
+                return token, chain, Protocol.MOONWELL
+            # Also handle direct mToken address
+            addr_match = re.search(r'0x[a-f0-9]{40}', url_lower)
+            if addr_match:
+                return addr_match.group(0), "base", Protocol.MOONWELL
+        
+        # =================================================================
+        # LP POOLS
+        # =================================================================
         
         # Aerodrome: aerodrome.finance/pools/0x...
-        if "aerodrome.finance" in url:
-            match = re.search(r'0x[a-f0-9]{40}', url)
-            return (match.group(0), "base") if match else (None, None)
+        if "aerodrome.finance" in url_lower:
+            match = re.search(r'0x[a-f0-9]{40}', url_lower)
+            return (match.group(0), "base", None) if match else (None, None, None)
         
         # Uniswap: app.uniswap.org/...base/pools/0x...
-        if "uniswap.org" in url:
-            match = re.search(r'0x[a-f0-9]{40}', url)
-            chain = "base" if "/base/" in url else "ethereum"
-            return (match.group(0), chain) if match else (None, None)
+        if "uniswap.org" in url_lower:
+            match = re.search(r'0x[a-f0-9]{40}', url_lower)
+            chain = "base" if "/base/" in url_lower else "ethereum"
+            return (match.group(0), chain, None) if match else (None, None, None)
         
         # GeckoTerminal: geckoterminal.com/base/pools/0x...
-        if "geckoterminal.com" in url:
-            match = re.search(r'/(base|eth|arbitrum|optimism)/pools/(0x[a-f0-9]{40})', url)
+        if "geckoterminal.com" in url_lower:
+            match = re.search(r'/(base|eth|arbitrum|optimism)/pools/(0x[a-f0-9]{40})', url_lower)
             if match:
                 chain_map = {"eth": "ethereum"}
                 chain = chain_map.get(match.group(1), match.group(1))
-                return match.group(2), chain
+                return match.group(2), chain, None
         
         # Fallback: try to find address
-        match = re.search(r'0x[a-f0-9]{40}', url)
-        return (match.group(0), None) if match else (None, None)
+        match = re.search(r'0x[a-f0-9]{40}', url_lower)
+        return (match.group(0), None, None) if match else (None, None, None)
     
     # =========================================================================
     # PROTOCOL DETECTION (The "Factory Check")
@@ -220,36 +280,53 @@ class SmartRouter:
         Main entry point: Intelligently route to correct adapter based on factory detection.
         
         Args:
-            input_str: Pool address or URL
+            input_str: Pool address, URL, or vault ID
             chain: Optional chain hint (will be auto-detected from URL if possible)
         
         Returns:
             Unified pool data with quality tier indicator
         """
-        # Step 1: Parse input
-        pool_address, parsed_chain = self.parse_input(input_str)
+        # Step 1: Parse input (now returns protocol hint for vaults)
+        parsed_address, parsed_chain, protocol_hint = self.parse_input(input_str)
         
-        if not pool_address:
+        if not parsed_address:
             return {
                 "success": False,
-                "error": "Invalid input - could not parse pool address",
+                "error": "Invalid input - could not parse pool address or vault ID",
                 "input": input_str
             }
         
         chain = chain or parsed_chain or "base"
-        logger.info(f"🧠 SmartRouter processing: {pool_address[:10]}... on {chain}")
         
-        # Step 2: Detect protocol via factory
-        protocol = await self.detect_protocol(pool_address, chain)
+        # Step 2: If we have a protocol hint from URL parsing, use it directly
+        if protocol_hint == Protocol.BEEFY:
+            logger.info(f"🐄 SmartRouter routing to Beefy: {parsed_address}")
+            return await self._route_beefy(parsed_address, chain)
+        
+        if protocol_hint == Protocol.MOONWELL:
+            logger.info(f"🌙 SmartRouter routing to Moonwell: {parsed_address}")
+            return await self._route_moonwell(parsed_address, chain)
+        
+        if protocol_hint == Protocol.YEARN:
+            # TODO: Implement Yearn routing
+            return {
+                "success": False,
+                "error": "Yearn vaults not yet supported",
+                "input": input_str
+            }
+        
+        # Step 3: For pool addresses, detect protocol via factory
+        logger.info(f"🧠 SmartRouter processing: {parsed_address[:10]}... on {chain}")
+        protocol = await self.detect_protocol(parsed_address, chain)
         adapter_type = PROTOCOL_ADAPTERS.get(protocol, "universal")
         
-        # Step 3: Route to appropriate adapter
+        # Step 4: Route to appropriate adapter
         if adapter_type == "aerodrome":
-            return await self._route_aerodrome(pool_address, chain, protocol)
+            return await self._route_aerodrome(parsed_address, chain, protocol)
         elif adapter_type == "uniswap_v3":
-            return await self._route_uniswap_v3(pool_address, chain)
+            return await self._route_uniswap_v3(parsed_address, chain)
         else:
-            return await self._route_universal(pool_address, chain, protocol)
+            return await self._route_universal(parsed_address, chain, protocol)
     
     async def _route_aerodrome(
         self, 
@@ -259,39 +336,179 @@ class SmartRouter:
     ) -> Dict[str, Any]:
         """
         Tier 1 (Premium): Full Aerodrome analysis.
-        - V2 pools: Use on-chain Gauge for APY
-        - Slipstream (CL): Use GeckoTerminal + on-chain enrichment
+        OPTIMIZED: Use GeckoTerminal first (no RPC), then minimal RPC for APY only.
+        - GeckoTerminal: TVL, symbols, volume (API call, fast)
+        - On-chain: Only gauge + rewardRate (3-5 RPC calls vs ~18 before)
         """
         pool_data = None
         source = "unknown"
         
-        # For Slipstream (CL pools), use GeckoTerminal as primary (more reliable for CL)
-        if protocol == Protocol.AERODROME_SLIPSTREAM:
-            try:
-                from data_sources.geckoterminal import gecko_client
-                gecko_data = await gecko_client.get_pool_by_address(chain, pool_address)
-                
-                if gecko_data and gecko_data.get("tvl", 0) > 0:
-                    pool_data = gecko_data
-                    source = "geckoterminal+factory_detected"
-                    logger.info(f"Slipstream pool via GeckoTerminal: TVL=${gecko_data.get('tvl', 0):,.0f}")
-            except Exception as e:
-                logger.warning(f"GeckoTerminal for Slipstream failed: {e}")
-        
-        # For V2 pools OR if Slipstream GeckoTerminal failed, try on-chain adapter
-        if not pool_data:
-            try:
-                from data_sources.aerodrome import aerodrome_client
-                pool_data = await aerodrome_client.get_pool_by_address(pool_address)
-                if pool_data:
-                    source = "aerodrome_onchain"
-            except Exception as e:
-                logger.warning(f"Aerodrome on-chain adapter failed: {e}")
+        # STEP 1: ALWAYS try GeckoTerminal first (no RPC calls, fast)
+        try:
+            from data_sources.geckoterminal import gecko_client
+            gecko_data = await gecko_client.get_pool_by_address(chain, pool_address)
+            
+            if gecko_data and gecko_data.get("tvl", 0) > 0:
+                pool_data = gecko_data
+                source = "geckoterminal+factory_detected"
+                logger.info(f"Aerodrome pool via GeckoTerminal: TVL=${gecko_data.get('tvl', 0):,.0f}")
+        except Exception as e:
+            logger.warning(f"GeckoTerminal fetch failed: {e}")
         
         # If we have data, enrich and return
         if pool_data:
             # Enrich with GeckoTerminal market data (volume, TVL trend)
             pool_data = await self._enrich_with_gecko_data(pool_data, pool_address, chain)
+            
+            # =========================================================
+            # APY CALCULATION - Using APY Capability Response Contract
+            # Zero heuristics - explicit branching on apy_status
+            # =========================================================
+            current_apy = pool_data.get("apy", 0)
+            
+            if not current_apy or current_apy == 0:
+                logger.info(f"Fetching APY from Aerodrome gauge for {pool_address[:10]}...")
+                try:
+                    from data_sources.aerodrome import aerodrome_client
+                    
+                    # Pass protocol hint to avoid double detection
+                    pool_type_hint = "cl" if protocol == Protocol.AERODROME_SLIPSTREAM else "v2"
+                    apy_data = await aerodrome_client.get_real_time_apy(pool_address, pool_type_hint)
+                    
+                    apy_status = apy_data.get("apy_status", "unknown")
+                    reason = apy_data.get("reason", "UNKNOWN")
+                    
+                    # Always propagate pool_type and has_gauge for frontend
+                    pool_data["pool_type"] = apy_data.get("pool_type", "unknown")
+                    pool_data["has_gauge"] = apy_data.get("has_gauge", False)
+                    
+                    logger.info(f"APY Response: status={apy_status}, reason={reason}, pool_type={pool_data['pool_type']}")
+                    
+                    # CONTRACT-BASED BRANCHING (no heuristics)
+                    if apy_status == "ok":
+                        # V2 pool - APY already calculated on-chain
+                        pool_data["apy"] = apy_data.get("apy", 0)
+                        pool_data["apy_reward"] = apy_data.get("apy_reward", 0)
+                        pool_data["apy_source"] = "aerodrome_v2_onchain"
+                        pool_data["gauge_address"] = apy_data.get("gauge_address")
+                        pool_data["epoch_remaining"] = apy_data.get("epoch_end")
+                        pool_data["apy_status"] = "ok"
+                        logger.info(f"✅ V2 APY from on-chain: {pool_data['apy']:.2f}%")
+                        
+                    elif apy_status == "requires_external_tvl" or apy_status == "requires_staked_tvl_conversion":
+                        # Pool needs TVL from external source (GeckoTerminal)
+                        total_tvl = pool_data.get("tvl", 0) or pool_data.get("tvlUsd", 0)
+                        yearly_rewards = apy_data.get("yearly_rewards_usd", 0)
+                        pool_type = apy_data.get("pool_type", "unknown")
+                        
+                        if total_tvl > 0 and yearly_rewards > 0:
+                            # V2 pools: Simple APR = yearly_rewards / TVL
+                            if pool_type == "v2":
+                                # For V2, TVL from GeckoTerminal represents all liquidity
+                                v2_apr = (yearly_rewards / total_tvl) * 100
+                                pool_data["apy"] = v2_apr
+                                pool_data["apy_reward"] = v2_apr
+                                pool_data["apy_source"] = "aerodrome_v2_tvl_fallback"
+                                pool_data["gauge_address"] = apy_data.get("gauge_address")
+                                pool_data["yearly_emissions_usd"] = yearly_rewards
+                                pool_data["epoch_remaining"] = apy_data.get("epoch_end")
+                                pool_data["apy_status"] = "ok"
+                                logger.info(f"✅ V2 APR (TVL fallback): {v2_apr:.2f}% (${yearly_rewards:,.0f} / ${total_tvl:,.0f})")
+                            
+                            # CL pools: Use staked ratio for accurate staker APR
+                            else:
+                                staked_ratio = apy_data.get("staked_ratio", 1.0)
+                                staked_tvl = total_tvl * staked_ratio
+                                
+                                # Realistic Staker APR = rewards / staked TVL
+                                staker_apr = (yearly_rewards / staked_tvl) * 100 if staked_tvl > 0 else 0
+                                
+                                # Optimal Range APR (Aerodrome-style) - FOR REFERENCE ONLY
+                                OPTIMAL_RANGE_FACTOR = 0.20
+                                optimal_tvl = total_tvl * OPTIMAL_RANGE_FACTOR
+                                optimal_apr = (yearly_rewards / optimal_tvl) * 100 if optimal_tvl > 0 else 0
+                                
+                                pool_apr = (yearly_rewards / total_tvl) * 100
+                                
+                                # Use REALISTIC staker APR as primary
+                                pool_data["apy"] = staker_apr
+                                pool_data["apy_reward"] = staker_apr
+                                pool_data["apy_optimal"] = optimal_apr
+                                pool_data["apy_pool_wide"] = pool_apr
+                                pool_data["apy_source"] = "aerodrome_cl_staker_apr"
+                                pool_data["gauge_address"] = apy_data.get("gauge_address")
+                                pool_data["yearly_emissions_usd"] = yearly_rewards
+                                pool_data["epoch_remaining"] = apy_data.get("epoch_end")
+                                pool_data["staked_ratio"] = staked_ratio
+                                pool_data["staked_tvl"] = staked_tvl
+                                pool_data["apy_status"] = "ok"
+                                logger.info(f"✅ CL APR: staker={staker_apr:.2f}%, optimal={optimal_apr:.2f}% (${yearly_rewards:,.0f})")
+                        else:
+                            pool_data["apy_status"] = "unavailable"
+                            pool_data["apy_reason"] = f"TVL_ZERO (tvl={total_tvl}, rewards={yearly_rewards})"
+                            logger.warning(f"APY unavailable: TVL=${total_tvl:,.0f}, rewards=${yearly_rewards:,.0f}")
+                    
+                    elif apy_status == "unsupported":
+                        # Pool type not supported for APY
+                        pool_data["apy_status"] = "unsupported"
+                        pool_data["apy_reason"] = reason
+                        logger.info(f"APY unsupported: {reason}")
+                        
+                    elif apy_status == "error":
+                        # Explicit error - bubble it up
+                        pool_data["apy_status"] = "error"
+                        pool_data["apy_reason"] = reason
+                        logger.warning(f"APY error: {reason}")
+                        
+                    else:
+                        # Unknown status - defensive
+                        pool_data["apy_status"] = "unknown"
+                        pool_data["apy_reason"] = f"UNEXPECTED_STATUS: {apy_status}"
+                        logger.warning(f"Unexpected APY status: {apy_status}")
+                        
+                except Exception as e:
+                    pool_data["apy_status"] = "error"
+                    pool_data["apy_reason"] = f"EXCEPTION: {str(e)}"
+                    logger.warning(f"Aerodrome APY call failed: {e}")
+            
+            # =================================================================
+            # GOPLUS SECURITY CHECK (RugCheck)
+            # =================================================================
+            security_result = {"status": "skipped", "tokens": {}}
+            if SECURITY_CHECKER_AVAILABLE:
+                try:
+                    # Extract token addresses
+                    token0 = pool_data.get("token0")
+                    token1 = pool_data.get("token1")
+                    tokens_to_check = [t for t in [token0, token1] if t and t.startswith("0x")]
+                    
+                    if tokens_to_check:
+                        security_result = await security_checker.check_security(tokens_to_check, chain)
+                        
+                        # Check for critical issues (honeypot)
+                        summary = security_result.get("summary", {})
+                        if summary.get("has_critical"):
+                            pool_data["security_status"] = "critical"
+                            pool_data["is_honeypot"] = True
+                            logger.warning(f"HONEYPOT DETECTED: {pool_address}")
+                        elif summary.get("total_penalty", 0) > 40:
+                            pool_data["security_status"] = "high_risk"
+                        elif summary.get("total_penalty", 0) > 15:
+                            pool_data["security_status"] = "medium_risk"
+                        else:
+                            pool_data["security_status"] = "safe"
+                        
+                        pool_data["security_penalty"] = summary.get("total_penalty", 0)
+                        pool_data["security_risks"] = summary.get("all_risks", [])
+                        
+                except Exception as e:
+                    logger.warning(f"Security check failed: {e}")
+                    security_result = {"status": "error", "error": str(e), "tokens": {}}
+            
+            pool_data["security_result"] = security_result
+            
+            # Generate specific risk flags (now includes security info)
+            risk_flags = self._generate_risk_flags(pool_data, protocol)
             
             return {
                 "success": True,
@@ -299,6 +516,7 @@ class SmartRouter:
                     **pool_data,
                     "protocol": protocol.value,
                     "protocol_name": self._get_protocol_name(protocol),
+                    "risk_flags": risk_flags,  # Specific risk explanations
                 },
                 "data_quality": DataQuality.PREMIUM.value,
                 "quality_reason": "Aerodrome pool with verified factory",
@@ -309,6 +527,272 @@ class SmartRouter:
         # Fallback to universal scanner if all else fails
         return await self._route_universal(pool_address, chain, protocol)
     
+    async def _route_beefy(
+        self, 
+        vault_id: str, 
+        chain: str
+    ) -> Dict[str, Any]:
+        """
+        Route Beefy vault verification.
+        Uses Beefy API for vault info, APY, TVL.
+        """
+        try:
+            from data_sources.beefy import beefy_client
+            
+            # Get full vault data (includes APY and TVL)
+            vault_data = await beefy_client.get_vault_full_data(vault_id)
+            
+            if not vault_data:
+                return {
+                    "success": False,
+                    "error": f"Beefy vault not found: {vault_id}",
+                    "input": vault_id
+                }
+            
+            # Generate vault-specific risk flags
+            risk_flags = self._generate_vault_risk_flags(vault_data)
+            
+            return {
+                "success": True,
+                "pool": {
+                    **vault_data,
+                    "protocol": Protocol.BEEFY.value,
+                    "protocol_name": "Beefy Finance",
+                    "risk_flags": risk_flags,
+                    "isVerified": True,
+                },
+                "data_quality": DataQuality.HIGH.value,
+                "quality_reason": "Beefy vault with verified API data",
+                "source": "beefy_api",
+                "chain": chain
+            }
+            
+        except Exception as e:
+            logger.error(f"Beefy routing failed: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to fetch Beefy vault: {str(e)}",
+                "input": vault_id
+            }
+    
+    def _generate_vault_risk_flags(self, vault_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Generate risk flags specific to single-sided vaults.
+        Different risk profile than LP pools.
+        """
+        flags = []
+        
+        # 1. Strategy Risk (inherent to all vaults)
+        strategy = vault_data.get("vault_strategy", "unknown")
+        flags.append({
+            "id": "strategy_risk",
+            "label": "Strategy Risk",
+            "severity": "medium",
+            "description": f"Vault uses {strategy or 'automated'} strategy. Smart contract risk applies.",
+            "icon": "🏗️"
+        })
+        
+        # 2. Platform/Underlying Risk
+        platform = vault_data.get("vault_platform", "unknown")
+        if platform:
+            flags.append({
+                "id": "platform_risk",
+                "label": f"Uses {platform.title()}",
+                "severity": "low",
+                "description": f"Vault deposits into {platform}. Additional protocol risk.",
+                "icon": "🔗"
+            })
+        
+        # 3. Withdrawal Fee
+        withdrawal_fee = vault_data.get("vault_withdrawal_fee", 0)
+        if withdrawal_fee and withdrawal_fee > 0:
+            severity = "high" if withdrawal_fee > 0.5 else "medium" if withdrawal_fee > 0.1 else "low"
+            flags.append({
+                "id": "withdrawal_fee",
+                "label": f"Withdrawal Fee: {withdrawal_fee}%",
+                "severity": severity,
+                "description": f"Vault charges {withdrawal_fee}% on withdrawals",
+                "icon": "💸"
+            })
+        
+        # 4. Vault Status (deprecated/EOL)
+        status = vault_data.get("vault_status", "active")
+        if status == "eol" or status == "paused":
+            flags.append({
+                "id": "deprecated_vault",
+                "label": "Deprecated Vault",
+                "severity": "high",
+                "description": "This vault is no longer active. Withdraw your funds.",
+                "icon": "⚠️"
+            })
+        
+        # 5. Low TVL
+        tvl = vault_data.get("tvl", 0)
+        if tvl < 100000:
+            flags.append({
+                "id": "low_tvl",
+                "label": "Low TVL",
+                "severity": "medium",
+                "description": f"TVL of ${tvl:,.0f} is relatively low",
+                "icon": "💧"
+            })
+        
+        # 6. High APY Warning
+        apy = vault_data.get("apy", 0)
+        if apy > 100:
+            flags.append({
+                "id": "high_apy",
+                "label": "High APY",
+                "severity": "high",
+                "description": f"APY of {apy:.1f}% is unusually high. Verify sustainability.",
+                "icon": "🔥"
+            })
+        
+        # 7. Beefy-provided risks
+        beefy_risks = vault_data.get("vault_risks", [])
+        for risk in beefy_risks[:3]:  # Limit to top 3
+            flags.append({
+                "id": f"beefy_{risk.lower().replace(' ', '_')}",
+                "label": risk,
+                "severity": "low",
+                "description": f"Beefy-identified risk factor: {risk}",
+                "icon": "📋"
+            })
+        
+        return flags
+
+    async def _route_moonwell(
+        self, 
+        token_or_address: str, 
+        chain: str
+    ) -> Dict[str, Any]:
+        """
+        Route Moonwell lending market verification.
+        Uses Moonwell API for supply/borrow APY, utilization.
+        """
+        try:
+            from data_sources.moonwell import moonwell_client
+            
+            # Get full market data (includes APY and TVL)
+            market_data = await moonwell_client.get_market_full_data(token_or_address, chain)
+            
+            if not market_data:
+                return {
+                    "success": False,
+                    "error": f"Moonwell market not found: {token_or_address}",
+                    "input": token_or_address
+                }
+            
+            # Generate lending-specific risk flags
+            risk_flags = self._generate_lending_risk_flags(market_data)
+            
+            return {
+                "success": True,
+                "pool": {
+                    **market_data,
+                    "protocol": Protocol.MOONWELL.value,
+                    "protocol_name": "Moonwell",
+                    "risk_flags": risk_flags,
+                    "isVerified": True,
+                },
+                "data_quality": DataQuality.HIGH.value,
+                "quality_reason": "Moonwell lending market with verified API data",
+                "source": "moonwell_api",
+                "chain": chain
+            }
+            
+        except Exception as e:
+            logger.error(f"Moonwell routing failed: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to fetch Moonwell market: {str(e)}",
+                "input": token_or_address
+            }
+    
+    def _generate_lending_risk_flags(self, market_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Generate risk flags specific to lending protocols.
+        Different risk profile than LP pools or vaults.
+        """
+        flags = []
+        
+        # 1. Protocol Risk (inherent to lending)
+        flags.append({
+            "id": "lending_risk",
+            "label": "Lending Protocol",
+            "severity": "low",
+            "description": "Funds are lent to borrowers. Smart contract and liquidation risks apply.",
+            "icon": "🏦"
+        })
+        
+        # 2. High Utilization Warning
+        utilization = market_data.get("utilization_rate", 0)
+        if utilization > 90:
+            flags.append({
+                "id": "high_utilization",
+                "label": "High Utilization",
+                "severity": "high",
+                "description": f"{utilization:.0f}% utilization - withdrawals may be delayed",
+                "icon": "⚠️"
+            })
+        elif utilization > 75:
+            flags.append({
+                "id": "elevated_utilization",
+                "label": "Elevated Utilization",
+                "severity": "medium",
+                "description": f"{utilization:.0f}% utilization - monitor withdrawal liquidity",
+                "icon": "📊"
+            })
+        
+        # 3. Collateral Factor
+        collateral_factor = market_data.get("collateral_factor", 0)
+        if collateral_factor > 0:
+            flags.append({
+                "id": "collateral_enabled",
+                "label": f"Collateral: {collateral_factor:.0f}%",
+                "severity": "low",
+                "description": f"Can borrow up to {collateral_factor:.0f}% of deposit value",
+                "icon": "🔐"
+            })
+        
+        # 4. Rewards APY
+        apy_reward = market_data.get("apy_reward", 0)
+        if apy_reward > 0:
+            apy_total = market_data.get("apy", 0)
+            reward_pct = (apy_reward / apy_total * 100) if apy_total > 0 else 0
+            if reward_pct > 50:
+                flags.append({
+                    "id": "reward_dependent",
+                    "label": "WELL Rewards",
+                    "severity": "medium",
+                    "description": f"{reward_pct:.0f}% of APY from WELL tokens - may decrease",
+                    "icon": "🌙"
+                })
+        
+        # 5. Low TVL
+        tvl = market_data.get("tvl", 0)
+        if tvl < 1000000:
+            flags.append({
+                "id": "low_tvl",
+                "label": "Low Liquidity",
+                "severity": "medium" if tvl < 100000 else "low",
+                "description": f"${tvl:,.0f} total supply - may affect withdrawal speed",
+                "icon": "💧"
+            })
+        
+        # 6. High APY Warning
+        apy = market_data.get("apy", 0)
+        if apy > 50:
+            flags.append({
+                "id": "high_apy",
+                "label": "High APY",
+                "severity": "high" if apy > 100 else "medium",
+                "description": f"Supply APY of {apy:.1f}% - verify sustainability",
+                "icon": "🔥"
+            })
+        
+        return flags
+
     async def _route_uniswap_v3(
         self, 
         pool_address: str, 
@@ -364,18 +848,27 @@ class SmartRouter:
             # GeckoTerminal has data - use it as primary source
             logger.info(f"[Universal] GeckoTerminal fast-path: TVL=${gecko_data.get('tvl'):,.0f}")
             
+            pool_data = {
+                **gecko_data,
+                "address": pool_address,
+                "pool_address": pool_address,
+                "protocol": protocol.value if protocol != Protocol.UNKNOWN else gecko_data.get("project", "unknown"),
+                "protocol_name": self._get_protocol_name(protocol) if protocol != Protocol.UNKNOWN else gecko_data.get("project", "Unknown Protocol"),
+                "contract_type": "v2_lp",  # Default assumption
+            }
+            
+            # Try to enrich with Merkl APY data
+            pool_data = await self._patch_with_merkl(pool_data, pool_address, chain)
+            
+            # Generate specific risk flags
+            risk_flags = self._generate_risk_flags(pool_data, protocol)
+            pool_data["risk_flags"] = risk_flags
+            
             return {
                 "success": True,
-                "pool": {
-                    **gecko_data,
-                    "address": pool_address,
-                    "pool_address": pool_address,
-                    "protocol": protocol.value if protocol != Protocol.UNKNOWN else gecko_data.get("project", "unknown"),
-                    "protocol_name": self._get_protocol_name(protocol) if protocol != Protocol.UNKNOWN else gecko_data.get("project", "Unknown Protocol"),
-                    "contract_type": "v2_lp",  # Default assumption
-                },
+                "pool": pool_data,
                 "data_quality": DataQuality.BASIC.value,
-                "quality_reason": "GeckoTerminal fast-path",
+                "quality_reason": "GeckoTerminal fast-path" + (" + Merkl APY" if pool_data.get("apy_source") == "merkl" else ""),
                 "source": "geckoterminal",
                 "chain": chain
             }
@@ -427,12 +920,12 @@ class SmartRouter:
     ) -> Dict[str, Any]:
         """
         Try to patch pool data with APY from DefiLlama.
-        OPTIMIZED: Short timeout, skip if already has APY.
+        OPTIMIZED: Short timeout, skip only if already has APY.
         """
         import httpx
         
-        # Skip if already has APY or if we have volume (GeckoTerminal is faster)
-        if pool_data.get("apy", 0) > 0 or pool_data.get("volume_24h", 0) > 0:
+        # Skip only if already has APY (volume doesn't mean we have APY!)
+        if pool_data.get("apy", 0) > 0:
             return pool_data
         
         try:
@@ -454,6 +947,48 @@ class SmartRouter:
                             break
         except Exception as e:
             logger.debug(f"DefiLlama patch skipped (timeout): {e}")
+        
+        return pool_data
+    
+    async def _patch_with_merkl(
+        self, 
+        pool_data: Dict[str, Any], 
+        pool_address: str, 
+        chain: str
+    ) -> Dict[str, Any]:
+        """
+        Try to patch pool data with APY from Merkl API.
+        Merkl provides real-time APR for incentivized LP positions.
+        """
+        # Skip if already has APY from higher-tier source
+        if pool_data.get("apy", 0) > 0 and pool_data.get("apy_source") not in [None, "defillama"]:
+            return pool_data
+        
+        try:
+            from data_sources.merkl import merkl_client
+            
+            merkl_data = await merkl_client.get_pool_apr(pool_address, chain)
+            
+            if merkl_data and merkl_data.get("apr", 0) > 0:
+                apr = merkl_data.get("apr", 0)
+                
+                # Only patch if Merkl has better APR data
+                current_apy = pool_data.get("apy", 0) or 0
+                if apr > current_apy or pool_data.get("apy_source") == "defillama":
+                    pool_data["apy"] = apr
+                    pool_data["apy_reward"] = apr
+                    pool_data["apy_source"] = "merkl"
+                    pool_data["merkl_rewards"] = merkl_data.get("rewards", [])
+                    
+                    # Update TVL if Merkl has more recent data
+                    merkl_tvl = merkl_data.get("tvl", 0)
+                    if merkl_tvl > 0:
+                        pool_data["tvl_merkl"] = merkl_tvl
+                    
+                    logger.info(f"Patched APY from Merkl: {apr:.2f}%")
+                    
+        except Exception as e:
+            logger.debug(f"Merkl patch skipped: {e}")
         
         return pool_data
     
@@ -497,6 +1032,146 @@ class SmartRouter:
             logger.debug(f"GeckoTerminal enrichment failed: {e}")
         
         return pool_data
+    
+    def _generate_risk_flags(self, pool_data: Dict[str, Any], protocol: Protocol) -> List[Dict[str, Any]]:
+        """
+        Generate specific risk flags based on pool characteristics.
+        This is core value - explains WHY the risk level is what it is.
+        
+        Returns list of flags with: id, label, severity (low/medium/high), description
+        """
+        flags = []
+        
+        # 1. Emissions-based APY
+        apy_reward = pool_data.get("apy_reward", 0) or pool_data.get("apyReward", 0) or 0
+        apy_total = pool_data.get("apy", 0) or 0
+        if apy_reward > 0 and apy_total > 0:
+            reward_pct = (apy_reward / apy_total) * 100 if apy_total > 0 else 0
+            if reward_pct > 50:
+                flags.append({
+                    "id": "emissions_based_apy",
+                    "label": "Emissions-based APY",
+                    "severity": "high" if reward_pct > 80 else "medium",
+                    "description": f"{reward_pct:.0f}% of yield comes from token emissions, which may decrease over time",
+                    "icon": "⚠️"
+                })
+        
+        # 2. Concentrated Liquidity
+        pool_type = pool_data.get("pool_type", "")
+        is_cl = pool_type == "cl" or "slipstream" in str(protocol.value).lower()
+        if is_cl:
+            flags.append({
+                "id": "concentrated_liquidity",
+                "label": "Concentrated Liquidity",
+                "severity": "medium",
+                "description": "CL pools require active position management. Out-of-range positions earn 0 fees.",
+                "icon": "📊"
+            })
+        
+        # 3. External TVL Dependency (APY calculated from external source)
+        apy_source = pool_data.get("apy_source", "")
+        if "external" in apy_source or "defillama" in apy_source or "gecko" in apy_source:
+            flags.append({
+                "id": "external_tvl",
+                "label": "External TVL Source",
+                "severity": "low",
+                "description": "TVL data sourced from external aggregator, may have 5-15 min delay",
+                "icon": "🔗"
+            })
+        
+        # 4. Admin-controlled Gauge (Aerodrome/Velodrome specific)
+        has_gauge = pool_data.get("has_gauge", False)
+        if has_gauge and protocol in [Protocol.AERODROME_V2, Protocol.AERODROME_SLIPSTREAM, Protocol.VELODROME]:
+            flags.append({
+                "id": "admin_gauge",
+                "label": "Admin-controlled Gauge",
+                "severity": "low",
+                "description": "Gauge emissions are controlled by veAERO/veVELO voters and can change weekly",
+                "icon": "🗳️"
+            })
+        
+        # 5. Epoch-based Rewards
+        epoch_remaining = pool_data.get("epoch_remaining")
+        if epoch_remaining:
+            flags.append({
+                "id": "epoch_rewards",
+                "label": "Epoch-based Rewards",
+                "severity": "low",
+                "description": "Rewards reset each epoch. APY may change after epoch ends.",
+                "icon": "⏳"
+            })
+        
+        # 6. High APY Warning
+        if apy_total > 100:
+            flags.append({
+                "id": "high_apy",
+                "label": "High APY",
+                "severity": "high",
+                "description": f"APY of {apy_total:.1f}% is unusually high - verify sustainability",
+                "icon": "🔥"
+            })
+        
+        # 7. Low TVL Warning
+        tvl = pool_data.get("tvl", 0) or pool_data.get("tvlUsd", 0) or 0
+        if tvl < 500000:
+            flags.append({
+                "id": "low_tvl",
+                "label": "Low TVL",
+                "severity": "medium" if tvl < 100000 else "low",
+                "description": f"TVL of ${tvl:,.0f} may cause slippage on larger trades",
+                "icon": "💧"
+            })
+        
+        # 8. Impermanent Loss Risk
+        il_risk = pool_data.get("il_risk", "") or pool_data.get("ilRisk", "")
+        if il_risk == "yes" or il_risk == "high":
+            flags.append({
+                "id": "il_risk",
+                "label": "IL Risk",
+                "severity": "medium",
+                "description": "Volatile pair is subject to impermanent loss during price swings",
+                "icon": "📉"
+            })
+        
+        # 9. Security Risks (from GoPlus RugCheck)
+        security_status = pool_data.get("security_status", "")
+        if security_status == "critical":
+            flags.insert(0, {  # Insert at beginning - critical!
+                "id": "honeypot",
+                "label": "🍯 HONEYPOT",
+                "severity": "critical",
+                "description": "CRITICAL: This token cannot be sold! DO NOT INVEST.",
+                "icon": "🚨"
+            })
+        elif security_status == "high_risk":
+            flags.append({
+                "id": "token_security",
+                "label": "Token Security Issues",
+                "severity": "high",
+                "description": "GoPlus detected high-risk token features (high taxes, hidden owner, etc.)",
+                "icon": "🛡️"
+            })
+        elif security_status == "medium_risk":
+            flags.append({
+                "id": "token_risk",
+                "label": "Token Risk",
+                "severity": "medium",
+                "description": "Some security concerns detected - verify contract before depositing",
+                "icon": "⚡"
+            })
+        
+        # Add specific security risks as separate flags
+        for risk in pool_data.get("security_risks", [])[:3]:  # Top 3 risks
+            severity_map = {"CRITICAL": "high", "HIGH": "high", "MEDIUM": "medium", "LOW": "low"}
+            flags.append({
+                "id": f"security_{risk.get('type', 'unknown').lower()}",
+                "label": risk.get("reason", "Security issue"),
+                "severity": severity_map.get(risk.get("type", ""), "medium"),
+                "description": risk.get("reason", ""),
+                "icon": "🔒"
+            })
+        
+        return flags
     
     def _get_protocol_name(self, protocol: Protocol) -> str:
         """Get human-readable protocol name"""

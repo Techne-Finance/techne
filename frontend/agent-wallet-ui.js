@@ -398,7 +398,7 @@ const AgentWalletUI = {
      * Refresh vault stats from contract
      */
     async refreshStats() {
-        if (!this.contractAddress || !window.ethereum) return;
+        if (!this.contractAddress || !window.ethereum || typeof ethers === 'undefined') return;
 
         try {
             const provider = new ethers.BrowserProvider(window.ethereum);
