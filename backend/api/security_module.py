@@ -82,7 +82,7 @@ class SecurityChecker:
         return None
     
     # =========================================================================
-    # PHASE 1: GOPLUS RUGCHECK
+    # PHASE 1: GOPLUS RUGCHECK (EVM) + RUGCHECK.XYZ (SOLANA)
     # =========================================================================
     
     async def check_security(
@@ -91,12 +91,19 @@ class SecurityChecker:
         chain: str = "base"
     ) -> Dict[str, Any]:
         """
-        Check token security using GoPlus API.
+        Check token security using GoPlus API (EVM) or RugCheck.xyz (Solana).
         Returns security analysis for each token.
         """
-        chain_id = CHAIN_IDS.get(chain.lower(), "8453")
+        chain = chain.lower()
         
-        # Filter out invalid addresses
+        # SOLANA: Use RugCheck.xyz API
+        if chain == "solana":
+            return await self._check_security_solana(token_addresses)
+        
+        # EVM: Use GoPlus API
+        chain_id = CHAIN_IDS.get(chain, "8453")
+        
+        # Filter out invalid EVM addresses
         valid_addresses = [
             addr.lower() for addr in token_addresses 
             if addr and addr.startswith("0x") and len(addr) == 42
@@ -126,6 +133,7 @@ class SecurityChecker:
                 
                 return {
                     "status": "success",
+                    "source": "goplus",
                     "tokens": tokens_analysis,
                     "summary": self._summarize_security(tokens_analysis)
                 }
@@ -133,6 +141,62 @@ class SecurityChecker:
         except Exception as e:
             logger.error(f"GoPlus API failed: {e}")
             return {"status": "unknown", "error": str(e), "tokens": {}}
+    
+    async def _check_security_solana(self, token_addresses: List[str]) -> Dict[str, Any]:
+        """
+        Check Solana token security using RugCheck.xyz API.
+        """
+        try:
+            from data_sources.rugcheck import rugcheck_client
+            
+            # Filter valid Solana addresses (base58, 32-44 chars)
+            valid_addresses = [
+                addr for addr in token_addresses 
+                if addr and len(addr) >= 32 and len(addr) <= 44 and not addr.startswith("0x")
+            ]
+            
+            if not valid_addresses:
+                return {"status": "no_tokens", "source": "rugcheck", "tokens": {}}
+            
+            tokens_analysis = {}
+            has_critical = False
+            total_penalty = 0
+            all_risks = []
+            
+            for mint in valid_addresses:
+                result = await rugcheck_client.check_token(mint)
+                if result:
+                    tokens_analysis[mint] = {
+                        "is_honeypot": result.get("is_critical", False),
+                        "is_verified": True,  # Solana programs are on-chain
+                        "is_mutable": result.get("is_mutable", False),
+                        "has_freeze_authority": result.get("has_freeze_authority", False),
+                        "risks": result.get("risks", []),
+                        "score_penalty": result.get("score_penalty", 0),
+                        "is_critical": result.get("is_critical", False),
+                        "rugcheck_score": result.get("score", 0)
+                    }
+                    
+                    if result.get("is_critical"):
+                        has_critical = True
+                    total_penalty += result.get("score_penalty", 0)
+                    all_risks.extend(result.get("risks", []))
+            
+            return {
+                "status": "success",
+                "source": "rugcheck",
+                "tokens": tokens_analysis,
+                "summary": {
+                    "total_penalty": min(total_penalty, 100),
+                    "has_critical": has_critical,
+                    "risk_count": len(all_risks),
+                    "all_risks": all_risks[:5]  # Top 5 risks
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"RugCheck API failed: {e}")
+            return {"status": "error", "source": "rugcheck", "error": str(e), "tokens": {}}
     
     def _analyze_token_security(self, info: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze security info for a single token"""
@@ -370,6 +434,154 @@ class SecurityChecker:
         return None
     
     # =========================================================================
+    # PHASE 3B: IMPERMANENT LOSS RISK ANALYSIS
+    # =========================================================================
+    
+    def calculate_il_risk(
+        self, 
+        pool_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Calculate impermanent loss risk based on pool characteristics.
+        
+        IL Risk Factors:
+        - Stablecoin pairs: minimal IL
+        - Correlated pairs (ETH/cbETH): low IL
+        - Volatile pairs (ETH/MEME): high IL
+        - CL pools with narrow range: very high IL
+        """
+        pool_type = pool_data.get("pool_type", "volatile")
+        symbol0 = (pool_data.get("symbol0", "") or "").upper()
+        symbol1 = (pool_data.get("symbol1", "") or "").upper()
+        is_cl = pool_data.get("is_cl") or "cl" in str(pool_type).lower()
+        
+        # Identify token types
+        stables = {"USDC", "USDT", "DAI", "FRAX", "LUSD", "USDbC", "USDM", "BUSD"}
+        eth_family = {"ETH", "WETH", "cbETH", "wstETH", "rETH", "stETH"}
+        btc_family = {"BTC", "WBTC", "cbBTC", "tBTC"}
+        
+        t0_stable = symbol0 in stables
+        t1_stable = symbol1 in stables
+        t0_eth = symbol0 in eth_family
+        t1_eth = symbol1 in eth_family
+        t0_btc = symbol0 in btc_family
+        t1_btc = symbol1 in btc_family
+        
+        # Determine IL risk level
+        il_risk = "high"
+        il_explanation = ""
+        il_penalty = 15
+        
+        # Stable-stable: no IL
+        if t0_stable and t1_stable:
+            il_risk = "none"
+            il_explanation = "Stablecoin pair - no impermanent loss risk"
+            il_penalty = 0
+        # Correlated pairs
+        elif (t0_eth and t1_eth) or (t0_btc and t1_btc):
+            il_risk = "low"
+            il_explanation = "Correlated assets - minimal IL expected"
+            il_penalty = 5
+        # Stable + Blue chip
+        elif (t0_stable and (t1_eth or t1_btc)) or (t1_stable and (t0_eth or t0_btc)):
+            il_risk = "medium"
+            il_explanation = "Stablecoin + major asset - moderate IL risk"
+            il_penalty = 10
+        # CL pools with narrow range
+        elif is_cl:
+            il_risk = "high"
+            il_explanation = "Concentrated liquidity - high IL if price moves out of range"
+            il_penalty = 20
+        # Volatile pairs
+        else:
+            il_risk = "high"
+            il_explanation = "Volatile pair - significant IL risk during price movements"
+            il_penalty = 15
+        
+        return {
+            "il_risk": il_risk,
+            "il_explanation": il_explanation,
+            "il_penalty": il_penalty,
+            "is_stable_pair": t0_stable and t1_stable,
+            "is_correlated": (t0_eth and t1_eth) or (t0_btc and t1_btc),
+            "is_cl_pool": is_cl
+        }
+    
+    def analyze_volatility(
+        self, 
+        pool_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Analyze token volatility from available price data.
+        Uses price_change_24h if available.
+        """
+        price_change_24h = pool_data.get("priceChange24h") or pool_data.get("price_change_24h") or 0
+        
+        try:
+            change = abs(float(price_change_24h))
+        except (ValueError, TypeError):
+            change = 0
+        
+        # Volatility classification
+        if change > 30:
+            volatility = "extreme"
+            vol_penalty = 25
+            vol_warning = f"⚠️ EXTREME volatility: {change:.1f}% 24h price change"
+        elif change > 15:
+            volatility = "high"
+            vol_penalty = 15
+            vol_warning = f"⚠️ High volatility: {change:.1f}% 24h price change"
+        elif change > 5:
+            volatility = "medium"
+            vol_penalty = 5
+            vol_warning = None
+        else:
+            volatility = "low"
+            vol_penalty = 0
+            vol_warning = None
+        
+        return {
+            "volatility_level": volatility,
+            "price_change_24h": change,
+            "volatility_penalty": vol_penalty,
+            "volatility_warning": vol_warning
+        }
+    
+    def analyze_pool_age(
+        self, 
+        pool_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Check pool age - newer pools are riskier.
+        """
+        from datetime import datetime
+        
+        created_at = pool_data.get("pool_created_at")
+        age_days = None
+        age_warning = None
+        age_penalty = 0
+        
+        if created_at:
+            try:
+                created = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                age_days = (datetime.now(created.tzinfo) - created).days
+                
+                if age_days < 7:
+                    age_penalty = 20
+                    age_warning = f"⚠️ NEW POOL: Only {age_days} days old - higher rug risk"
+                elif age_days < 30:
+                    age_penalty = 10
+                    age_warning = f"Pool is only {age_days} days old"
+            except Exception:
+                pass
+        
+        return {
+            "pool_age_days": age_days,
+            "age_penalty": age_penalty,
+            "age_warning": age_warning
+        }
+    
+    # =========================================================================
     # PHASE 4: ENHANCED RISK SCORING
     # =========================================================================
     
@@ -378,14 +590,19 @@ class SecurityChecker:
         pool_data: Dict[str, Any],
         security_result: Dict[str, Any],
         peg_status: Dict[str, Any],
-        symbol_warnings: List[str] = None
+        symbol_warnings: List[str] = None,
+        # NEW: Additional risk factors
+        audit_status: Dict[str, Any] = None,
+        liquidity_lock: Dict[str, Any] = None,
+        whale_analysis: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
-        Calculate comprehensive risk score.
+        Calculate comprehensive risk score including IL, volatility, and pool age.
         Base score: 100, subtract penalties.
         """
         score = 100
         reasons = []
+        risk_breakdown = {}
         
         # Security penalties
         security_summary = security_result.get("summary", {})
@@ -396,46 +613,151 @@ class SecurityChecker:
                 "risk_score": 0,
                 "risk_level": "Critical",
                 "risk_reasons": reasons,
-                "is_honeypot": True
+                "is_honeypot": True,
+                "risk_breakdown": {"security": "critical"}
             }
         
         security_penalty = security_summary.get("total_penalty", 0)
         if security_penalty > 0:
             score -= security_penalty
-            for risk in security_summary.get("all_risks", [])[:3]:  # Top 3 risks
+            risk_breakdown["security_penalty"] = security_penalty
+            for risk in security_summary.get("all_risks", [])[:2]:  # Top 2 security risks
                 reasons.append(f"🛡️ {risk['type']}: {risk['reason']}")
         
         # TVL penalties
         tvl = pool_data.get("tvl", 0) or pool_data.get("tvlUsd", 0)
         if tvl < 10000:
             score -= 20
+            risk_breakdown["tvl"] = "very_low"
             reasons.append(f"💰 Very Low TVL (${tvl:,.0f}) - high slippage risk")
         elif tvl < 100000:
             score -= 10
+            risk_breakdown["tvl"] = "low"
             reasons.append(f"💰 Low TVL (${tvl:,.0f}) - potential liquidity issues")
         elif tvl > 10000000:
             score += 5  # Bonus for high TVL
-            reasons.append(f"✅ High TVL (${tvl/1e6:.1f}M) - strong liquidity")
+            risk_breakdown["tvl"] = "strong"
         
         # Depeg penalty
         if peg_status.get("depeg_risk"):
             score -= 30
-            for warning in peg_status.get("price_warnings", []):
+            risk_breakdown["depeg"] = True
+            for warning in peg_status.get("price_warnings", [])[:1]:
                 reasons.append(warning)
         
         # Symbol warning penalty
         if symbol_warnings:
             score -= 10
+            risk_breakdown["symbol_issues"] = True
             reasons.append("⚠️ Some token symbols could not be verified")
         
         # APY sustainability
-        apy = pool_data.get("apy", 0)
+        apy = pool_data.get("apy", 0) or 0
         if apy > 1000:
             score -= 20
+            risk_breakdown["apy_sustainability"] = "extreme"
             reasons.append(f"📈 Extremely high APY ({apy:.0f}%) - likely unsustainable")
         elif apy > 500:
             score -= 10
+            risk_breakdown["apy_sustainability"] = "high"
             reasons.append(f"📈 Very high APY ({apy:.0f}%) - verify sources")
+        
+        # === NEW: IL Risk Analysis ===
+        il_analysis = self.calculate_il_risk(pool_data)
+        il_penalty = il_analysis.get("il_penalty", 0)
+        if il_penalty > 0:
+            score -= il_penalty
+            risk_breakdown["il_risk"] = il_analysis["il_risk"]
+            if il_analysis["il_risk"] == "high":
+                reasons.append(f"📉 {il_analysis['il_explanation']}")
+        
+        # === NEW: Volatility Analysis ===
+        vol_analysis = self.analyze_volatility(pool_data)
+        vol_penalty = vol_analysis.get("volatility_penalty", 0)
+        if vol_penalty > 0:
+            score -= vol_penalty
+            risk_breakdown["volatility"] = vol_analysis["volatility_level"]
+            if vol_analysis.get("volatility_warning"):
+                reasons.append(vol_analysis["volatility_warning"])
+        
+        # === NEW: Pool Age Analysis ===
+        age_analysis = self.analyze_pool_age(pool_data)
+        age_penalty = age_analysis.get("age_penalty", 0)
+        if age_penalty > 0:
+            score -= age_penalty
+            risk_breakdown["pool_age_days"] = age_analysis.get("pool_age_days")
+            if age_analysis.get("age_warning"):
+                reasons.append(age_analysis["age_warning"])
+        
+        # =========================================================
+        # NEW: AUDIT STATUS SCORING
+        # =========================================================
+        if audit_status:
+            is_audited = audit_status.get("audited", False)
+            if is_audited:
+                score += 10  # Bonus for audited protocol
+                risk_breakdown["audit"] = "verified"
+            else:
+                score -= 5  # Penalty for unaudited
+                risk_breakdown["audit"] = "unverified"
+                reasons.append("📋 Protocol not verified as audited")
+        
+        # =========================================================
+        # NEW: LIQUIDITY LOCK SCORING
+        # =========================================================
+        if liquidity_lock:
+            has_lock = liquidity_lock.get("has_lock", False)
+            if has_lock:
+                score += 5  # Bonus for locked liquidity
+                risk_breakdown["lock"] = "locked"
+            else:
+                # Only penalize for small/new pools
+                if tvl < 1000000:
+                    score -= 5
+                    risk_breakdown["lock"] = "unlocked"
+                    reasons.append("🔓 LP tokens not locked - rug risk")
+        
+        # =========================================================
+        # NEW: WHALE CONCENTRATION SCORING
+        # =========================================================
+        if whale_analysis:
+            lp_analysis = whale_analysis.get("lp_token") or {}
+            
+            # Check LP token concentration (most important)
+            if lp_analysis:
+                top10_pct = lp_analysis.get("top10_pct", 0) or 0
+                whale_risk = lp_analysis.get("whale_risk", "unknown")
+                
+                if whale_risk == "high" or top10_pct > 50:
+                    score -= 15
+                    risk_breakdown["whale_concentration"] = "high"
+                    reasons.append(f"🐳 High LP concentration: Top 10 hold {top10_pct:.0f}%")
+                elif whale_risk == "medium" or top10_pct > 30:
+                    score -= 5
+                    risk_breakdown["whale_concentration"] = "medium"
+                elif whale_risk == "low":
+                    score += 3  # Small bonus for distributed
+                    risk_breakdown["whale_concentration"] = "low"
+        
+        # =========================================================
+        # NEW: REAL YIELD vs EMISSIONS SCORING
+        # =========================================================
+        apy_base = pool_data.get("apy_base", 0) or 0
+        apy_reward = pool_data.get("apy_reward", 0) or 0
+        total_apy = apy_base + apy_reward
+        
+        if total_apy > 0:
+            real_yield_ratio = (apy_base / total_apy) * 100
+            risk_breakdown["real_yield_pct"] = round(real_yield_ratio, 1)
+            
+            if real_yield_ratio >= 50:
+                score += 5  # Bonus for sustainable yield
+                risk_breakdown["yield_sustainability"] = "strong"
+            elif real_yield_ratio < 10:
+                score -= 5  # Penalty for emission-dependent
+                risk_breakdown["yield_sustainability"] = "weak"
+                if apy_reward > 50:
+                    reasons.append(f"⚡ {100 - real_yield_ratio:.0f}% APY from emissions - may decrease")
         
         # Clamp score
         score = max(0, min(100, score))
@@ -453,8 +775,13 @@ class SecurityChecker:
         return {
             "risk_score": score,
             "risk_level": level,
-            "risk_reasons": reasons[:5],  # Top 5 reasons
-            "is_honeypot": False
+            "risk_reasons": reasons[:6],  # Top 6 reasons
+            "is_honeypot": False,
+            "risk_breakdown": risk_breakdown,
+            # Detailed analysis
+            "il_analysis": il_analysis,
+            "volatility_analysis": vol_analysis,
+            "pool_age_analysis": age_analysis
         }
 
 

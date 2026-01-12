@@ -960,7 +960,8 @@ async def verify_any_pool(
     from api.smart_router import smart_router
     
     chain = chain.lower()
-    pool_address = pool_address.lower()
+    # Solana addresses are case-sensitive (base58), EVM addresses are not
+    pool_address = pool_address if chain == "solana" else pool_address.lower()
     
     logger.info(f"🧠 SmartRouter verify for {pool_address} on {chain}")
     
@@ -979,6 +980,25 @@ async def verify_any_pool(
             # Get token addresses for security check
             token0 = pool.get("token0", "")
             token1 = pool.get("token1", "")
+            
+            # If no token addresses, fetch from RPC (pool.token0(), pool.token1())
+            if not token0 or not token1:
+                try:
+                    from data_sources.onchain import onchain_client
+                    logger.info(f"Fetching token addresses from RPC for security check...")
+                    
+                    rpc_data = await onchain_client.get_lp_reserves(chain, pool_address)
+                    if rpc_data:
+                        token0 = rpc_data.get("token0", "")
+                        token1 = rpc_data.get("token1", "")
+                        pool["token0"] = token0
+                        pool["token1"] = token1
+                        pool["symbol0"] = rpc_data.get("symbol0", pool.get("symbol0", ""))
+                        pool["symbol1"] = rpc_data.get("symbol1", pool.get("symbol1", ""))
+                        logger.info(f"Got tokens via RPC: {pool.get('symbol0')}/{pool.get('symbol1')}")
+                except Exception as e:
+                    logger.debug(f"RPC token fetch failed: {e}")
+            
             tokens = [t for t in [token0, token1] if t]
             
             # Run security checks in parallel
@@ -992,20 +1012,101 @@ async def verify_any_pool(
                 # Phase 3: Stablecoin peg check
                 peg_status = await security_checker.check_stablecoin_peg(pool, chain)
                 
-                # Phase 4: Calculate comprehensive risk score
+                # =========================================================
+                # COLLECT ALL DATA BEFORE SCORING
+                # =========================================================
+                
+                # Phase 4: Check audit status
+                audit_result = {"audited": False, "source": "unknown"}
+                try:
+                    from data_sources.audit_checker import audit_checker
+                    project_name = pool.get("project", "") or pool.get("protocol", "")
+                    audit_result = await audit_checker.check_audit_status(
+                        protocol_name=project_name,
+                        contract_address=pool_address,
+                        chain=chain
+                    )
+                    pool["audit_status"] = audit_result
+                except Exception as e:
+                    logger.debug(f"Audit check failed: {e}")
+                    pool["audit_status"] = {"audited": False, "source": "error"}
+                
+                # Phase 5: Check liquidity lock
+                lock_result = {"has_lock": False, "source": "unknown"}
+                try:
+                    from data_sources.liquidity_lock import liquidity_lock_checker
+                    lock_result = await liquidity_lock_checker.check_lp_lock(
+                        pool_address=pool_address,
+                        chain=chain
+                    )
+                    pool["liquidity_lock"] = lock_result
+                except Exception as e:
+                    logger.debug(f"Liquidity lock check failed: {e}")
+                    pool["liquidity_lock"] = {"has_lock": False, "source": "error"}
+                
+                # Phase 6: Analyze whale concentration
+                whale_analysis = {"token0": None, "token1": None, "lp_token": None}
+                try:
+                    from data_sources.holder_analysis import holder_analyzer
+                    token0_addr = pool.get("token0") or ""
+                    token1_addr = pool.get("token1") or ""
+                    
+                    if token0_addr:
+                        whale_analysis["token0"] = await holder_analyzer.get_holder_analysis(
+                            token_address=token0_addr,
+                            chain=chain
+                        )
+                    
+                    if token1_addr:
+                        whale_analysis["token1"] = await holder_analyzer.get_holder_analysis(
+                            token_address=token1_addr,
+                            chain=chain
+                        )
+                    
+                    # Also analyze LP token holders (who holds positions in this pool)
+                    if pool_address:
+                        whale_analysis["lp_token"] = await holder_analyzer.get_holder_analysis(
+                            token_address=pool_address,
+                            chain=chain
+                        )
+                    
+                    pool["whale_analysis"] = whale_analysis
+                except Exception as e:
+                    logger.debug(f"Whale concentration check failed: {e}")
+                    pool["whale_analysis"] = {"token0": None, "token1": None, "lp_token": None, "source": "error"}
+                
+                # =========================================================
+                # PHASE 7: CALCULATE COMPREHENSIVE RISK SCORE (WITH ALL DATA)
+                # =========================================================
                 risk_analysis = security_checker.calculate_risk_score(
                     pool_data=pool,
                     security_result=security_result,
                     peg_status=peg_status,
-                    symbol_warnings=pool.get("symbol_warnings")
+                    symbol_warnings=pool.get("symbol_warnings"),
+                    # NEW: Pass additional risk factors
+                    audit_status=pool.get("audit_status"),
+                    liquidity_lock=pool.get("liquidity_lock"),
+                    whale_analysis=pool.get("whale_analysis")
                 )
                 
-                # Add security details to response
+                # Add security details to response (includes tokens for frontend display)
                 pool["security"] = {
                     "checked": security_result.get("status") == "success",
+                    "source": security_result.get("source", "goplus"),
                     "is_honeypot": risk_analysis.get("is_honeypot", False),
-                    "peg_status": peg_status
+                    "peg_status": peg_status,
+                    "tokens": security_result.get("tokens", {}),  # Token analysis for frontend
+                    "summary": security_result.get("summary", {})
                 }
+                
+                # Add full risk analysis to pool object (for frontend display)
+                pool["risk_score"] = risk_analysis.get("risk_score")
+                pool["risk_level"] = risk_analysis.get("risk_level")
+                pool["risk_reasons"] = risk_analysis.get("risk_reasons", [])
+                pool["risk_breakdown"] = risk_analysis.get("risk_breakdown", {})
+                pool["il_analysis"] = risk_analysis.get("il_analysis", {})
+                pool["volatility_analysis"] = risk_analysis.get("volatility_analysis", {})
+                pool["pool_age_analysis"] = risk_analysis.get("pool_age_analysis", {})
                 
             except Exception as e:
                 logger.warning(f"Security check failed, using basic analysis: {e}")
@@ -1066,6 +1167,13 @@ async def verify_any_pool(
                 "il_risk": gecko_data.get("il_risk", "yes"),
                 "pool_type": gecko_data.get("pool_type", "volatile"),
                 "pool_address": pool_address,
+                # Token addresses for security checks (Solana RugCheck / EVM GoPlus)
+                "token0": gecko_data.get("token0", ""),
+                "token1": gecko_data.get("token1", ""),
+                "symbol0": gecko_data.get("symbol0", ""),
+                "symbol1": gecko_data.get("symbol1", ""),
+                "pool_created_at": gecko_data.get("pool_created_at"),
+                "priceChange24h": gecko_data.get("priceChange24h", 0),
             }
             source = "geckoterminal"
             logger.info(f"Found in GeckoTerminal: {pool_data['symbol']}, project: {pool_data['project']}")
@@ -1242,6 +1350,32 @@ async def verify_any_pool(
             "pool_address": pool_address,
             "available_chains": onchain_client.get_available_chains()
         }
+    
+    # =========================================================
+    # SECURITY CHECK (Legacy flow - RugCheck/GoPlus)
+    # =========================================================
+    security_result = {"status": "skipped", "tokens": {}, "summary": {}}
+    try:
+        from api.security_module import security_checker
+        
+        # Get token addresses
+        token0 = pool_data.get("token0", "")
+        token1 = pool_data.get("token1", "")
+        tokens = [t for t in [token0, token1] if t]
+        
+        if tokens:
+            security_result = await security_checker.check_security(tokens, chain)
+            logger.info(f"Security check ({security_result.get('source', 'unknown')}): {len(security_result.get('tokens', {}))} tokens checked")
+            
+            # Add security data to pool
+            pool_data["security"] = {
+                "checked": security_result.get("status") == "success",
+                "source": security_result.get("source", "unknown"),
+                "tokens": security_result.get("tokens", {}),
+                "summary": security_result.get("summary", {})
+            }
+    except Exception as e:
+        logger.warning(f"Security check failed in legacy flow: {e}")
     
     # Generate risk analysis
     risk_level = "Medium"

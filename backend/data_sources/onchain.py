@@ -298,8 +298,10 @@ class OnChainClient:
         return w3 is not None and w3.is_connected()
     
     def get_available_chains(self) -> List[str]:
-        """Get list of chains with working RPC connections"""
-        return [chain for chain in RPC_ENDPOINTS.keys() if self.is_chain_available(chain)]
+        """Get list of chains with working RPC connections + Solana (uses API fallback)"""
+        evm_chains = [chain for chain in RPC_ENDPOINTS.keys() if self.is_chain_available(chain)]
+        # Always include Solana (uses DefiLlama/GeckoTerminal API, no RPC required)
+        return evm_chains + ["solana"]
     
     async def get_cl_pool_data(self, chain: str, pool_address: str) -> Optional[Dict[str, Any]]:
         """

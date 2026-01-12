@@ -8706,3 +8706,95 @@ body.builder-pro .basic-mode-only {
     color: #fff;
     transform: rotate(90deg);
 }
+
+/* ===========================================
+   POOL DETAIL MODAL - COMPACT GRID LAYOUT
+   =========================================== */
+
+/* Make pool-detail-modal wider */
+.pool-detail-modal {
+    width: 80vw !important;
+    max-width: 1400px !important;
+}
+
+/* Two-column grid for section pairs */
+.pd-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+/* Three-column grid for smaller sections */
+.pd-three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+/* Ensure sections inside grids expand properly */
+.pd-two-col>*,
+.pd-three-col>* {
+    min-width: 0;
+}
+
+/* Inline stress test chips */
+.pd-stress-inline {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.pd-stress-chip {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.pd-stress-pct {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.pd-stress-chip .pd-stress-result {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.pd-stress-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-left: auto;
+}
+
+/* Responsive: stack on smaller screens */
+@media (max-width: 1100px) {
+    .pd-three-col {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+
+    .pd-two-col,
+    .pd-three-col {
+        grid-template-columns: 1fr;
+    }
+
+    .pool-detail-modal {
+        width: 95vw !important;
+    }
+
+    .pd-stress-inline {
+        flex-direction: column;
+    }
+}

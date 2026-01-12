@@ -477,9 +477,29 @@ class SmartRouter:
             security_result = {"status": "skipped", "tokens": {}}
             if SECURITY_CHECKER_AVAILABLE:
                 try:
-                    # Extract token addresses
+                    # Extract token addresses - first try from pool_data
                     token0 = pool_data.get("token0")
                     token1 = pool_data.get("token1")
+                    
+                    # If no token addresses, fetch from RPC (pool.token0(), pool.token1())
+                    if not token0 or not token1:
+                        try:
+                            from data_sources.onchain import onchain_client
+                            logger.info(f"Fetching token addresses from RPC for {pool_address[:10]}...")
+                            
+                            rpc_data = await onchain_client.get_lp_reserves(chain, pool_address)
+                            if rpc_data:
+                                token0 = rpc_data.get("token0")
+                                token1 = rpc_data.get("token1")
+                                # Also save symbols if we got them
+                                pool_data["token0"] = token0
+                                pool_data["token1"] = token1
+                                pool_data["symbol0"] = rpc_data.get("symbol0", "")
+                                pool_data["symbol1"] = rpc_data.get("symbol1", "")
+                                logger.info(f"Got tokens from RPC: {rpc_data.get('symbol0')}/{rpc_data.get('symbol1')}")
+                        except Exception as e:
+                            logger.debug(f"RPC token fetch failed: {e}")
+                    
                     tokens_to_check = [t for t in [token0, token1] if t and t.startswith("0x")]
                     
                     if tokens_to_check:
@@ -506,6 +526,35 @@ class SmartRouter:
                     security_result = {"status": "error", "error": str(e), "tokens": {}}
             
             pool_data["security_result"] = security_result
+            
+            # =================================================================
+            # COMPREHENSIVE RISK ANALYSIS (IL, Volatility, Pool Age)
+            # =================================================================
+            if SECURITY_CHECKER_AVAILABLE:
+                try:
+                    # Get peg status for stablecoins
+                    peg_status = await security_checker.check_stablecoin_peg(pool_data, chain)
+                    pool_data["peg_status"] = peg_status
+                    
+                    # Calculate full risk score (includes IL, volatility, age)
+                    risk_analysis = security_checker.calculate_risk_score(
+                        pool_data, 
+                        security_result, 
+                        peg_status,
+                        pool_data.get("symbol_warnings")
+                    )
+                    
+                    # Add all risk data to pool
+                    pool_data["risk_score"] = risk_analysis.get("risk_score")
+                    pool_data["risk_level"] = risk_analysis.get("risk_level")
+                    pool_data["risk_reasons"] = risk_analysis.get("risk_reasons", [])
+                    pool_data["risk_breakdown"] = risk_analysis.get("risk_breakdown", {})
+                    pool_data["il_analysis"] = risk_analysis.get("il_analysis", {})
+                    pool_data["volatility_analysis"] = risk_analysis.get("volatility_analysis", {})
+                    pool_data["pool_age_analysis"] = risk_analysis.get("pool_age_analysis", {})
+                    
+                except Exception as e:
+                    logger.warning(f"Risk analysis failed: {e}")
             
             # Generate specific risk flags (now includes security info)
             risk_flags = self._generate_risk_flags(pool_data, protocol)

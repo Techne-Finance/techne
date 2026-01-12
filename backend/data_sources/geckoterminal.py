@@ -10,6 +10,7 @@ logger = logging.getLogger("GeckoTerminal")
 
 # Network mappings for GeckoTerminal
 NETWORK_MAP = {
+    # EVM chains
     "base": "base",
     "ethereum": "eth", 
     "arbitrum": "arbitrum",
@@ -17,6 +18,8 @@ NETWORK_MAP = {
     "polygon": "polygon_pos",
     "bsc": "bsc",
     "avalanche": "avax",
+    # Non-EVM chains
+    "solana": "solana",
 }
 
 class GeckoTerminalClient:
@@ -40,7 +43,9 @@ class GeckoTerminalClient:
             Pool data dict or None if not found
         """
         network = NETWORK_MAP.get(chain.lower(), chain.lower())
-        url = f"{self.BASE_URL}/networks/{network}/pools/{pool_address.lower()}"
+        # Solana addresses are case-sensitive (base58), EVM addresses are not
+        address_for_url = pool_address if chain.lower() == "solana" else pool_address.lower()
+        url = f"{self.BASE_URL}/networks/{network}/pools/{address_for_url}"
         
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -165,6 +170,30 @@ class GeckoTerminalClient:
         if fee_match:
             trading_fee = float(fee_match.group(1))
         
+        # Extract token addresses from relationships
+        # Format: "network_tokenaddress" e.g. "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        base_token_data = relationships.get("base_token", {}).get("data", {})
+        quote_token_data = relationships.get("quote_token", {}).get("data", {})
+        
+        # Extract token address from ID (format: "network_address")
+        base_token_id = base_token_data.get("id", "")
+        quote_token_id = quote_token_data.get("id", "")
+        
+        # Parse address from ID - handle both EVM (0x...) and Solana (base58)
+        token0 = ""
+        token1 = ""
+        if "_" in base_token_id:
+            token0 = base_token_id.split("_", 1)[-1]  # Get everything after first underscore
+        if "_" in quote_token_id:
+            token1 = quote_token_id.split("_", 1)[-1]
+        
+        # Extract symbols from pool name (e.g., "SOL / USDC" -> symbol0="SOL", symbol1="USDC")
+        symbol0, symbol1 = "", ""
+        if " / " in pool_name:
+            parts = pool_name.split(" / ")
+            symbol0 = parts[0].strip().split()[0] if parts[0] else ""  # Get first word (ignore fee)
+            symbol1 = parts[1].strip().split()[0] if len(parts) > 1 else ""
+        
         return {
             "source": "geckoterminal",
             "address": attrs.get("address", ""),
@@ -186,6 +215,11 @@ class GeckoTerminalClient:
             "quoteTokenPrice": attrs.get("quote_token_price_usd"),
             "trading_fee": trading_fee,
             "fee_24h_usd": float(fee_24h) if fee_24h else None,
+            # Token addresses (for security checks)
+            "token0": token0,
+            "token1": token1,
+            "symbol0": symbol0,
+            "symbol1": symbol1,
             # IL risk based on pool type
             "il_risk": "yes",  # Most GeckoTerminal pools have IL risk (volatile pairs)
             "pool_type": "volatile",

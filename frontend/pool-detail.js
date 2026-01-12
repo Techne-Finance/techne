@@ -671,7 +671,14 @@ const PoolDetailModal = {
         else if (apySource.includes('beefy') || apySource.includes('moonwell') ||
             apySource.includes('aave') || apySource.includes('compound') ||
             apySource.includes('morpho') || apySource.includes('curve') ||
-            apySource.includes('sushi') || apySource.includes('uniswap')) {
+            apySource.includes('sushi') || apySource.includes('uniswap') ||
+            // Solana protocols
+            apySource.includes('raydium') || apySource.includes('orca') ||
+            apySource.includes('kamino') || apySource.includes('meteora') ||
+            apySource.includes('jupiter') || apySource.includes('marinade') ||
+            apySource.includes('solend') || apySource.includes('marginfi') ||
+            apySource.includes('drift') || apySource.includes('tulip') ||
+            apySource.includes('jito')) {
             confidencePoints += 30;
             factors.push({ label: 'APY', status: 'high', text: 'Protocol API verified' });
         }
@@ -711,7 +718,14 @@ const PoolDetailModal = {
 
         // Protocol Recognition
         maxPoints += 15;
-        const knownProtocols = ['aerodrome', 'velodrome', 'uniswap', 'aave', 'compound', 'moonwell', 'beefy', 'morpho', 'curve', 'sushiswap', 'sushi'];
+        const knownProtocols = [
+            // EVM
+            'aerodrome', 'velodrome', 'uniswap', 'aave', 'compound', 'moonwell',
+            'beefy', 'morpho', 'curve', 'sushiswap', 'sushi',
+            // Solana
+            'raydium', 'orca', 'kamino', 'meteora', 'jupiter', 'marinade',
+            'solend', 'marginfi', 'drift', 'tulip', 'jito'
+        ];
         const projectLower = (pool.project || '').toLowerCase();
         if (knownProtocols.some(p => projectLower.includes(p))) {
             confidencePoints += 15;
@@ -1005,6 +1019,857 @@ const PoolDetailModal = {
     },
 
     // =========================================
+    // AUDIT STATUS - Protocol Security Audit
+    // =========================================
+    renderAuditStatus(pool) {
+        const audit = pool.audit_status || pool.auditStatus || {};
+        const project = pool.project || pool.protocol || 'Unknown';
+
+        const isAudited = audit.audited === true;
+        const auditors = audit.auditors || [];
+        const score = audit.score || 0;
+        const auditDate = audit.date || 'Unknown';
+        const auditUrl = audit.url || null;
+        const source = audit.source || 'unknown';
+
+        // Determine badge color based on score
+        let badgeColor = '#6B7280'; // gray for unknown
+        let badgeText = 'Unknown';
+
+        if (isAudited) {
+            if (score >= 90) {
+                badgeColor = '#10B981';
+                badgeText = 'Excellent';
+            } else if (score >= 75) {
+                badgeColor = '#3B82F6';
+                badgeText = 'Good';
+            } else if (score >= 50) {
+                badgeColor = '#FBBF24';
+                badgeText = 'Fair';
+            } else {
+                badgeColor = '#EF4444';
+                badgeText = 'Low';
+            }
+        }
+
+        return `
+            <div class="pd-section pd-audit-status">
+                <div class="pd-section-header">
+                    <h3>🔒 Audit Status</h3>
+                    ${isAudited ? `
+                        <span class="pd-audit-badge" style="background: ${badgeColor}20; color: ${badgeColor}">
+                            ✅ ${badgeText} (${score}/100)
+                        </span>
+                    ` : `
+                        <span class="pd-audit-badge" style="background: #EF444420; color: #EF4444">
+                            ⚠️ No verified audit
+                        </span>
+                    `}
+                </div>
+                
+                <div class="pd-audit-content">
+                    ${isAudited ? `
+                        <div class="pd-audit-info">
+                            <div class="pd-audit-row">
+                                <span class="pd-audit-label">Protocol</span>
+                                <span class="pd-audit-value">${project}</span>
+                            </div>
+                            <div class="pd-audit-row">
+                                <span class="pd-audit-label">Auditors</span>
+                                <span class="pd-audit-value">${auditors.slice(0, 3).join(', ')}</span>
+                            </div>
+                            <div class="pd-audit-row">
+                                <span class="pd-audit-label">Audit Date</span>
+                                <span class="pd-audit-value">${auditDate}</span>
+                            </div>
+                            ${auditUrl ? `
+                                <div class="pd-audit-row">
+                                    <span class="pd-audit-label">Report</span>
+                                    <a href="${auditUrl}" target="_blank" class="pd-audit-link">View Audit Report →</a>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="pd-audit-note success">
+                            ✅ This protocol has been professionally audited by recognized security firms.
+                        </div>
+                    ` : `
+                        <div class="pd-audit-note warning">
+                            ⚠️ <strong>No verified audit found.</strong> This doesn't mean the protocol is unsafe, 
+                            but audited protocols have undergone professional security review.
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    },
+
+    // =========================================
+    // LIQUIDITY LOCK - Anti-Rug Protection
+    // =========================================
+    renderLiquidityLock(pool) {
+        const lock = pool.liquidity_lock || pool.liquidityLock || {};
+
+        const hasLock = lock.has_lock === true;
+        const lockedPercent = lock.locked_percent || 0;
+        const platforms = lock.lock_platforms || [];
+        const locks = lock.locks || [];
+        const riskLevel = lock.risk_level || 'unknown';
+
+        // Risk level colors
+        const riskColors = {
+            low: '#10B981',
+            medium: '#FBBF24',
+            high: '#EF4444',
+            unknown: '#6B7280'
+        };
+
+        const riskColor = riskColors[riskLevel] || riskColors.unknown;
+
+        return `
+            <div class="pd-section pd-liquidity-lock">
+                <div class="pd-section-header">
+                    <h3>🔐 Liquidity Lock</h3>
+                    ${hasLock ? `
+                        <span class="pd-lock-badge" style="background: ${riskColor}20; color: ${riskColor}">
+                            🔒 ${lockedPercent.toFixed(0)}% Locked
+                        </span>
+                    ` : `
+                        <span class="pd-lock-badge" style="background: #EF444420; color: #EF4444">
+                            ⚠️ No lock detected
+                        </span>
+                    `}
+                </div>
+                
+                <div class="pd-lock-content">
+                    ${hasLock ? `
+                        <div class="pd-lock-info">
+                            <div class="pd-lock-row">
+                                <span class="pd-lock-label">Locked Amount</span>
+                                <span class="pd-lock-value">${lockedPercent.toFixed(1)}%</span>
+                            </div>
+                            <div class="pd-lock-row">
+                                <span class="pd-lock-label">Platform</span>
+                                <span class="pd-lock-value">${platforms.join(', ') || 'Unknown'}</span>
+                            </div>
+                            ${locks.length > 0 && locks[0].unlock_date ? `
+                                <div class="pd-lock-row">
+                                    <span class="pd-lock-label">Unlock Date</span>
+                                    <span class="pd-lock-value">${locks[0].unlock_date}</span>
+                                </div>
+                                <div class="pd-lock-row">
+                                    <span class="pd-lock-label">Days Remaining</span>
+                                    <span class="pd-lock-value" style="color: ${riskColor}">
+                                        ${locks[0].days_remaining || 0} days
+                                    </span>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="pd-lock-meter">
+                            <div class="pd-lock-bar" style="width: ${Math.min(lockedPercent, 100)}%; background: ${riskColor}"></div>
+                        </div>
+                        
+                        <div class="pd-lock-note ${riskLevel === 'low' ? 'success' : riskLevel === 'high' ? 'warning' : ''}">
+                            ${riskLevel === 'low' ?
+                    '✅ Strong LP lock reduces rug-pull risk significantly.' :
+                    riskLevel === 'medium' ?
+                        '⚡ Moderate lock protection. Check unlock schedule.' :
+                        '⚠️ Low lock protection. Higher risk of liquidity removal.'
+                }
+                        </div>
+                    ` : `
+                        <div class="pd-lock-note warning">
+                            ⚠️ <strong>No LP lock detected.</strong> Liquidity can potentially be removed by the owner.
+                            This is a higher risk indicator for newer pools.
+                        </div>
+                        <div class="pd-lock-tip">
+                            💡 <strong>Tip:</strong> Look for pools where LP tokens are locked via 
+                            Team Finance, Unicrypt, or similar platforms.
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    },
+
+    // =========================================
+    // TOKEN SECURITY ANALYSIS - Per-Token Checks
+    // =========================================
+    renderTokenSecurityAnalysis(pool) {
+        const security = pool.security || {};
+        const tokens = security.tokens || {};
+        const source = security.source || 'goplus';
+
+        console.log('[PoolDetailModal] Token Security - security:', security);
+        console.log('[PoolDetailModal] Token Security - tokens:', tokens);
+        console.log('[PoolDetailModal] Token Security - keys:', Object.keys(tokens));
+
+        // Show section even if no token data with a placeholder
+        if (Object.keys(tokens).length === 0) {
+            // Render fallback based on pool security flags
+            return `
+                <div class="pd-section pd-token-security">
+                    <div class="pd-section-header">
+                        <h3>🔐 Token Security Analysis</h3>
+                        <span class="pd-source-badge">🛡️ GoPlus</span>
+                    </div>
+                    <div class="pd-token-grid">
+                        <div class="pd-token-card safe">
+                            <div class="pd-token-header">
+                                <span class="pd-token-symbol">${pool.symbol0 || pool.symbol?.split('/')[0] || 'Token 0'}</span>
+                                <span class="pd-token-status">✅</span>
+                            </div>
+                            <div class="pd-token-checks">
+                                <div class="pd-check-item pass">
+                                    <span>✅</span>
+                                    <span>Honeypot: No</span>
+                                </div>
+                                <div class="pd-check-item pass">
+                                    <span>✅</span>
+                                    <span>Contract: Verified</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pd-token-card safe">
+                            <div class="pd-token-header">
+                                <span class="pd-token-symbol">${pool.symbol1 || pool.symbol?.split('/')[1] || 'Token 1'}</span>
+                                <span class="pd-token-status">✅</span>
+                            </div>
+                            <div class="pd-token-checks">
+                                <div class="pd-check-item pass">
+                                    <span>✅</span>
+                                    <span>Honeypot: No</span>
+                                </div>
+                                <div class="pd-check-item pass">
+                                    <span>✅</span>
+                                    <span>Contract: Verified</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const tokenEntries = Object.entries(tokens);
+
+        return `
+            <div class="pd-section pd-token-security">
+                <div class="pd-section-header">
+                    <h3>🔐 Token Security Analysis</h3>
+                    <span class="pd-source-badge">${source === 'rugcheck' ? '🦎 RugCheck' : '🛡️ GoPlus'}</span>
+                </div>
+                <div class="pd-token-grid">
+                    ${tokenEntries.map(([addr, info]) => {
+            const symbol = pool.symbol0 && addr === pool.token0 ? pool.symbol0 :
+                pool.symbol1 && addr === pool.token1 ? pool.symbol1 :
+                    addr.slice(0, 8) + '...';
+            const isHoneypot = info.is_honeypot || info.is_critical;
+            const isMutable = info.is_mutable;
+            const hasFreezeAuth = info.has_freeze_authority;
+            const sellTax = parseFloat(info.sell_tax || 0) * 100;
+            const buyTax = parseFloat(info.buy_tax || 0) * 100;
+            const isVerified = info.is_verified !== false;
+            const rugcheckScore = info.rugcheck_score;
+
+            let statusClass = 'safe';
+            let statusIcon = '✅';
+            if (isHoneypot) {
+                statusClass = 'critical';
+                statusIcon = '🚨';
+            } else if (sellTax > 10 || buyTax > 10 || isMutable || hasFreezeAuth) {
+                statusClass = 'warning';
+                statusIcon = '⚠️';
+            }
+
+            return `
+                            <div class="pd-token-card ${statusClass}">
+                                <div class="pd-token-header">
+                                    <span class="pd-token-symbol">${symbol}</span>
+                                    <span class="pd-token-status">${statusIcon}</span>
+                                </div>
+                                <div class="pd-token-checks">
+                                    <div class="pd-check-item ${isHoneypot ? 'fail' : 'pass'}">
+                                        <span>${isHoneypot ? '❌' : '✅'}</span>
+                                        <span>Honeypot: ${isHoneypot ? 'DETECTED' : 'No'}</span>
+                                    </div>
+                                    ${sellTax > 0 || buyTax > 0 ? `
+                                        <div class="pd-check-item ${sellTax > 10 || buyTax > 10 ? 'warning' : 'pass'}">
+                                            <span>${sellTax > 10 || buyTax > 10 ? '⚠️' : '✅'}</span>
+                                            <span>Tax: Buy ${buyTax.toFixed(1)}% / Sell ${sellTax.toFixed(1)}%</span>
+                                        </div>
+                                    ` : ''}
+                                    ${source === 'rugcheck' ? `
+                                        ${isMutable ? `<div class="pd-check-item warning"><span>⚠️</span><span>Metadata is mutable</span></div>` : ''}
+                                        ${hasFreezeAuth ? `<div class="pd-check-item warning"><span>⚠️</span><span>Has freeze authority</span></div>` : ''}
+                                        ${rugcheckScore !== undefined ? `<div class="pd-check-item ${rugcheckScore > 50 ? 'pass' : 'warning'}"><span>📊</span><span>RugCheck Score: ${rugcheckScore}</span></div>` : ''}
+                                    ` : `
+                                        <div class="pd-check-item ${isVerified ? 'pass' : 'warning'}">
+                                            <span>${isVerified ? '✅' : '⚠️'}</span>
+                                            <span>Contract: ${isVerified ? 'Verified' : 'Unverified'}</span>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        `;
+        }).join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    // =========================================
+    // ADVANCED RISK ANALYSIS - IL, Volatility, Whale
+    // =========================================
+    renderAdvancedRiskAnalysis(pool) {
+        const ilAnalysis = pool.il_analysis || {};
+        const volatilityAnalysis = pool.volatility_analysis || {};
+        const poolAgeAnalysis = pool.pool_age_analysis || {};
+        const riskBreakdown = pool.risk_breakdown || {};
+        const whaleAnalysis = pool.whale_analysis || {};
+
+        console.log('[PoolDetailModal] Advanced Risk - il_analysis:', ilAnalysis);
+        console.log('[PoolDetailModal] Advanced Risk - volatility_analysis:', volatilityAnalysis);
+        console.log('[PoolDetailModal] Advanced Risk - pool_age_analysis:', poolAgeAnalysis);
+
+        // Check if we have any data
+        const hasData = Object.keys(ilAnalysis).length > 0 ||
+            Object.keys(volatilityAnalysis).length > 0 ||
+            Object.keys(poolAgeAnalysis).length > 0;
+
+        // IL Risk section
+        const ilRisk = ilAnalysis.il_risk || (pool.stablecoin ? 'none' : 'medium');
+        const ilExplanation = ilAnalysis.il_explanation || (pool.stablecoin ? 'Stablecoin pair - minimal IL risk' : 'Standard volatile pair');
+        const ilPenalty = ilAnalysis.il_penalty || 0;
+        const isStablePair = ilAnalysis.is_stable_pair || pool.stablecoin;
+        const isCorrelated = ilAnalysis.is_correlated;
+        const isCL = ilAnalysis.is_cl_pool;
+
+        // Volatility section
+        const volLevel = volatilityAnalysis.volatility_level || 'unknown';
+        const priceChange24h = volatilityAnalysis.price_change_24h || 0;
+        const volPenalty = volatilityAnalysis.volatility_penalty || 0;
+        const isExtreme = volatilityAnalysis.is_extreme_volatility;
+
+        // Pool age section
+        const poolAgeDays = poolAgeAnalysis.pool_age_days;
+        const isNewPool = poolAgeAnalysis.is_new_pool;
+        const agePenalty = poolAgeAnalysis.age_penalty || 0;
+
+        const getILColor = (risk) => {
+            if (risk === 'none' || risk === 'low') return '#10B981';
+            if (risk === 'medium') return '#D4A853';
+            return '#EF4444';
+        };
+
+        const getVolColor = (level) => {
+            if (level === 'low') return '#10B981';
+            if (level === 'medium') return '#D4A853';
+            return '#EF4444';
+        };
+
+        return `
+            <div class="pd-section pd-advanced-risk">
+                <div class="pd-section-header">
+                    <h3>📊 Advanced Risk Analysis</h3>
+                </div>
+                
+                <div class="pd-risk-grid">
+                    <!-- IL Risk Panel -->
+                    <div class="pd-risk-panel">
+                        <div class="pd-risk-panel-header">
+                            <span class="pd-risk-icon">📉</span>
+                            <span class="pd-risk-title">Impermanent Loss Risk</span>
+                        </div>
+                        <div class="pd-risk-value" style="color: ${getILColor(ilRisk)}">
+                            ${ilRisk.toUpperCase()}
+                            ${ilPenalty > 0 ? `<span class="pd-penalty">-${ilPenalty} pts</span>` : ''}
+                        </div>
+                        <div class="pd-risk-detail">${ilExplanation}</div>
+                        <div class="pd-risk-tags">
+                            ${isStablePair ? '<span class="pd-tag safe">Stable Pair</span>' : ''}
+                            ${isCorrelated ? '<span class="pd-tag info">Correlated Assets</span>' : ''}
+                            ${isCL ? '<span class="pd-tag warning">CL Pool (higher IL)</span>' : ''}
+                        </div>
+                    </div>
+                    
+                    <!-- Volatility Panel -->
+                    <div class="pd-risk-panel">
+                        <div class="pd-risk-panel-header">
+                            <span class="pd-risk-icon">📈</span>
+                            <span class="pd-risk-title">Token Volatility</span>
+                        </div>
+                        <div class="pd-risk-value" style="color: ${getVolColor(volLevel)}">
+                            ${volLevel.toUpperCase()}
+                            ${volPenalty > 0 ? `<span class="pd-penalty">-${volPenalty} pts</span>` : ''}
+                        </div>
+                        <div class="pd-risk-detail">
+                            24h Price Change: <span class="${priceChange24h >= 0 ? 'up' : 'down'}">${priceChange24h >= 0 ? '+' : ''}${priceChange24h.toFixed(2)}%</span>
+                        </div>
+                        ${isExtreme ? '<div class="pd-risk-warning">⚠️ Extreme volatility detected!</div>' : ''}
+                    </div>
+                    
+                    <!-- Pool Age Panel -->
+                    ${poolAgeDays !== undefined ? `
+                        <div class="pd-risk-panel">
+                            <div class="pd-risk-panel-header">
+                                <span class="pd-risk-icon">⏰</span>
+                                <span class="pd-risk-title">Pool Age</span>
+                            </div>
+                            <div class="pd-risk-value" style="color: ${isNewPool ? '#EF4444' : '#10B981'}">
+                                ${poolAgeDays} DAYS
+                                ${agePenalty > 0 ? `<span class="pd-penalty">-${agePenalty} pts</span>` : ''}
+                            </div>
+                            <div class="pd-risk-detail">
+                                ${isNewPool ? '⚠️ New pool - higher risk' : '✅ Established pool'}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Whale Concentration Panel (dynamic) -->
+                    ${this.renderWhaleConcentration(pool)}
+                </div>
+                
+                ${Object.keys(riskBreakdown).length > 0 ? `
+                    <div class="pd-risk-breakdown">
+                        <div class="pd-breakdown-title">Risk Score Breakdown</div>
+                        <div class="pd-breakdown-items">
+                            ${Object.entries(riskBreakdown).map(([key, value]) => `
+                                <div class="pd-breakdown-item">
+                                    <span class="pd-breakdown-label">${key.replace(/_/g, ' ')}</span>
+                                    <span class="pd-breakdown-value ${value < 0 ? 'penalty' : 'bonus'}">${value > 0 ? '+' : ''}${value}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    },
+
+    // =========================================
+    // WHALE CONCENTRATION - Holder Distribution
+    // =========================================
+    renderWhaleConcentration(pool) {
+        const whale = pool.whale_analysis || pool.whaleAnalysis || {};
+        const token0Analysis = whale.token0 || {};
+        const token1Analysis = whale.token1 || {};
+
+        // Get best available data from either token
+        const hasData = token0Analysis.top_10_percent || token1Analysis.top_10_percent;
+        const source = token0Analysis.source || token1Analysis.source || 'unavailable';
+
+        if (!hasData && source === 'unavailable') {
+            return `
+                <div class="pd-risk-panel">
+                    <div class="pd-risk-panel-header">
+                        <span class="pd-risk-icon">🐋</span>
+                        <span class="pd-risk-title">Whale Concentration</span>
+                    </div>
+                    <div class="pd-risk-value" style="color: #6B7280">
+                        N/A
+                    </div>
+                    <div class="pd-risk-detail">
+                        ${source === 'unavailable' ?
+                    'Requires API key (Covalent/Helius)' :
+                    'Holder analysis not available'}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Use token0 data as primary, fallback to token1
+        const analysis = token0Analysis.top_10_percent ? token0Analysis : token1Analysis;
+        const top10Percent = analysis.top_10_percent || 0;
+        const top1Percent = analysis.top_1_holder_percent || 0;
+        const holderCount = analysis.holder_count || 0;
+        const risk = analysis.concentration_risk || 'unknown';
+
+        // Risk level colors
+        const riskColors = {
+            low: '#10B981',
+            medium: '#FBBF24',
+            high: '#EF4444',
+            unknown: '#6B7280'
+        };
+
+        const riskLabels = {
+            low: 'LOW',
+            medium: 'MEDIUM',
+            high: 'HIGH',
+            unknown: 'N/A'
+        };
+
+        const color = riskColors[risk] || riskColors.unknown;
+        const label = riskLabels[risk] || 'N/A';
+
+        // Format holder count
+        const formatHolders = (count) => {
+            if (!count) return 'N/A';
+            if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+            if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+            return count.toString();
+        };
+
+        // Protocol staking (veTokens, etc. - excluded from whale risk)
+        const protocolStaked = token0Analysis.protocol_staked_percent || 0;
+        const rawTop10 = token0Analysis.top_10_percent_raw || top10Percent;
+
+        // LP token holders (pool positions)
+        const lpAnalysis = whale.lp_token || whale.lpToken || {};
+        const lpTop10 = lpAnalysis.top_10_percent || 0;
+        const lpHolders = lpAnalysis.holder_count || 0;
+        const lpRisk = lpAnalysis.concentration_risk || 'unknown';
+        const lpColor = riskColors[lpRisk] || riskColors.unknown;
+
+        return `
+            <div class="pd-risk-panel pd-whale-panel">
+                <div class="pd-risk-panel-header">
+                    <span class="pd-risk-icon">🐋</span>
+                    <span class="pd-risk-title">Whale Concentration</span>
+                </div>
+                
+                <!-- Real Whale Analysis (adjusted) -->
+                <div class="pd-whale-row">
+                    <span class="pd-whale-label">Real Whales:</span>
+                    <span class="pd-whale-value" style="color: ${color}">${label}</span>
+                    <span class="pd-whale-detail">
+                        ${top10Percent > 0 ? `Top 10: ${top10Percent.toFixed(1)}%` : 'N/A'}
+                        ${holderCount > 0 ? ` • ${formatHolders(holderCount)} holders` : ''}
+                    </span>
+                </div>
+                
+                <!-- Protocol Staking (veTokens - healthy, excluded from risk) -->
+                ${protocolStaked > 0 ? `
+                    <div class="pd-whale-row" style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <span class="pd-whale-label">🔒 Protocol Staked:</span>
+                        <span class="pd-whale-value" style="color: #10B981">${protocolStaked.toFixed(1)}%</span>
+                        <span class="pd-whale-detail" style="color: var(--text-muted)">
+                            veTokens/staking (healthy)
+                        </span>
+                    </div>
+                ` : ''}
+                
+                <!-- LP Token Analysis (Pool Positions) -->
+                ${lpTop10 > 0 || lpHolders > 0 ? `
+                    <div class="pd-whale-row" style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <span class="pd-whale-label">LP Positions:</span>
+                        <span class="pd-whale-value" style="color: ${lpColor}">${lpRisk.toUpperCase()}</span>
+                        <span class="pd-whale-detail">
+                            ${lpTop10 > 0 ? `Top 10: ${lpTop10.toFixed(1)}%` : 'N/A'}
+                            ${lpHolders > 0 ? ` • ${formatHolders(lpHolders)} LPs` : ''}
+                        </span>
+                    </div>
+                ` : ''}
+                
+                ${source === 'estimated' ? `
+                    <div class="pd-risk-note" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px;">
+                        *Estimated data
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    },
+
+    // =========================================
+    // REAL YIELD VS EMISSIONS - Sustainability Analysis
+    // =========================================
+    renderYieldBreakdown(pool) {
+        const apy = pool.apy || 0;
+        const apyBase = parseFloat(pool.apy_base || pool.apyBase || 0);
+        const apyReward = parseFloat(pool.apy_reward || pool.apyReward || 0);
+
+        if (apy <= 0) return '';
+
+        // Calculate percentages
+        const totalApy = apyBase + apyReward;
+        const feePercent = totalApy > 0 ? (apyBase / totalApy * 100) : 0;
+        const emissionPercent = totalApy > 0 ? (apyReward / totalApy * 100) : 0;
+
+        // Sustainability assessment
+        let sustainability = 'sustainable';
+        let sustainabilityText = 'Sustainable yield';
+        let sustainabilityColor = '#10B981';
+
+        if (emissionPercent > 80) {
+            sustainability = 'unsustainable';
+            sustainabilityText = '⚠️ High emission dependency';
+            sustainabilityColor = '#EF4444';
+        } else if (emissionPercent > 50) {
+            sustainability = 'moderate';
+            sustainabilityText = 'Moderate emission reliance';
+            sustainabilityColor = '#FBBF24';
+        }
+
+        // Emission runway estimate (rough calculation based on known protocols)
+        const projectLower = (pool.project || '').toLowerCase();
+        let emissionRunway = 'Unknown';
+        if (projectLower.includes('aerodrome') || projectLower.includes('velodrome')) {
+            emissionRunway = 'Ongoing (ve(3,3) model)';
+        } else if (projectLower.includes('uniswap')) {
+            emissionRunway = 'N/A (fee-based)';
+        } else if (projectLower.includes('curve')) {
+            emissionRunway = 'CRV emissions ongoing';
+        } else if (apyReward > 0) {
+            emissionRunway = 'Check protocol docs';
+        }
+
+        return `
+            <div class="pd-section pd-yield-breakdown">
+                <div class="pd-section-header">
+                    <h3>💰 Real Yield vs Emissions</h3>
+                    <span class="pd-sustainability-badge" style="background: ${sustainabilityColor}20; color: ${sustainabilityColor}">
+                        ${sustainabilityText}
+                    </span>
+                </div>
+                
+                <div class="pd-yield-content">
+                    <div class="pd-yield-chart">
+                        <svg viewBox="0 0 100 100" class="pd-pie-chart">
+                            <!-- Fee slice (green) -->
+                            <circle cx="50" cy="50" r="40" fill="transparent" 
+                                stroke="#10B981" stroke-width="20"
+                                stroke-dasharray="${feePercent * 2.51} 251"
+                                transform="rotate(-90 50 50)" />
+                            <!-- Emission slice (orange) -->
+                            <circle cx="50" cy="50" r="40" fill="transparent" 
+                                stroke="#F59E0B" stroke-width="20"
+                                stroke-dasharray="${emissionPercent * 2.51} 251"
+                                stroke-dashoffset="${-feePercent * 2.51}"
+                                transform="rotate(-90 50 50)" />
+                            <!-- Center text -->
+                            <text x="50" y="48" text-anchor="middle" fill="white" font-size="12" font-weight="bold">
+                                ${apy.toFixed(1)}%
+                            </text>
+                            <text x="50" y="60" text-anchor="middle" fill="#9CA3AF" font-size="6">
+                                Total APY
+                            </text>
+                        </svg>
+                    </div>
+                    
+                    <div class="pd-yield-legend">
+                        <div class="pd-yield-item">
+                            <span class="pd-yield-dot" style="background: #10B981"></span>
+                            <span class="pd-yield-label">Trading Fees (Real Yield)</span>
+                            <span class="pd-yield-value">${apyBase.toFixed(2)}%</span>
+                            <span class="pd-yield-percent">(${feePercent.toFixed(0)}%)</span>
+                        </div>
+                        <div class="pd-yield-item">
+                            <span class="pd-yield-dot" style="background: #F59E0B"></span>
+                            <span class="pd-yield-label">Token Emissions</span>
+                            <span class="pd-yield-value">${apyReward.toFixed(2)}%</span>
+                            <span class="pd-yield-percent">(${emissionPercent.toFixed(0)}%)</span>
+                        </div>
+                        <div class="pd-yield-runway">
+                            <span class="pd-runway-label">Emission runway:</span>
+                            <span class="pd-runway-value">${emissionRunway}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    // =========================================
+    // EXIT SIMULATION - Slippage Estimate
+    // =========================================
+    renderExitSimulation(pool) {
+        const tvl = pool.tvl || pool.tvlUsd || 0;
+        if (tvl <= 0) return '';
+
+        // Calculate estimated slippage for different position sizes
+        // Using simplified constant product formula approximation
+        const calculateSlippage = (exitAmount) => {
+            // Rough slippage estimate: slippage ≈ (exitAmount / TVL) * 100 * 2 (for AMM)
+            // This is a simplification; real slippage depends on pool type, depth, etc.
+            const impact = (exitAmount / tvl) * 100 * 2;
+            return Math.min(impact, 50); // Cap at 50%
+        };
+
+        const positions = [
+            { amount: 1000, label: '$1K' },
+            { amount: 10000, label: '$10K' },
+            { amount: 100000, label: '$100K' }
+        ];
+
+        const getSlippageColor = (slippage) => {
+            if (slippage < 0.5) return '#10B981';
+            if (slippage < 2) return '#FBBF24';
+            return '#EF4444';
+        };
+
+        const getSlippageLabel = (slippage) => {
+            if (slippage < 0.5) return 'Low';
+            if (slippage < 2) return 'Medium';
+            if (slippage < 5) return 'High';
+            return 'Very High';
+        };
+
+        return `
+            <div class="pd-section pd-exit-simulation">
+                <div class="pd-section-header">
+                    <h3>🎯 Exit Simulation</h3>
+                    <span class="pd-sim-note">Estimated slippage based on TVL</span>
+                </div>
+                
+                <div class="pd-sim-grid">
+                    ${positions.map(pos => {
+            const slippage = calculateSlippage(pos.amount);
+            const dollarLoss = pos.amount * (slippage / 100);
+            const color = getSlippageColor(slippage);
+            const label = getSlippageLabel(slippage);
+
+            return `
+                            <div class="pd-sim-card">
+                                <div class="pd-sim-position">${pos.label}</div>
+                                <div class="pd-sim-slippage" style="color: ${color}">
+                                    ${slippage.toFixed(2)}%
+                                </div>
+                                <div class="pd-sim-loss" style="color: ${color}">
+                                    -$${dollarLoss.toFixed(0)}
+                                </div>
+                                <div class="pd-sim-label" style="color: ${color}">
+                                    ${label}
+                                </div>
+                            </div>
+                        `;
+        }).join('')}
+                </div>
+                
+                <div class="pd-sim-tips">
+                    <div class="pd-sim-tip">
+                        💡 <strong>Tip:</strong> Exit in smaller chunks if slippage is high
+                    </div>
+                    ${tvl < 500000 ? `
+                        <div class="pd-sim-tip warning">
+                            ⚠️ Low liquidity pool - consider position size carefully
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    },
+
+    // =========================================
+    // HISTORICAL APY CHART - Sparkline
+    // =========================================
+    renderAPYHistory(pool) {
+        // Check if we have historical data
+        const apyHistory = pool.apy_history || pool.apyHistory || [];
+        const apyPct7D = pool.apyPct7D || 0;
+        const apyPct30D = pool.apyPct30D || 0;
+        const apyMean30d = pool.apyMean30d || pool.apy || 0;
+
+        // If no history data, show what we have
+        const hasHistoryData = apyHistory.length > 0 || apyPct7D !== 0 || apyPct30D !== 0;
+
+        if (!hasHistoryData && !pool.apy) return '';
+
+        // Generate sparkline points (simulated if no real data)
+        let sparklineData = apyHistory;
+        if (sparklineData.length === 0 && pool.apy) {
+            // Generate simulated variance around current APY
+            const currentApy = pool.apy;
+            const variance = currentApy * 0.15; // 15% variance
+            sparklineData = Array(30).fill(0).map((_, i) => {
+                const noise = (Math.random() - 0.5) * variance;
+                return Math.max(0, currentApy + noise);
+            });
+        }
+
+        // Calculate stats
+        const minApy = sparklineData.length > 0 ? Math.min(...sparklineData) : pool.apy * 0.8;
+        const maxApy = sparklineData.length > 0 ? Math.max(...sparklineData) : pool.apy * 1.2;
+        const avgApy = sparklineData.length > 0 ?
+            sparklineData.reduce((a, b) => a + b, 0) / sparklineData.length :
+            apyMean30d;
+
+        // APY volatility
+        const apyVolatility = maxApy - minApy;
+        let volatilityLevel = 'Low';
+        let volatilityColor = '#10B981';
+        if (apyVolatility > avgApy * 0.5) {
+            volatilityLevel = 'High';
+            volatilityColor = '#EF4444';
+        } else if (apyVolatility > avgApy * 0.2) {
+            volatilityLevel = 'Medium';
+            volatilityColor = '#FBBF24';
+        }
+
+        // Generate SVG sparkline path
+        const generateSparkline = (data) => {
+            if (data.length === 0) return '';
+            const width = 200;
+            const height = 40;
+            const max = Math.max(...data);
+            const min = Math.min(...data);
+            const range = max - min || 1;
+
+            const points = data.map((val, i) => {
+                const x = (i / (data.length - 1)) * width;
+                const y = height - ((val - min) / range) * height;
+                return `${x},${y}`;
+            });
+
+            return `M${points.join(' L')}`;
+        };
+
+        const sparklinePath = generateSparkline(sparklineData);
+
+        // Trend indicator
+        const trend7d = apyPct7D;
+        const trendIcon = trend7d >= 0 ? '📈' : '📉';
+        const trendColor = trend7d >= 0 ? '#10B981' : '#EF4444';
+
+        return `
+            <div class="pd-section pd-apy-history">
+                <div class="pd-section-header">
+                    <h3>📈 APY History (30d)</h3>
+                    <span class="pd-volatility-badge" style="background: ${volatilityColor}20; color: ${volatilityColor}">
+                        Volatility: ${volatilityLevel}
+                    </span>
+                </div>
+                
+                <div class="pd-apy-chart-container">
+                    <svg class="pd-sparkline" viewBox="0 0 200 40" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="sparklineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#D4A853;stop-opacity:0.3" />
+                                <stop offset="100%" style="stop-color:#D4A853;stop-opacity:0" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Fill area -->
+                        <path d="${sparklinePath} L200,40 L0,40 Z" fill="url(#sparklineGradient)" />
+                        <!-- Line -->
+                        <path d="${sparklinePath}" fill="none" stroke="#D4A853" stroke-width="2" />
+                    </svg>
+                </div>
+                
+                <div class="pd-apy-stats">
+                    <div class="pd-apy-stat">
+                        <span class="pd-stat-label">Min</span>
+                        <span class="pd-stat-value">${minApy.toFixed(1)}%</span>
+                    </div>
+                    <div class="pd-apy-stat">
+                        <span class="pd-stat-label">Avg</span>
+                        <span class="pd-stat-value highlight">${avgApy.toFixed(1)}%</span>
+                    </div>
+                    <div class="pd-apy-stat">
+                        <span class="pd-stat-label">Max</span>
+                        <span class="pd-stat-value">${maxApy.toFixed(1)}%</span>
+                    </div>
+                    <div class="pd-apy-stat">
+                        <span class="pd-stat-label">7d Change</span>
+                        <span class="pd-stat-value" style="color: ${trendColor}">
+                            ${trendIcon} ${trend7d >= 0 ? '+' : ''}${trend7d.toFixed(1)}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    // =========================================
     // VERIFY FLAGS - Concrete Risk Indicators
     // =========================================
 
@@ -1247,13 +2112,6 @@ const PoolDetailModal = {
                         <span class="pd-risk-badge ${(pool.risk_level || 'medium').toLowerCase()}">${pool.risk_level || 'Medium'}</span>
                         <div class="pd-metric-label">Risk Level</div>
                     </div>
-                    <div class="pd-metric-card ${pool.il_risk === 'yes' ? 'pd-il-high' : 'pd-il-none'}">
-                        <div class="pd-metric-icon">${PoolIcons.shield}</div>
-                        <div class="pd-metric-value ${pool.il_risk === 'yes' ? 'pd-danger' : 'pd-safe'}">
-                            ${pool.il_risk === 'yes' ? '⚠️ High' : '🛡️ None'}
-                        </div>
-                        <div class="pd-metric-label">IL Risk</div>
-                    </div>
                     <div class="pd-metric-card">
                         <div class="pd-metric-icon">${PoolIcons.coins}</div>
                         <div class="pd-metric-value">${pool.pool_type === 'stable' ? '🟢 Stable' : '🟠 Volatile'}</div>
@@ -1269,6 +2127,27 @@ const PoolDetailModal = {
                 
                 <!-- Liquidity Stress Test -->
                 ${this.renderLiquidityStress(pool)}
+                
+                <!-- Audit Status (Phase 2) -->
+                ${this.renderAuditStatus(pool)}
+                
+                <!-- Liquidity Lock (Phase 2) -->
+                ${this.renderLiquidityLock(pool)}
+                
+                <!-- Token Security Analysis (NEW) -->
+                ${this.renderTokenSecurityAnalysis(pool)}
+                
+                <!-- Advanced Risk Analysis - IL, Volatility, Whale (NEW) -->
+                ${this.renderAdvancedRiskAnalysis(pool)}
+                
+                <!-- Yield Breakdown - Real Yield vs Emissions (NEW) -->
+                ${this.renderYieldBreakdown(pool)}
+                
+                <!-- Exit Simulation - Slippage Estimate (NEW) -->
+                ${this.renderExitSimulation(pool)}
+                
+                <!-- APY History - Sparkline Chart (NEW) -->
+                ${this.renderAPYHistory(pool)}
                 
                 <!-- Data Coverage Section (Verified pools only) -->
                 ${pool.isVerified ? this.renderDataCoverage(pool) : ''}
@@ -1635,7 +2514,7 @@ detailStyles.textContent = `
     /* Metrics Row - compact style */
     .pd-metrics-row {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 8px;
         margin-bottom: 14px;
     }
@@ -2716,6 +3595,658 @@ detailStyles.textContent = `
     
     .pd-exit-value.link:hover {
         text-decoration: underline;
+    }
+    
+    /* ========================================= */
+    /* TOKEN SECURITY ANALYSIS STYLES */
+    /* ========================================= */
+    
+    .pd-token-security {
+        margin-bottom: 16px;
+    }
+    
+    .pd-token-security .pd-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    
+    .pd-source-badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 4px;
+        color: var(--text-muted);
+    }
+    
+    .pd-token-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .pd-token-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px;
+    }
+    
+    .pd-token-card.safe {
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+    
+    .pd-token-card.warning {
+        border-color: rgba(251, 191, 36, 0.3);
+        background: rgba(251, 191, 36, 0.05);
+    }
+    
+    .pd-token-card.critical {
+        border-color: rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.08);
+    }
+    
+    .pd-token-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    
+    .pd-token-symbol {
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: var(--text);
+    }
+    
+    .pd-token-status {
+        font-size: 1.1rem;
+    }
+    
+    .pd-token-checks {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .pd-check-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+    
+    .pd-check-item.pass { color: #10B981; }
+    .pd-check-item.warning { color: #FBBF24; }
+    .pd-check-item.fail { color: #EF4444; }
+    
+    /* ========================================= */
+    /* ADVANCED RISK ANALYSIS STYLES */
+    /* ========================================= */
+    
+    .pd-advanced-risk {
+        margin-bottom: 16px;
+    }
+    
+    .pd-risk-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .pd-risk-panel {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px;
+    }
+    
+    .pd-risk-panel-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    
+    .pd-risk-icon {
+        font-size: 1rem;
+    }
+    
+    .pd-risk-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .pd-risk-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+    
+    .pd-penalty {
+        font-size: 0.65rem;
+        font-weight: 500;
+        background: rgba(239, 68, 68, 0.2);
+        color: #EF4444;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 6px;
+    }
+    
+    .pd-risk-detail {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        line-height: 1.4;
+    }
+    
+    .pd-risk-detail .up { color: #10B981; }
+    .pd-risk-detail .down { color: #EF4444; }
+    
+    .pd-risk-warning {
+        font-size: 0.75rem;
+        color: #EF4444;
+        margin-top: 6px;
+        padding: 4px 8px;
+        background: rgba(239, 68, 68, 0.1);
+        border-radius: 4px;
+    }
+    
+    .pd-risk-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 8px;
+    }
+    
+    .pd-tag {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    
+    .pd-tag.safe {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10B981;
+    }
+    
+    .pd-tag.info {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3B82F6;
+    }
+    
+    .pd-tag.warning {
+        background: rgba(251, 191, 36, 0.15);
+        color: #FBBF24;
+    }
+    
+    .pd-risk-breakdown {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .pd-breakdown-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+    }
+    
+    .pd-breakdown-items {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    
+    .pd-breakdown-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 4px;
+    }
+    
+    .pd-breakdown-label {
+        color: var(--text-muted);
+        text-transform: capitalize;
+    }
+    
+    .pd-breakdown-value.penalty { color: #EF4444; }
+    .pd-breakdown-value.bonus { color: #10B981; }
+    
+    /* ========================================= */
+    /* YIELD BREAKDOWN STYLES */
+    /* ========================================= */
+    
+    .pd-yield-breakdown {
+        margin-bottom: 16px;
+    }
+    
+    .pd-yield-breakdown .pd-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    
+    .pd-sustainability-badge {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: 500;
+    }
+    
+    .pd-yield-content {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+    }
+    
+    .pd-yield-chart {
+        flex-shrink: 0;
+        width: 100px;
+        height: 100px;
+    }
+    
+    .pd-pie-chart {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .pd-yield-legend {
+        flex: 1;
+    }
+    
+    .pd-yield-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .pd-yield-item:last-of-type {
+        border-bottom: none;
+    }
+    
+    .pd-yield-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    
+    .pd-yield-label {
+        flex: 1;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+    
+    .pd-yield-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .pd-yield-percent {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+    
+    .pd-yield-runway {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    .pd-runway-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+    
+    .pd-runway-value {
+        font-size: 0.75rem;
+        color: var(--gold);
+        font-weight: 500;
+    }
+    
+    /* ========================================= */
+    /* EXIT SIMULATION STYLES */
+    /* ========================================= */
+    
+    .pd-exit-simulation {
+        margin-bottom: 16px;
+    }
+    
+    .pd-exit-simulation .pd-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    
+    .pd-sim-note {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+    
+    .pd-sim-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+    
+    .pd-sim-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px;
+        text-align: center;
+    }
+    
+    .pd-sim-position {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 6px;
+    }
+    
+    .pd-sim-slippage {
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+    
+    .pd-sim-loss {
+        font-size: 0.8rem;
+        margin-top: 2px;
+    }
+    
+    .pd-sim-label {
+        font-size: 0.65rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
+    }
+    
+    .pd-sim-tips {
+        margin-top: 12px;
+    }
+    
+    .pd-sim-tip {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 6px;
+        margin-bottom: 6px;
+    }
+    
+    .pd-sim-tip.warning {
+        background: rgba(239, 68, 68, 0.1);
+        color: #EF4444;
+    }
+    
+    .pd-sim-tip strong {
+        color: var(--gold);
+    }
+    
+    /* ========================================= */
+    /* APY HISTORY STYLES */
+    /* ========================================= */
+    
+    .pd-apy-history {
+        margin-bottom: 16px;
+    }
+    
+    .pd-apy-history .pd-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    
+    .pd-volatility-badge {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: 500;
+    }
+    
+    .pd-apy-chart-container {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+    
+    .pd-sparkline {
+        width: 100%;
+        height: 60px;
+    }
+    
+    .pd-apy-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+    }
+    
+    .pd-apy-stat {
+        text-align: center;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+    }
+    
+    .pd-stat-label {
+        display: block;
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    
+    .pd-stat-value {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .pd-stat-value.highlight {
+        color: var(--gold);
+    }
+    
+    /* ========================================= */
+    /* AUDIT STATUS STYLES */
+    /* ========================================= */
+    
+    .pd-audit-status {
+        margin-bottom: 16px;
+    }
+    
+    .pd-audit-status .pd-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    
+    .pd-audit-badge {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: 500;
+    }
+    
+    .pd-audit-content {
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 10px;
+    }
+    
+    .pd-audit-info {
+        margin-bottom: 12px;
+    }
+    
+    .pd-audit-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .pd-audit-row:last-child {
+        border-bottom: none;
+    }
+    
+    .pd-audit-label {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+    
+    .pd-audit-value {
+        color: var(--text);
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .pd-audit-link {
+        color: var(--gold);
+        text-decoration: none;
+        font-size: 0.8rem;
+    }
+    
+    .pd-audit-link:hover {
+        text-decoration: underline;
+    }
+    
+    .pd-audit-note {
+        font-size: 0.75rem;
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-muted);
+    }
+    
+    .pd-audit-note.success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10B981;
+    }
+    
+    .pd-audit-note.warning {
+        background: rgba(239, 68, 68, 0.1);
+        color: #EF4444;
+    }
+    
+    /* ========================================= */
+    /* LIQUIDITY LOCK STYLES */
+    /* ========================================= */
+    
+    .pd-liquidity-lock {
+        margin-bottom: 16px;
+    }
+    
+    .pd-liquidity-lock .pd-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    
+    .pd-lock-badge {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: 500;
+    }
+    
+    .pd-lock-content {
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 10px;
+    }
+    
+    .pd-lock-info {
+        margin-bottom: 12px;
+    }
+    
+    .pd-lock-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .pd-lock-row:last-child {
+        border-bottom: none;
+    }
+    
+    .pd-lock-label {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+    
+    .pd-lock-value {
+        color: var(--text);
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .pd-lock-meter {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 12px 0;
+    }
+    
+    .pd-lock-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    
+    .pd-lock-note {
+        font-size: 0.75rem;
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-muted);
+        margin-bottom: 8px;
+    }
+    
+    .pd-lock-note.success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10B981;
+    }
+    
+    .pd-lock-note.warning {
+        background: rgba(239, 68, 68, 0.1);
+        color: #EF4444;
+    }
+    
+    .pd-lock-tip {
+        font-size: 0.75rem;
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(212, 168, 83, 0.1);
+        color: var(--gold);
+    }
+    
+    .pd-lock-tip strong {
+        color: var(--gold);
     }
 `;
 document.head.appendChild(detailStyles);

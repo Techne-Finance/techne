@@ -272,6 +272,118 @@ const VerifyPools = {
             }
         }
 
+        // =====================================================
+        // SOLANA PROTOCOLS
+        // =====================================================
+
+        // Raydium (AMM + CLMM): https://raydium.io/liquidity/increase/?mode=add&pool_id=...
+        // or: https://raydium.io/clmm/create-position/?pool_id=...
+        if (input.includes('raydium.io')) {
+            const poolIdMatch = input.match(/pool_id=([a-zA-Z0-9]+)/i);
+            if (poolIdMatch) {
+                console.log('[VerifyPools] Parsed Raydium pool:', poolIdMatch[1]);
+                return { type: 'address', id: poolIdMatch[1], protocol: 'raydium', chain: 'Solana' };
+            }
+            // Fallback to any Solana address in URL
+            const addressMatch = input.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+            if (addressMatch) {
+                return { type: 'address', id: addressMatch[1], protocol: 'raydium', chain: 'Solana' };
+            }
+        }
+
+        // Orca Whirlpool: https://www.orca.so/pools?address=... or /liquidity?address=
+        if (input.includes('orca.so')) {
+            const addressMatch = input.match(/address=([1-9A-HJ-NP-Za-km-z]{32,44})/);
+            if (addressMatch) {
+                console.log('[VerifyPools] Parsed Orca pool:', addressMatch[1]);
+                return { type: 'address', id: addressMatch[1], protocol: 'orca', chain: 'Solana' };
+            }
+            // Try pool path
+            const poolMatch = input.match(/pools?\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+            if (poolMatch) {
+                return { type: 'address', id: poolMatch[1], protocol: 'orca', chain: 'Solana' };
+            }
+        }
+
+        // Kamino Finance (vaults): https://app.kamino.finance/liquidity/...
+        if (input.includes('kamino.finance')) {
+            const addressMatch = input.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+            if (addressMatch) {
+                console.log('[VerifyPools] Parsed Kamino vault:', addressMatch[1]);
+                return { type: 'address', id: addressMatch[1], protocol: 'kamino', chain: 'Solana' };
+            }
+        }
+
+        // Meteora: https://app.meteora.ag/pools/...
+        if (input.includes('meteora.ag')) {
+            const poolMatch = input.match(/pools?\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+            if (poolMatch) {
+                console.log('[VerifyPools] Parsed Meteora pool:', poolMatch[1]);
+                return { type: 'address', id: poolMatch[1], protocol: 'meteora', chain: 'Solana' };
+            }
+        }
+
+        // Jupiter (perps/LP): https://jup.ag/perps/... or /pool/...
+        if (input.includes('jup.ag') || input.includes('jupiter')) {
+            const addressMatch = input.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+            if (addressMatch) {
+                console.log('[VerifyPools] Parsed Jupiter:', addressMatch[1]);
+                return { type: 'address', id: addressMatch[1], protocol: 'jupiter', chain: 'Solana' };
+            }
+        }
+
+        // Marinade (liquid staking): https://marinade.finance/app/stake
+        if (input.includes('marinade.finance')) {
+            console.log('[VerifyPools] Parsed Marinade staking');
+            return { type: 'protocol', id: 'marinade-msol', protocol: 'marinade', chain: 'Solana' };
+        }
+
+        // Solend (lending): https://solend.fi/dashboard?pool=...
+        if (input.includes('solend.fi')) {
+            const poolMatch = input.match(/pool=([a-zA-Z0-9]+)/i);
+            if (poolMatch) {
+                console.log('[VerifyPools] Parsed Solend pool:', poolMatch[1]);
+                return { type: 'name', id: poolMatch[1], protocol: 'solend', chain: 'Solana' };
+            }
+            const addressMatch = input.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+            if (addressMatch) {
+                return { type: 'address', id: addressMatch[1], protocol: 'solend', chain: 'Solana' };
+            }
+        }
+
+        // marginfi: https://app.marginfi.com/...
+        if (input.includes('marginfi.com')) {
+            const addressMatch = input.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+            if (addressMatch) {
+                console.log('[VerifyPools] Parsed marginfi:', addressMatch[1]);
+                return { type: 'address', id: addressMatch[1], protocol: 'marginfi', chain: 'Solana' };
+            }
+        }
+
+        // Drift Protocol: https://app.drift.trade/...
+        if (input.includes('drift.trade')) {
+            const addressMatch = input.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+            if (addressMatch) {
+                console.log('[VerifyPools] Parsed Drift:', addressMatch[1]);
+                return { type: 'address', id: addressMatch[1], protocol: 'drift', chain: 'Solana' };
+            }
+        }
+
+        // Tulip Protocol (vaults): https://tulip.garden/...
+        if (input.includes('tulip.garden')) {
+            const addressMatch = input.match(/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+            if (addressMatch) {
+                console.log('[VerifyPools] Parsed Tulip vault:', addressMatch[1]);
+                return { type: 'address', id: addressMatch[1], protocol: 'tulip', chain: 'Solana' };
+            }
+        }
+
+        // Solana address (base58, 32-44 chars)
+        if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(input)) {
+            console.log('[VerifyPools] Parsed Solana address:', input);
+            return { type: 'address', id: input, chain: 'Solana' };
+        }
+
         // UNIVERSAL: Any URL with token0 & token1 query params
         if (input.includes('token0=') && input.includes('token1=')) {
             const token0Match = input.match(/token0=(0x[a-fA-F0-9]{40})/i);
@@ -390,11 +502,34 @@ const VerifyPools = {
             // Smart insights for rich analysis
             smart_insights: premiumInsights,
 
-            // Data source indicator
+            // Data source indicator (IMPORTANT: used for APY confidence scoring)
             dataSource: pool.dataSource || pool.source || 'defillama',
+            apy_source: pool.apy_source || pool.dataSource || pool.source || 'defillama',
 
             // Specific risk flags (from SmartRouter)
             risk_flags: pool.risk_flags || [],
+
+            // Security analysis (for Token Security section)
+            security: pool.security || {},
+
+            // Advanced risk analysis (for IL, Volatility, Pool Age sections)
+            il_analysis: pool.il_analysis || {},
+            volatility_analysis: pool.volatility_analysis || {},
+            pool_age_analysis: pool.pool_age_analysis || {},
+            risk_breakdown: pool.risk_breakdown || {},
+
+            // Token addresses (for security display)
+            token0: pool.token0 || '',
+            token1: pool.token1 || '',
+            symbol0: pool.symbol0 || '',
+            symbol1: pool.symbol1 || '',
+
+            // Audit and lock status (Phase 2)
+            audit_status: pool.audit_status || {},
+            liquidity_lock: pool.liquidity_lock || {},
+
+            // Whale concentration (Phase 3)
+            whale_analysis: pool.whale_analysis || {},
 
             // Keep original data for reference
             _raw: pool
@@ -497,17 +632,19 @@ const VerifyPools = {
 
     // Get APY base - if not available, use total APY (assume all from trading fees)
     getApyBase(pool) {
-        if (pool.apyBase !== null && pool.apyBase !== undefined) {
-            return pool.apyBase.toFixed(2);
+        const apyBase = Number(pool.apyBase);
+        if (!isNaN(apyBase) && apyBase !== 0) {
+            return apyBase.toFixed(2);
         }
         // If no breakdown available, total APY is treated as base yield
-        return (pool.apy || 0).toFixed(2);
+        return Number(pool.apy || 0).toFixed(2);
     },
 
     // Get APY reward - if not available, return 0
     getApyReward(pool) {
-        if (pool.apyReward !== null && pool.apyReward !== undefined) {
-            return pool.apyReward.toFixed(2);
+        const apyReward = Number(pool.apyReward);
+        if (!isNaN(apyReward)) {
+            return apyReward.toFixed(2);
         }
         return '0.00';
     },
@@ -522,7 +659,7 @@ const VerifyPools = {
         try {
             // Call backend API for pair search
             const response = await fetch(
-                `http://localhost:8000/api/scout/pool-pair?token0=${encodeURIComponent(token0)}&token1=${encodeURIComponent(token1)}&protocol=${encodeURIComponent(protocol || '')}&chain=${encodeURIComponent(chain || '')}&stable=${stable ? 'true' : 'false'}`
+                `http://localhost:8081/api/scout/pool-pair?token0=${encodeURIComponent(token0)}&token1=${encodeURIComponent(token1)}&protocol=${encodeURIComponent(protocol || '')}&chain=${encodeURIComponent(chain || '')}&stable=${stable ? 'true' : 'false'}`
             );
 
             if (response.ok) {
@@ -630,7 +767,7 @@ const VerifyPools = {
                     Toast?.show('🧠 Resolving input...', 'info');
 
                     const resolveResponse = await fetch(
-                        `http://localhost:8000/api/scout/resolve?input=${encodeURIComponent(rawInput)}&chain=base`
+                        `http://localhost:8081/api/scout/resolve?input=${encodeURIComponent(rawInput)}&chain=base`
                     );
 
                     if (resolveResponse.ok) {
@@ -646,7 +783,7 @@ const VerifyPools = {
                 const addressToVerify = poolAddress || poolId;
 
                 // STEP 2: Verify the pool with full data enrichment
-                const searchUrl = `http://localhost:8000/api/scout/verify-any?pool_address=${encodeURIComponent(addressToVerify)}&chain=base`;
+                const searchUrl = `http://localhost:8081/api/scout/verify-any?pool_address=${encodeURIComponent(addressToVerify)}&chain=base`;
 
                 const response = await fetch(searchUrl);
                 if (response.ok) {
