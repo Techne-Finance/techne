@@ -408,12 +408,17 @@ class HolderAnalysis:
         real_whale_holders = []
         protocol_holdings = []
         
-        for h in sorted_holders:
+        for i, h in enumerate(sorted_holders):
             address = h.get("owner_address", "").lower()
             percent = float(h.get("percentage_relative_to_total_supply", 0))
             label = self.get_label(address)
             
-            if self.is_safe_protocol_address(address, label):
+            # HEURISTIC: If top holder has >80% and is Unknown, likely a Gauge/Staking contract
+            # This is very common for LP tokens where most liquidity is staked in Gauges
+            if i == 0 and percent > 80 and label == "Unknown":
+                label = "Likely Gauge/Staking (auto-detected)"
+                protocol_holdings.append({"address": address, "percent": percent, "label": label})
+            elif self.is_safe_protocol_address(address, label):
                 protocol_holdings.append({"address": address, "percent": percent, "label": label})
             else:
                 real_whale_holders.append(h)
