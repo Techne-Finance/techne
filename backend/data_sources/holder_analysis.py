@@ -68,6 +68,28 @@ class HolderAnalysis:
         "0xcf77a3ba9a5f8fbe1d5e2cfb1e6f0d7a17dd77e5": "Aerodrome Router",
         "0x4f09bab2f0e15e2a078a227fe1537665f55b8360": "AERO/USDC Pool Gauge",
         
+        # ===== VIRTUALS PROTOCOL (Base) =====
+        "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b": "VIRTUAL Token Contract",
+        
+        # ===== CEX on BASE =====
+        "0x3304e22ddaa22bcdc5fca2269b418046ae7b566a": "Coinbase: Base Bridge Deposit",
+        "0x1a0ad011913a150f69f6a19df447a0cfd9551054": "Binance: Base Hot Wallet",
+        "0xf89d7b9c864f589bbf53a82105107622b35eaa40": "Bybit: Base Hot Wallet",
+        "0x6887246668a3b87f54deb3b94ba47a6f63f32985": "OKX: Base Hot Wallet",
+        "0xd6216fc19db775df9774a6e33526131da7d19a2c": "Kucoin: Base Hot Wallet",
+        "0xe93685f3bba03016f02bd1828badd6195988d950": "Gate.io: Base Hot Wallet",
+        
+        # ===== BASE PROTOCOL ADDRESSES =====
+        "0x4200000000000000000000000000000000000006": "WETH (Base)",
+        "0x4200000000000000000000000000000000000016": "L2StandardBridge",
+        "0x4200000000000000000000000000000000000007": "L2CrossDomainMessenger",
+        "0x420000000000000000000000000000000000000f": "GasPriceOracle",
+        
+        # ===== MARKET MAKERS / TRADING BOTS =====
+        "0x9008d19f58aabd9ed0d60971565aa8510560ab41": "CoW Protocol Vault",
+        "0x4f3a120e72c76c22ae802d129f599bfdbc31cb81": "Wintermute",
+        "0x0000006daea1723962647b7e189d311d757fb793": "Flashbots Builder",
+        
         # ===== VELODROME (Optimism) =====
         "0xfaf8fd17d9840595845582fcb047df13f006787d": "veVELO (Voting Escrow)",
         "0x09236cff45047dbee6b921e00704bed6d6b8cf7e": "VELO Rewards",
@@ -405,23 +427,44 @@ class HolderAnalysis:
         sorted_holders = holders[:100]
         
         # Separate "real" whales from protocol contracts (UNIVERSAL)
+        # RULE: Contracts are NOT real whales - they are protocols/vaults/gauges/treasury
+        # Only EOA (externally owned accounts) are real whales
         real_whale_holders = []
         protocol_holdings = []
         
         for i, h in enumerate(sorted_holders):
             address = h.get("owner_address", "").lower()
             percent = float(h.get("percentage_relative_to_total_supply", 0))
-            label = self.get_label(address)
+            is_contract = h.get("is_contract", False)  # Moralis provides this field
             
-            # HEURISTIC: If top holder has >80% and is Unknown, likely a Gauge/Staking contract
-            # This is very common for LP tokens where most liquidity is staked in Gauges
-            if i == 0 and percent > 80 and label == "Unknown":
+            # Use Moralis label/entity first, then fallback to our list
+            moralis_label = h.get("owner_address_label") or h.get("entity") or None
+            label = moralis_label if moralis_label else self.get_label(address)
+            
+            # UNIVERSAL RULE 1: If address is a contract → protocol/staking (not a whale)
+            # This is the KEY rule - contracts are never real whales!
+            if is_contract:
+                if label == "Unknown" or not label:
+                    label = "Smart Contract (protocol)"
+                protocol_holdings.append({"address": address, "percent": percent, "label": label, "is_contract": True})
+                continue
+            
+            # UNIVERSAL RULE 2: If top holder has >80% and is Unknown → likely Gauge/Staking
+            # This catches cases where Moralis doesn't have is_contract info
+            if i == 0 and percent > 80 and (label == "Unknown" or not label):
                 label = "Likely Gauge/Staking (auto-detected)"
                 protocol_holdings.append({"address": address, "percent": percent, "label": label})
-            elif self.is_safe_protocol_address(address, label):
+                continue
+                
+            # UNIVERSAL RULE 3: Known protocol addresses from our list
+            if self.is_safe_protocol_address(address, label or ""):
                 protocol_holdings.append({"address": address, "percent": percent, "label": label})
-            else:
-                real_whale_holders.append(h)
+                continue
+            
+            # This is a real whale (EOA wallet)
+            # Store the label for display
+            h["_label"] = label if label and label != "Unknown" else None
+            real_whale_holders.append(h)
         
         # Calculate ADJUSTED top 10 (excluding safe protocol addresses)
         adjusted_top_10_percent = sum(
@@ -446,12 +489,21 @@ class HolderAnalysis:
         for h in sorted_holders[:5]:
             address = h.get("owner_address", "")
             percent = float(h.get("percentage_relative_to_total_supply", 0))
-            label = self.get_label(address.lower())
+            is_contract = h.get("is_contract", False)
+            
+            # Use Moralis label/entity first, then our list
+            moralis_label = h.get("owner_address_label") or h.get("entity") or None
+            label = moralis_label if moralis_label else self.get_label(address.lower())
+            
+            # Add contract indicator
+            if is_contract and label == "Unknown":
+                label = "Smart Contract"
             
             table_holders.append({
                 "address": address,
                 "percent": round(percent, 2),
-                "label": label
+                "label": label,
+                "is_contract": is_contract
             })
         
         # Determine concentration risk based on ADJUSTED percentage (excluding protocols)
