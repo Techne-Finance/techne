@@ -627,6 +627,9 @@ What would you like to configure?`;
                 if (proConfig.volatilityGuard) {
                     configSummary += `\n• Volatility Guard: Enabled`;
                 }
+                if (proConfig.mevProtection) {
+                    configSummary += `\n• MEV Protection: Enabled (Flashbots)`;
+                }
                 configSummary += `\n• Duration: ${proConfig.duration.value} ${proConfig.duration.unit}`;
                 if (proConfig.customInstructions) {
                     configSummary += `\n• Custom: "${proConfig.customInstructions.slice(0, 50)}${proConfig.customInstructions.length > 50 ? '...' : ''}"`;

@@ -3957,24 +3957,24 @@ body.section-verify .main-content {
    ============================================= */
 
 .agent-builder {
-    display: grid;
-    grid-template-columns: 400px 1fr;
-    gap: 24px;
-    min-height: 600px;
+    display: block;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
 }
 
-/* Config Panel */
+/* Config Panel - base styles only, layout overridden later */
 .agent-config-panel {
-    display: flex;
-    flex-direction: column;
+    /* display and layout set in BUILD SECTION below */
     gap: 16px;
 }
 
 .config-card {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 14px;
-    padding: 24px;
+    border-radius: 10px;
+    padding: 12px;
     transition: all 0.2s ease;
 }
 
@@ -3983,20 +3983,20 @@ body.section-verify .main-content {
 }
 
 .config-card h3 {
-    font-size: 1.1rem;
-    margin-bottom: 20px;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
     color: #fff;
 }
 
 .config-group {
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 .config-group label {
     display: block;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: #888;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     font-weight: 600;
 }
 
@@ -7889,34 +7889,45 @@ body.builder-pro .basic-mode-only {
 }
 
 /* ===========================================
-   BUILD SECTION - FULL WIDTH SINGLE COLUMN
-   Hides chat panel, makes config panel full width
+   BUILD SECTION - 4 COLUMN GRID LAYOUT
    =========================================== */
 
-/* Hide the right chat panel */
+/* Hide chat panel - prompts are in header */
 .agent-chat-panel {
     display: none !important;
 }
 
-/* Make agent-builder single column */
-.agent-builder {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: var(--space-4);
-}
-
-/* Config panel - single column, centered */
+/* Config panel - 3 column grid */
 .agent-config-panel {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: var(--space-6) !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 1400px !important;
+    margin: 0 auto !important;
 }
 
-/* Limit card widths */
+/* Cards span different columns based on content */
 .agent-config-panel .config-card {
-    max-width: 700px;
-    width: 100%;
+    width: 100% !important;
+    max-width: none !important;
+}
+
+/* Large cards span 2 columns */
+.agent-config-panel .config-card:has(#buildProtocolGrid),
+.agent-config-panel .config-card.collapsible {
+    grid-column: span 2;
+}
+
+/* Deploy button spans full width */
+.btn-deploy-agent {
+    grid-column: 1 / -1;
+}
+
+/* Deploy note spans full width */
+.deploy-note {
+    grid-column: 1 / -1;
+    text-align: center;
 }
 
 /* ===========================================

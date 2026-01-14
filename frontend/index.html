@@ -15,7 +15,7 @@
         rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/styles.css?v=2">
+    <link rel="stylesheet" href="/styles.css?v=5">
 </head>
 
 <body>
@@ -516,8 +516,7 @@
                     <div class="apply-filters-section">
                         <button class="btn-apply-filters" id="applyFiltersBtn">
                             <span class="apply-icon">🔍</span>
-                            <span class="apply-text">Apply Filters</span>
-                            <span class="apply-cost">1 credit</span>
+                            <span class="apply-text">Apply (25 credits)</span>
                         </button>
                         <p class="apply-note">Set your filters above, then click to search</p>
                     </div>
@@ -2371,6 +2370,24 @@
                                     </label>
                                 </div>
 
+                                <div class="config-group toggle-group">
+                                    <label>
+                                        <span>MEV Protection</span>
+                                        <span class="pro-tooltip"
+                                            title="Use private mempool (Flashbots) to prevent frontrunning and sandwich attacks"><svg
+                                                width="12" height="12" viewBox="0 0 16 16" fill="none"
+                                                style="vertical-align: middle;">
+                                                <circle cx="8" cy="8" r="6" stroke="#d4a853" stroke-width="1.3" />
+                                                <path d="M8 5V9M8 11V11.5" stroke="#d4a853" stroke-width="1.5"
+                                                    stroke-linecap="round" />
+                                            </svg></span>
+                                    </label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="mevProtection" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+
                                 <div class="config-group">
                                     <label>Gas Strategy</label>
                                     <select id="gasStrategy" class="pro-select">
@@ -3173,7 +3190,7 @@
     <script src="/premium-ui.js"></script>
 
     <!-- UX Polish: Subscription & Button Handlers -->
-    <script src="/credits-manager.js"></script>
+    <!-- Credits are handled by credits.js -->
     <script src="/subscription-ui.js"></script>
     <script src="/filter-toast.js"></script>
     <script src="/button-handler.js"></script>

@@ -2395,7 +2395,7 @@ const PoolDetailModal = {
         `;
     },
 
-    show(pool) {
+    show(pool, options = {}) {
         // Close any existing overlays from previous pool
         this.closeOverlay();
 
@@ -2711,6 +2711,87 @@ const PoolDetailModal = {
 
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+
+        // Compact mode for Explore: hide RPC-dependent sections, ultra compact
+        if (options && options.compact) {
+            console.log('COMPACT MODE ENABLED - Explore modal');
+            const modalContent = modal.querySelector('.pool-detail-modal');
+            console.log('modalContent found:', modalContent);
+            if (modalContent) {
+                modalContent.style.setProperty('max-width', '550px', 'important');
+                modalContent.style.setProperty('width', '550px', 'important');
+                modalContent.style.setProperty('padding', '6px', 'important');
+                modalContent.style.setProperty('font-size', '16px', 'important');
+                console.log('Applied compact styles with !important');
+            }
+            // Hide Security Matrix
+            const securityMatrix = modal.querySelector('.pd-security-matrix');
+            if (securityMatrix) securityMatrix.style.display = 'none';
+            // Hide RPC-dependent accordions
+            ['tokens', 'risk', 'exit', 'guidance'].forEach(name => {
+                const accordion = modal.querySelector(`[data-accordion="${name}"]`);
+                if (accordion) accordion.style.display = 'none';
+            });
+            // Make bento single column
+            const bento = modal.querySelector('.pd-bento-main');
+            if (bento) { bento.style.gridTemplateColumns = '1fr'; bento.style.gap = '2px'; }
+            // Reduce header size
+            const header = modal.querySelector('.pd-header');
+            if (header) { header.style.padding = '4px'; header.style.gap = '8px'; header.style.marginBottom = '2px'; }
+            const logo = modal.querySelector('.pd-logo img');
+            if (logo) { logo.style.width = '28px'; logo.style.height = '28px'; }
+            const protocol = modal.querySelector('.pd-protocol');
+            if (protocol) protocol.style.fontSize = '13px';
+            const symbol = modal.querySelector('.pd-symbol');
+            if (symbol) symbol.style.fontSize = '9px';
+            // Move APY left so it doesn't overlap with X button
+            const apyBlock = modal.querySelector('.pd-apy-block');
+            if (apyBlock) { apyBlock.style.setProperty('margin-right', '50px', 'important'); }
+            // Reduce metrics grid - make it tighter
+            const metricsGrid = modal.querySelector('.pd-metrics-grid');
+            if (metricsGrid) { metricsGrid.style.gap = '2px'; metricsGrid.style.padding = '2px'; metricsGrid.style.marginBottom = '2px'; }
+            modal.querySelectorAll('.pd-metric').forEach(m => { m.style.padding = '4px'; m.style.minWidth = '0'; });
+            modal.querySelectorAll('.pd-metric-value').forEach(v => { v.style.fontSize = '18px'; });
+            modal.querySelectorAll('.pd-metric-label').forEach(l => { l.style.fontSize = '14px'; });
+            // Reduce tabs and charts - minimal vertical space
+            const tabs = modal.querySelector('.pd-tabs');
+            if (tabs) { tabs.style.padding = '2px'; tabs.style.gap = '2px'; tabs.style.marginBottom = '2px'; }
+            modal.querySelectorAll('.pd-tab').forEach(t => { t.style.padding = '4px 8px'; t.style.fontSize = '12px'; });
+            // Reduce stress test area - compact
+            const stressTest = modal.querySelector('.pd-stress-test');
+            if (stressTest) {
+                stressTest.style.padding = '4px';
+                stressTest.style.marginTop = '0';
+                stressTest.style.marginBottom = '2px';
+            }
+            // Reduce stress bars vertical spacing
+            modal.querySelectorAll('.pd-stress-row').forEach(r => { r.style.marginBottom = '1px'; r.style.gap = '4px'; });
+            modal.querySelectorAll('.pd-stress-label').forEach(l => { l.style.fontSize = '15px'; l.style.minWidth = '30px'; });
+            // Reduce accordion section
+            const accordions = modal.querySelector('.pd-accordions');
+            if (accordions) { accordions.style.marginTop = '2px'; accordions.style.gap = '2px'; }
+            modal.querySelectorAll('.pd-accordion-header').forEach(h => { h.style.padding = '6px'; h.style.fontSize = '16px'; });
+            // Reduce Market Dynamics - very compact
+            const sections = modal.querySelectorAll('.pd-section');
+            sections.forEach(s => { s.style.padding = '4px'; s.style.marginTop = '2px'; });
+            modal.querySelectorAll('.pd-section-header').forEach(h => { h.style.marginBottom = '2px'; });
+            modal.querySelectorAll('.pd-section-header h3').forEach(h => { h.style.fontSize = '17px'; });
+            // Compact the dynamics grid
+            const dynamicsGrid = modal.querySelector('.pd-dynamics-grid');
+            if (dynamicsGrid) { dynamicsGrid.style.gap = '4px'; }
+            modal.querySelectorAll('.pd-dynamics-card').forEach(c => { c.style.padding = '4px'; });
+            modal.querySelectorAll('.pd-dynamics-label').forEach(l => { l.style.fontSize = '14px'; });
+            modal.querySelectorAll('.pd-dynamics-value').forEach(v => { v.style.fontSize = '16px'; });
+            // Reduce actions - smaller buttons
+            const actions = modal.querySelector('.pd-actions');
+            if (actions) { actions.style.gap = '4px'; actions.style.marginTop = '4px'; actions.style.flexWrap = 'wrap'; }
+            modal.querySelectorAll('.pd-actions button').forEach(b => { b.style.padding = '8px 12px'; b.style.fontSize = '16px'; b.style.flex = '1'; });
+            // Hide some less important elements in compact mode
+            const riskFactors = modal.querySelector('.pd-risk-factors');
+            if (riskFactors) riskFactors.style.display = 'none';
+            const externalLinks = modal.querySelector('.pd-external-links');
+            if (externalLinks) externalLinks.style.display = 'none';
+        }
     },
 
     close() {

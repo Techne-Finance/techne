@@ -259,6 +259,9 @@ class NeuralTerminal {
             if (proConfig.volatilityGuard) {
                 steps.push({ delay: 200, msg: `[PRO] Volatility Guard: ENABLED`, type: 'success' });
             }
+            if (proConfig.mevProtection) {
+                steps.push({ delay: 200, msg: `[PRO] MEV Protection: ENABLED (Flashbots)`, type: 'success' });
+            }
         }
 
         // Continue deployment steps
@@ -322,6 +325,11 @@ class NeuralTerminal {
 
             // Volatility guard reduces risk
             if (proConfig.volatilityGuard) {
+                score -= 5;
+            }
+
+            // MEV protection reduces risk
+            if (proConfig.mevProtection) {
                 score -= 5;
             }
         }

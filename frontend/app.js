@@ -1176,7 +1176,7 @@ function createPoolCard(pool, isUnlocked, index, freeIndices = new Set()) {
 
     return `
         <div class="pool-card ${isVerified ? 'verified' : ''}" 
-             onclick='PoolDetailModal?.show(${poolData})' 
+             onclick='PoolDetailModal?.show(${poolData}, { compact: true })' 
              data-pool-index="${index}">
             <div class="pool-header">
                 <div class="pool-protocol">

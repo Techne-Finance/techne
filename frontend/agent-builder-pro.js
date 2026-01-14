@@ -52,6 +52,7 @@ class AgentBuilderPro {
 
             // Safety & Gas
             volatilityGuard: this.isVolatilityGuardEnabled(),
+            mevProtection: this.isMevProtectionEnabled(),
             gasStrategy: this.getGasStrategy(),
 
             // Custom Instructions
@@ -150,6 +151,11 @@ class AgentBuilderPro {
 
     isVolatilityGuardEnabled() {
         const check = document.getElementById('volatilityGuard');
+        return check?.checked ?? true;
+    }
+
+    isMevProtectionEnabled() {
+        const check = document.getElementById('mevProtection');
         return check?.checked ?? true;
     }
 
