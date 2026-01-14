@@ -71,6 +71,73 @@ class GeckoTerminalClient:
             logger.error(f"GeckoTerminal request failed: {e}")
             return None
     
+    async def get_pool_ohlcv(self, chain: str, pool_address: str, timeframe: str = "day", limit: int = 7) -> Optional[Dict[str, Any]]:
+        """
+        Fetch OHLCV (price/volume history) data for a pool.
+        Used to calculate TVL stability over time.
+        
+        Args:
+            chain: Chain name (e.g., 'base', 'ethereum')
+            pool_address: Pool contract address
+            timeframe: 'day', 'hour', 'minute' 
+            limit: Number of periods to fetch (default 7 for weekly)
+            
+        Returns:
+            Dict with ohlcv_list and calculated changes
+        """
+        network = NETWORK_MAP.get(chain.lower(), chain.lower())
+        address_for_url = pool_address if chain.lower() == "solana" else pool_address.lower()
+        url = f"{self.BASE_URL}/networks/{network}/pools/{address_for_url}/ohlcv/{timeframe}"
+        
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(url, params={"limit": limit})
+                
+                if response.status_code != 200:
+                    logger.debug(f"OHLCV fetch failed: {response.status_code}")
+                    return None
+                
+                data = response.json()
+                ohlcv_list = data.get("data", {}).get("attributes", {}).get("ohlcv_list", [])
+                
+                if not ohlcv_list or len(ohlcv_list) < 2:
+                    return None
+                
+                # OHLCV format: [timestamp, open, high, low, close, volume]
+                # Calculate price changes
+                latest = ohlcv_list[0]  # Most recent
+                day_ago = ohlcv_list[1] if len(ohlcv_list) > 1 else latest
+                week_ago = ohlcv_list[-1] if len(ohlcv_list) >= 7 else ohlcv_list[-1]
+                
+                price_now = float(latest[4]) if latest[4] else 0  # close price
+                price_24h = float(day_ago[4]) if day_ago[4] else 0
+                price_7d = float(week_ago[4]) if week_ago[4] else 0
+                
+                # Calculate changes
+                price_change_24h = ((price_now - price_24h) / price_24h * 100) if price_24h > 0 else 0
+                price_change_7d = ((price_now - price_7d) / price_7d * 100) if price_7d > 0 else 0
+                
+                # Volume analysis
+                volumes = [float(o[5]) for o in ohlcv_list if o[5]]
+                avg_volume = sum(volumes) / len(volumes) if volumes else 0
+                volume_now = volumes[0] if volumes else 0
+                
+                logger.info(f"OHLCV for {pool_address[:10]}: price_change_24h={price_change_24h:.2f}%, 7d={price_change_7d:.2f}%")
+                
+                return {
+                    "price_change_24h": round(price_change_24h, 2),
+                    "price_change_7d": round(price_change_7d, 2),
+                    "volume_avg_7d": avg_volume,
+                    "volume_24h": volume_now,
+                    "price_high_7d": max([float(o[2]) for o in ohlcv_list if o[2]], default=0),
+                    "price_low_7d": min([float(o[3]) for o in ohlcv_list if o[3]], default=0),
+                    "data_points": len(ohlcv_list)
+                }
+                
+        except Exception as e:
+            logger.debug(f"OHLCV request failed: {e}")
+            return None
+    
     async def search_pool_by_tokens(
         self, 
         chain: str, 

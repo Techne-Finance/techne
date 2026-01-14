@@ -19,17 +19,19 @@ logger = logging.getLogger("SmartRouter")
 try:
     from api.security_module import security_checker
     SECURITY_CHECKER_AVAILABLE = True
-except ImportError:
+    logger.info("🛡️ Security checker loaded successfully")
+except ImportError as e:
     SECURITY_CHECKER_AVAILABLE = False
-    logger.warning("Security checker not available")
+    logger.warning(f"Security checker not available: {e}")
 
 # Import holder analysis (Moralis/Covalent for whale concentration)
 try:
     from data_sources.holder_analysis import holder_analyzer
     HOLDER_ANALYSIS_AVAILABLE = True
-except ImportError:
+    logger.info("🐋 Holder analysis loaded successfully")
+except ImportError as e:
     HOLDER_ANALYSIS_AVAILABLE = False
-    logger.warning("Holder analysis not available")
+    logger.warning(f"Holder analysis not available: {e}")
 
 # Import liquidity lock checker (Team Finance/Unicrypt)
 try:
@@ -223,8 +225,95 @@ class SmartRouter:
         # LP POOLS
         # =================================================================
         
-        # Aerodrome: aerodrome.finance/pools/0x...
+        # Aerodrome: aerodrome.finance/pools/0x... OR /deposit?token0=...&token1=...
         if "aerodrome.finance" in url_lower:
+            # Check if it's a /deposit? URL with token pair - resolve via factory.getPool()
+            if "/deposit?" in url_lower and "token0=" in url_lower and "token1=" in url_lower:
+                try:
+                    # Extract token0, token1, and factory from URL params
+                    token0_match = re.search(r'token0=([0-9a-fx]{42})', url_lower)
+                    token1_match = re.search(r'token1=([0-9a-fx]{42})', url_lower)
+                    factory_match = re.search(r'factory=([0-9a-fx]{42})', url_lower)
+                    type_match = re.search(r'type=(\d+)', url_lower)
+                    
+                    if token0_match and token1_match:
+                        token0 = Web3.to_checksum_address(token0_match.group(1))
+                        token1 = Web3.to_checksum_address(token1_match.group(1))
+                        
+                        # Determine which factory to use
+                        # type=100 typically means CL Slipstream, type=0/1 means V2
+                        tick_spacing = int(type_match.group(1)) if type_match else 0
+                        
+                        # Use factory from URL if provided, otherwise infer from type
+                        if factory_match:
+                            factory_addr = Web3.to_checksum_address(factory_match.group(1))
+                        else:
+                            # Default to CL if type >= 100, otherwise V2
+                            factory_addr = KNOWN_FACTORIES["base"].get(
+                                "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a" if tick_spacing >= 100 
+                                else "0x420dd381b31aef6683db6b902084cb0ffece40da"
+                            )
+                        
+                        w3 = self._get_web3("base")
+                        if w3:
+                            # CL Factory ABI (uses tickSpacing instead of stable bool)
+                            CL_FACTORY_ABI = [{
+                                "inputs": [
+                                    {"name": "tokenA", "type": "address"},
+                                    {"name": "tokenB", "type": "address"},
+                                    {"name": "tickSpacing", "type": "int24"}
+                                ],
+                                "name": "getPool",
+                                "outputs": [{"type": "address"}],
+                                "stateMutability": "view",
+                                "type": "function"
+                            }]
+                            
+                            # V2 Factory ABI (uses stable bool)
+                            V2_FACTORY_ABI = [{
+                                "inputs": [
+                                    {"name": "tokenA", "type": "address"},
+                                    {"name": "tokenB", "type": "address"},
+                                    {"name": "stable", "type": "bool"}
+                                ],
+                                "name": "getPool",
+                                "outputs": [{"type": "address"}],
+                                "stateMutability": "view",
+                                "type": "function"
+                            }]
+                            
+                            pool_addr = None
+                            
+                            # Try CL factory first if high tick spacing
+                            if tick_spacing >= 100:
+                                try:
+                                    factory = w3.eth.contract(address=factory_addr, abi=CL_FACTORY_ABI)
+                                    pool_addr = factory.functions.getPool(token0, token1, tick_spacing).call()
+                                except Exception as e:
+                                    logger.debug(f"CL factory.getPool failed: {e}")
+                            
+                            # Fallback to V2 factory
+                            if not pool_addr or pool_addr == "0x0000000000000000000000000000000000000000":
+                                try:
+                                    v2_factory_addr = Web3.to_checksum_address("0x420DD381b31aEf6683db6B902084cB0FFECe40Da")
+                                    factory = w3.eth.contract(address=v2_factory_addr, abi=V2_FACTORY_ABI)
+                                    # Try stable=False first, then stable=True
+                                    for stable in [False, True]:
+                                        pool_addr = factory.functions.getPool(token0, token1, stable).call()
+                                        if pool_addr and pool_addr != "0x0000000000000000000000000000000000000000":
+                                            break
+                                except Exception as e:
+                                    logger.debug(f"V2 factory.getPool failed: {e}")
+                            
+                            if pool_addr and pool_addr != "0x0000000000000000000000000000000000000000":
+                                pool_addr = pool_addr.lower()
+                                logger.info(f"🎯 Resolved /deposit? URL to pool via factory: {pool_addr[:10]}...")
+                                return (pool_addr, "base", None)
+                            
+                except Exception as e:
+                    logger.warning(f"Factory.getPool failed for /deposit? URL, falling back to regex: {e}")
+            
+            # Fallback: Extract first 0x address (for /pools/0x... URLs)
             match = re.search(r'0x[a-f0-9]{40}', url_lower)
             return (match.group(0), "base", None) if match else (None, None, None)
         
@@ -373,8 +462,30 @@ class SmartRouter:
         
         # If we have data, enrich and return
         if pool_data:
-            # Enrich with GeckoTerminal market data (volume, TVL trend)
-            pool_data = await self._enrich_with_gecko_data(pool_data, pool_address, chain)
+            # =========================================================
+            # OHLCV FETCH - Get historical data for TVL stability
+            # =========================================================
+            try:
+                ohlcv_data = await gecko_client.get_pool_ohlcv(chain, pool_address, "day", 7)
+                if ohlcv_data:
+                    pool_data["tvl_change_24h"] = ohlcv_data.get("price_change_24h", 0)
+                    pool_data["tvl_change_7d"] = ohlcv_data.get("price_change_7d", 0)
+                    pool_data["volume_avg_7d"] = ohlcv_data.get("volume_avg_7d", 0)
+                    pool_data["price_high_7d"] = ohlcv_data.get("price_high_7d", 0)
+                    pool_data["price_low_7d"] = ohlcv_data.get("price_low_7d", 0)
+                    
+                    # Calculate TVL stability score
+                    change_7d = abs(ohlcv_data.get("price_change_7d", 0))
+                    if change_7d < 5:
+                        pool_data["tvl_stability"] = "Stable"
+                    elif change_7d < 15:
+                        pool_data["tvl_stability"] = "Moderate"
+                    else:
+                        pool_data["tvl_stability"] = "Volatile"
+                        
+                    logger.info(f"OHLCV enriched: 24h={pool_data['tvl_change_24h']:.1f}%, 7d={pool_data['tvl_change_7d']:.1f}%")
+            except Exception as e:
+                logger.debug(f"OHLCV enrichment failed: {e}")
             
             # =========================================================
             # APY CALCULATION - Using APY Capability Response Contract
@@ -572,16 +683,56 @@ class SmartRouter:
                     # WHALE CONCENTRATION ANALYSIS (Moralis API)
                     # =========================================================
                     whale_analysis = {"source": "not_available"}
+                    logger.info(f"🐋 HOLDER_ANALYSIS_AVAILABLE = {HOLDER_ANALYSIS_AVAILABLE}")
                     if HOLDER_ANALYSIS_AVAILABLE:
                         try:
-                            # Analyze LP token holders (the pool address IS the LP token)
+                            # First: Analyze LP token holders (the pool address IS the LP token for V2)
                             lp_analysis = await holder_analyzer.get_holder_analysis(pool_address, chain)
-                            if lp_analysis.get("source") != "error":
+                            
+                            # For CL/Slipstream pools, LP is NFT - try token0/token1 instead
+                            lp_has_data = lp_analysis.get("top_10_percent") is not None
+                            
+                            if lp_has_data:
                                 whale_analysis = {
                                     "lp_token": lp_analysis,
                                     "source": lp_analysis.get("source", "moralis")
                                 }
-                                logger.info(f"Whale analysis: top10={lp_analysis.get('top_10_percent', 'N/A')}% ({lp_analysis.get('source')})")
+                                logger.info(f"LP Whale analysis: top10={lp_analysis.get('top_10_percent', 'N/A')}%")
+                            else:
+                                # Fallback: Analyze underlying tokens (skip whitelisted stables)
+                                WHITELISTED_TOKENS = {
+                                    "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",  # USDC
+                                    "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",  # USDbC
+                                    "0x4200000000000000000000000000000000000006",  # WETH
+                                }
+                                
+                                token0 = pool_data.get("token0", "").lower()
+                                token1 = pool_data.get("token1", "").lower()
+                                
+                                # Analyze non-whitelisted token (likely newer/riskier)
+                                target_token = None
+                                if token0 and token0 not in WHITELISTED_TOKENS:
+                                    target_token = token0
+                                elif token1 and token1 not in WHITELISTED_TOKENS:
+                                    target_token = token1
+                                
+                                if target_token:
+                                    token_analysis = await holder_analyzer.get_holder_analysis(target_token, chain)
+                                    if token_analysis.get("top_10_percent") is not None:
+                                        whale_analysis = {
+                                            "token0" if target_token == token0 else "token1": token_analysis,
+                                            "lp_token": lp_analysis,  # Keep LP info even if empty
+                                            "source": token_analysis.get("source", "moralis")
+                                        }
+                                        logger.info(f"Token Whale analysis: top10={token_analysis.get('top_10_percent', 'N/A')}%")
+                                else:
+                                    # Both tokens whitelisted - low risk
+                                    whale_analysis = {
+                                        "lp_token": lp_analysis,
+                                        "source": "whitelisted_tokens",
+                                        "note": "Both tokens are established (USDC, WETH, etc.)"
+                                    }
+                                    
                         except Exception as e:
                             logger.debug(f"Whale analysis failed: {e}")
                     pool_data["whale_analysis"] = whale_analysis
@@ -605,6 +756,14 @@ class SmartRouter:
                     pool_data["il_analysis"] = risk_analysis.get("il_analysis", {})
                     pool_data["volatility_analysis"] = risk_analysis.get("volatility_analysis", {})
                     pool_data["pool_age_analysis"] = risk_analysis.get("pool_age_analysis", {})
+                    
+                    # =========================================================
+                    # MAP FIELDS FOR FRONTEND COMPATIBILITY
+                    # Frontend expects: volatility_24h, tvl_change_24h, tvl_change_7d
+                    # =========================================================
+                    vol_analysis = pool_data.get("volatility_analysis", {})
+                    pool_data["volatility_24h"] = abs(vol_analysis.get("price_change_24h", 0))
+                    pool_data["token_volatility"] = abs(vol_analysis.get("price_change_24h", 0))
                     
                 except Exception as e:
                     logger.warning(f"Risk analysis failed: {e}")

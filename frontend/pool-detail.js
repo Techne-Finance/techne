@@ -774,8 +774,13 @@ const PoolDetailModal = {
     },
 
     renderAdvancedRiskCompact(pool) {
-        const il = pool.il_risk || 'medium';
-        const volatility = pool.volatility_24h || pool.token_volatility || 0;
+        // IL Risk from il_analysis object (backend returns pool.il_analysis.il_risk)
+        const ilAnalysis = pool.il_analysis || {};
+        const il = ilAnalysis.il_risk || pool.il_risk || 'medium';
+
+        // Volatility from volatility_analysis or top-level fields
+        const volAnalysis = pool.volatility_analysis || {};
+        const volatility = volAnalysis.price_change_24h || pool.volatility_24h || pool.token_volatility || 0;
 
         const ilColors = { low: '#10B981', medium: '#FBBF24', high: '#EF4444' };
         const ilColor = ilColors[il.toLowerCase()] || '#6B7280';
@@ -1729,12 +1734,46 @@ const PoolDetailModal = {
                     <div class="pd-risk-breakdown">
                         <div class="pd-breakdown-title">Risk Score Breakdown</div>
                         <div class="pd-breakdown-items">
-                            ${Object.entries(riskBreakdown).map(([key, value]) => `
-                                <div class="pd-breakdown-item">
-                                    <span class="pd-breakdown-label">${key.replace(/_/g, ' ')}</span>
-                                    <span class="pd-breakdown-value ${value < 0 ? 'penalty' : 'bonus'}">${value > 0 ? '+' : ''}${value}</span>
-                                </div>
-                            `).join('')}
+                            ${Object.entries(riskBreakdown).map(([key, value]) => {
+            // Determine value display based on type
+            const isNumeric = typeof value === 'number';
+            const label = key.replace(/_/g, ' ');
+
+            // Color coding with inline styles
+            let valueStyle = '';
+            let displayValue = value;
+
+            if (isNumeric) {
+                if (value < 0) {
+                    valueStyle = 'color: #EF4444;';  // red for penalty
+                } else if (value > 0) {
+                    valueStyle = 'color: #10B981;';  // green for bonus
+                    displayValue = '+' + value;
+                } else {
+                    valueStyle = 'color: #9CA3AF;';  // gray for zero
+                }
+            } else {
+                // String values: color code based on meaning
+                const goodValues = ['verified', 'locked', 'low', 'strong', 'stable'];
+                const badValues = ['unverified', 'unlocked', 'high', 'weak', 'critical', 'extreme'];
+
+                const valueLower = String(value).toLowerCase();
+                if (goodValues.some(v => valueLower.includes(v))) {
+                    valueStyle = 'color: #10B981;';  // green
+                } else if (badValues.some(v => valueLower.includes(v))) {
+                    valueStyle = 'color: #EF4444;';  // red
+                } else {
+                    valueStyle = 'color: #FBBF24;';  // yellow for neutral
+                }
+            }
+
+            return `
+                                    <div class="pd-breakdown-item">
+                                        <span class="pd-breakdown-label">${label}</span>
+                                        <span class="pd-breakdown-value" style="${valueStyle}">${displayValue}</span>
+                                    </div>
+                                `;
+        }).join('')}
                         </div>
                     </div>
                 ` : ''}
@@ -2560,10 +2599,16 @@ const PoolDetailModal = {
                         
                         <div class="pd-data-card">
                             <div class="pd-data-label">TVL STABILITY</div>
-                            ${pool.tvl_change_7d !== undefined && pool.tvl_change_7d !== null && pool.tvl_change_7d !== 0 ? `
+                            ${pool.tvl_stability ? `
+                                <div class="pd-trend-value ${pool.tvl_stability === 'Stable' ? 'up' : pool.tvl_stability === 'Volatile' ? 'down' : ''}">
+                                    ${pool.tvl_stability === 'Stable' ? '✅' : pool.tvl_stability === 'Volatile' ? '⚠️' : '📊'}
+                                    ${pool.tvl_stability}
+                                    ${pool.tvl_change_7d !== undefined && pool.tvl_change_7d !== null ? ` (${pool.tvl_change_7d >= 0 ? '+' : ''}${Number(pool.tvl_change_7d).toFixed(1)}% 7d)` : ''}
+                                </div>
+                            ` : pool.tvl_change_7d !== undefined && pool.tvl_change_7d !== null ? `
                                 <div class="pd-trend-value ${pool.tvl_change_7d >= 0 ? 'up' : 'down'}">
                                     ${pool.tvl_change_7d >= 0 ? PoolIcons.trendUp : PoolIcons.trendDown}
-                                    ${pool.tvl_change_7d >= 0 ? '+' : ''}${pool.tvl_change_7d.toFixed(1)}% 7d
+                                    ${pool.tvl_change_7d >= 0 ? '+' : ''}${Number(pool.tvl_change_7d).toFixed(1)}% 7d
                                 </div>
                             ` : `
                                 <div class="pd-trend-value unknown" title="No historical pool-level data available">
@@ -4025,16 +4070,12 @@ detailStyles.textContent = `
         transition: all 0.2s;
     }
     
-    .pd-flag.info {
-        background: rgba(212, 168, 83, 0.1);
-        border: 1px solid rgba(212, 168, 83, 0.2);
-        color: var(--gold);
-    }
-    
-    .pd-flag.warning {
-        background: rgba(251, 191, 36, 0.1);
-        border: 1px solid rgba(251, 191, 36, 0.3);
-        color: #FBBF24;
+    .pd-flag.info,
+    .pd-flag.warning,
+    .pd-flag.caution {
+        background: rgba(212, 168, 83, 0.15);
+        border: 1px solid rgba(212, 168, 83, 0.4);
+        color: #D4A853;
     }
     
     .pd-flag:hover {
