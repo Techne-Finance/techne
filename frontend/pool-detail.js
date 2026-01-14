@@ -14,7 +14,36 @@ const PoolIcons = {
     activity: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>`,
     bot: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="16" r="4"></circle><path d="M7 6h10"></path><line x1="8" y1="6" x2="8" y2="2"></line><line x1="16" y1="6" x2="16" y2="2"></line></svg>`,
     externalLink: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
-    fileText: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`
+    fileText: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
+    // Data coverage icons
+    database: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>`,
+    chartBar: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>`,
+    clock: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
+    // Audit & Security icons
+    shieldCheck: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>`,
+    lock: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`,
+    unlock: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`,
+    // Risk Flag icons
+    alertTriangle: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+    zap: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`,
+    target: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>`,
+    flame: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>`,
+    droplet: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>`,
+    link: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+    // Token icons
+    hexagon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>`,
+    checkCircle: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`,
+    xCircle: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
+    // Whale & Analysis
+    users: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`,
+    pieChart: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>`,
+    eye: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
+    flag: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`,
+    info: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+    helpCircle: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+    dollarSign: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>`,
+    percent: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg>`,
+    barChart: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`
 };
 
 // Known token address to symbol mapping (Base mainnet)
@@ -742,13 +771,20 @@ const PoolDetailModal = {
         const hasAudit = audit && audit.status !== 'none' && audit.status !== 'unknown';
         const statusColor = hasAudit ? '#10B981' : '#6B7280';
         const statusIcon = hasAudit ? '✅' : '❌';
+        const auditUrl = audit?.url || audit?.report_url;
 
         return `
             <div class="pd-section pd-section-compact">
                 <div class="pd-section-header"><h3>🛡️ Audit</h3></div>
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="font-size: 1rem;">${statusIcon}</span>
-                    <span style="font-size: 0.7rem; color: ${statusColor};">${hasAudit ? (audit.auditor || 'Verified') : 'Not audited'}</span>
+                    ${auditUrl ? `
+                        <a href="${auditUrl}" target="_blank" style="font-size: 0.7rem; color: ${statusColor}; text-decoration: underline; cursor: pointer;">
+                            ${hasAudit ? (audit.auditor || 'Verified') : 'Not audited'} ↗
+                        </a>
+                    ` : `
+                        <span style="font-size: 0.7rem; color: ${statusColor};">${hasAudit ? (audit.auditor || 'Verified') : 'Not audited'}</span>
+                    `}
                 </div>
                 ${hasAudit && audit.date ? `<div style="font-size: 0.55rem; color: var(--text-muted); margin-top: 2px;">${audit.date}</div>` : ''}
             </div>
@@ -782,6 +818,9 @@ const PoolDetailModal = {
         const volAnalysis = pool.volatility_analysis || {};
         const volatility = volAnalysis.price_change_24h || pool.volatility_24h || pool.token_volatility || 0;
 
+        // Determine volatility type label
+        const volLabel = volAnalysis.price_change_24h ? 'Token Volatility' : (pool.token_volatility ? 'Token Volatility' : 'Volatility');
+
         const ilColors = { low: '#10B981', medium: '#FBBF24', high: '#EF4444' };
         const ilColor = ilColors[il.toLowerCase()] || '#6B7280';
 
@@ -794,7 +833,7 @@ const PoolDetailModal = {
                         <span style="color: ${ilColor}; font-weight: 500;">${il.toUpperCase()}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
-                        <span style="color: var(--text-muted);">Volatility:</span>
+                        <span style="color: var(--text-muted);">${volLabel}:</span>
                         <span style="color: ${volatility > 5 ? '#EF4444' : volatility > 2 ? '#FBBF24' : '#10B981'};">
                             ${volatility > 0 ? volatility.toFixed(1) + '%' : 'N/A'}
                         </span>
@@ -807,10 +846,20 @@ const PoolDetailModal = {
     renderHoneypotSummary(pool) {
         const security = pool.security || {};
         const tokens = security.tokens || {};
+        const tokenEntries = Object.entries(tokens);
         const tokenList = Object.values(tokens);
 
         const honeypotCount = tokenList.filter(t => t.is_honeypot).length;
         const riskyCount = tokenList.filter(t => t.is_honeypot || t.can_take_back_ownership || t.hidden_owner).length;
+
+        // Get clean token symbols - try pool.symbol0/symbol1 first, then security token data
+        const poolSymbols = [pool.symbol0, pool.symbol1].filter(Boolean);
+        const cleanTokens = tokenEntries
+            .filter(([addr, t]) => !t.is_honeypot && !t.can_take_back_ownership && !t.hidden_owner)
+            .map(([addr, t]) => t.symbol || poolSymbols.shift() || 'Token');
+
+        // If no security data, use pool symbols directly
+        const displayTokens = cleanTokens.length > 0 ? cleanTokens : poolSymbols;
 
         const isClean = riskyCount === 0;
         const statusColor = isClean ? '#10B981' : honeypotCount > 0 ? '#EF4444' : '#FBBF24';
@@ -826,7 +875,7 @@ const PoolDetailModal = {
                     </span>
                 </div>
                 <div style="font-size: 0.55rem; color: var(--text-muted); margin-top: 2px;">
-                    ${tokenList.length} tokens checked
+                    ${displayTokens.length > 0 ? displayTokens.join(', ') + ' ✓' : `${tokenList.length} tokens checked`}
                 </div>
             </div>
         `;
@@ -2231,31 +2280,31 @@ const PoolDetailModal = {
             const isCL = (pool.pool_type === 'cl') || (pool.project || '').toLowerCase().includes('slipstream');
             const isStable = pool.pool_type === 'stable' || pool.stablecoin;
 
-            // Pool type flags
+            // Pool type flags - using SVG icons
             if (isCL) {
-                flags.push({ icon: '🎯', text: 'Concentrated Liquidity', type: 'info', tooltip: 'Active liquidity mgmt required' });
+                flags.push({ icon: PoolIcons.target, text: 'Concentrated Liquidity', type: 'info', tooltip: 'Active liquidity mgmt required' });
             }
             if (pool.gauge_address) {
-                flags.push({ icon: '⚡', text: 'Emissions-based yield', type: 'info', tooltip: 'APY from token rewards' });
+                flags.push({ icon: PoolIcons.zap, text: 'Emissions-based yield', type: 'info', tooltip: 'APY from token rewards' });
             }
             if (this.isEpochProtocol(pool.project)) {
-                flags.push({ icon: '⏰', text: 'Epoch-based rewards', type: 'info', tooltip: 'Rewards reset weekly' });
+                flags.push({ icon: PoolIcons.clock, text: 'Epoch-based rewards', type: 'info', tooltip: 'Rewards reset weekly' });
             }
 
             // Risk flags
             if (!isStable && (pool.il_risk === 'yes' || pool.il_risk !== 'no')) {
-                flags.push({ icon: '📉', text: 'Impermanent Loss risk', type: 'warning', tooltip: 'Volatile token pair' });
+                flags.push({ icon: PoolIcons.trendDown, text: 'Impermanent Loss risk', type: 'warning', tooltip: 'Volatile token pair' });
             }
             if (pool.apy > 200) {
-                flags.push({ icon: '🔥', text: 'Very high APY', type: 'warning', tooltip: 'Verify sustainability' });
+                flags.push({ icon: PoolIcons.flame, text: 'Very high APY', type: 'warning', tooltip: 'Verify sustainability' });
             }
             if (pool.tvl < 100000) {
-                flags.push({ icon: '💧', text: 'Low liquidity', type: 'warning', tooltip: 'May have slippage issues' });
+                flags.push({ icon: PoolIcons.droplet, text: 'Low liquidity', type: 'warning', tooltip: 'May have slippage issues' });
             }
 
             // External dependency
             if (pool.apy_source && (pool.apy_source.includes('external') || pool.apy_source.includes('cl_calculated'))) {
-                flags.push({ icon: '🔗', text: 'External data dependency', type: 'info', tooltip: 'APY uses off-chain data' });
+                flags.push({ icon: PoolIcons.link, text: 'External data dependency', type: 'info', tooltip: 'APY uses off-chain data' });
             }
         }
 
@@ -2265,7 +2314,7 @@ const PoolDetailModal = {
 
         return `
             <div class="pd-verify-flags">
-                <div class="pd-flags-title">🚩 Risk Flags</div>
+                <div class="pd-flags-title"><span class="pd-icon-inline">${PoolIcons.flag}</span> Risk Flags</div>
                 <div class="pd-flags-grid">
                     ${flags.map(f => `
                         <div class="pd-flag ${f.type}" title="${f.tooltip}">
@@ -2731,8 +2780,8 @@ detailStyles.textContent = `
     .pd-bento-main {
         display: grid;
         grid-template-columns: 58fr 42fr;
-        gap: 8px;
-        margin-bottom: 8px;
+        gap: 6px;
+        margin-bottom: 6px;
     }
     
     /* Tab Switcher */
@@ -2742,12 +2791,12 @@ detailStyles.textContent = `
         background: rgba(0,0,0,0.3);
         border-radius: 6px;
         padding: 3px;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
     
     .pd-tab-btn {
         flex: 1;
-        padding: 6px 8px;
+        padding: 5px 6px;
         background: transparent;
         border: none;
         color: var(--text-muted);
@@ -2770,7 +2819,7 @@ detailStyles.textContent = `
     }
     
     .pd-tab-content {
-        min-height: 140px;
+        min-height: 120px;
     }
     
     .pd-tab-panel {
@@ -2870,9 +2919,9 @@ detailStyles.textContent = `
         border-radius: 12px;
         max-width: 900px;
         width: 90vw;
-        max-height: 80vh;
+        max-height: 88vh;
         overflow-y: auto;
-        padding: 16px;
+        padding: 14px;
         z-index: 3000;
         box-shadow: 0 0 80px rgba(0,0,0,0.8), 0 0 30px rgba(212, 168, 83, 0.15);
         animation: overlayFadeIn 0.2s ease;
@@ -3118,8 +3167,8 @@ detailStyles.textContent = `
     /* Close Button */
     .modal-close-pro {
         position: absolute;
-        top: 10px;
-        right: 10px;
+        top: 16px;
+        right: 16px;
         width: 28px;
         height: 28px;
         background: rgba(255, 255, 255, 0.08);
@@ -3131,7 +3180,7 @@ detailStyles.textContent = `
         align-items: center;
         justify-content: center;
         transition: all 0.2s;
-        z-index: 10;
+        z-index: 100;
     }
     
     .modal-close-pro:hover {
@@ -3871,15 +3920,15 @@ detailStyles.textContent = `
         background: rgba(255, 255, 255, 0.02);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 14px;
+        padding: 10px;
+        margin-bottom: 10px;
     }
     
     .pd-stress-header {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 10px;
+        margin-bottom: 6px;
     }
     
     .pd-stress-icon {
@@ -3902,14 +3951,14 @@ detailStyles.textContent = `
     .pd-stress-scenarios {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 5px;
     }
     
     .pd-stress-row {
         display: grid;
         grid-template-columns: 70px 1fr 100px;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
     }
     
     .pd-stress-drop {
@@ -3972,7 +4021,7 @@ detailStyles.textContent = `
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
     
     .pd-coverage-title {
@@ -3996,7 +4045,7 @@ detailStyles.textContent = `
     .pd-coverage-item {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         font-size: 0.7rem;
     }
     
@@ -4029,7 +4078,7 @@ detailStyles.textContent = `
     
     .pd-coverage-detail {
         color: var(--text-muted);
-        font-size: 0.65rem;
+        font-size: 0.75rem;
     }
     
     .pd-coverage-item.unavailable .pd-coverage-label,
@@ -4064,7 +4113,7 @@ detailStyles.textContent = `
         gap: 4px;
         padding: 4px 10px;
         border-radius: 6px;
-        font-size: 0.7rem;
+        font-size: 0.72rem;
         font-weight: 500;
         cursor: help;
         transition: all 0.2s;
@@ -4084,7 +4133,14 @@ detailStyles.textContent = `
     }
     
     .pd-flag-icon {
-        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .pd-flag-icon svg {
+        width: 14px;
+        height: 14px;
     }
     
     .pd-flag-text {
@@ -4117,16 +4173,16 @@ detailStyles.textContent = `
     }
     
     .pd-confidence-badge {
-        padding: 4px 10px;
+        padding: 5px 12px;
         border-radius: 20px;
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         font-weight: 600;
     }
     
     .pd-confidence-subtitle {
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         color: rgba(255, 255, 255, 0.5);
-        margin-bottom: 12px;
+        margin-bottom: 14px;
     }
     
     .pd-confidence-factors {
@@ -4152,13 +4208,13 @@ detailStyles.textContent = `
     }
     
     .pd-conf-status {
-        width: 20px;
-        height: 20px;
+        width: 22px;
+        height: 22px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         font-weight: bold;
     }
     
@@ -4350,7 +4406,7 @@ detailStyles.textContent = `
     }
     
     .pd-source-badge {
-        font-size: 0.7rem;
+        font-size: 0.8rem;
         padding: 4px 8px;
         background: rgba(255, 255, 255, 0.08);
         border-radius: 4px;
@@ -4395,7 +4451,7 @@ detailStyles.textContent = `
     
     .pd-token-symbol {
         font-weight: 700;
-        font-size: 0.9rem;
+        font-size: 1rem;
         color: var(--text);
     }
     
@@ -4413,7 +4469,7 @@ detailStyles.textContent = `
         display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 0.75rem;
+        font-size: 0.85rem;
         color: var(--text-secondary);
     }
     
@@ -4454,7 +4510,7 @@ detailStyles.textContent = `
     }
     
     .pd-risk-title {
-        font-size: 0.75rem;
+        font-size: 0.85rem;
         font-weight: 600;
         color: var(--text-muted);
         text-transform: uppercase;
@@ -4468,7 +4524,7 @@ detailStyles.textContent = `
     }
     
     .pd-penalty {
-        font-size: 0.65rem;
+        font-size: 0.75rem;
         font-weight: 500;
         background: rgba(239, 68, 68, 0.2);
         color: #EF4444;
@@ -4478,7 +4534,7 @@ detailStyles.textContent = `
     }
     
     .pd-risk-detail {
-        font-size: 0.75rem;
+        font-size: 0.85rem;
         color: var(--text-muted);
         line-height: 1.4;
     }
@@ -4487,7 +4543,7 @@ detailStyles.textContent = `
     .pd-risk-detail .down { color: #EF4444; }
     
     .pd-risk-warning {
-        font-size: 0.75rem;
+        font-size: 0.85rem;
         color: #EF4444;
         margin-top: 6px;
         padding: 4px 8px;

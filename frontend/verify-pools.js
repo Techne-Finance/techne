@@ -445,12 +445,19 @@ const VerifyPools = {
             symbol: pool.symbol,
             project: pool.project,
             chain: pool.chain,
+            address: pool.address || pool.pool_address,
+            pool_address: pool.pool_address || pool.address,
+
+            // On-chain state (for Data Coverage section)
+            has_gauge: pool.has_gauge,
+            gauge_address: pool.gauge_address,
 
             // TVL & Volume (DefiLlama uses tvlUsd)
             tvl: pool.tvlUsd || pool.tvl || 0,
             tvlUsd: pool.tvlUsd || pool.tvl || 0,
             tvl_formatted: '$' + this.formatNumber(pool.tvlUsd || pool.tvl || 0),
-            tvl_change_7d: pool.apyPct7D || 0, // Use APY change as proxy for TVL trend
+            tvl_change_7d: pool.tvl_change_7d !== undefined ? pool.tvl_change_7d : (pool.apyPct7D || null),
+            tvl_stability: pool.tvl_stability,
             volume_24h: volume,
             volume_24h_formatted: volumeFormatted,
 
