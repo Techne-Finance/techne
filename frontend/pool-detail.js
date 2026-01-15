@@ -816,10 +816,11 @@ const PoolDetailModal = {
 
         // Volatility from volatility_analysis or top-level fields
         const volAnalysis = pool.volatility_analysis || {};
-        const volatility = volAnalysis.price_change_24h || pool.volatility_24h || pool.token_volatility || 0;
+        const volatilityValue = volAnalysis.price_change_24h || pool.volatility_24h || pool.token_volatility || 0;
+        const volatilityLevel = volAnalysis.volatility_level || 'unknown';
 
         // Determine volatility type label
-        const volLabel = volAnalysis.price_change_24h ? 'Token Volatility' : (pool.token_volatility ? 'Token Volatility' : 'Volatility');
+        const volLabel = 'Volatility';
 
         const ilColors = { low: '#10B981', medium: '#FBBF24', high: '#EF4444' };
         const ilColor = ilColors[il.toLowerCase()] || '#6B7280';
@@ -834,8 +835,8 @@ const PoolDetailModal = {
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                         <span style="color: var(--text-muted);">${volLabel}:</span>
-                        <span style="color: ${volatility > 5 ? '#EF4444' : volatility > 2 ? '#FBBF24' : '#10B981'};">
-                            ${volatility > 0 ? volatility.toFixed(1) + '%' : 'N/A'}
+                        <span style="color: ${volatilityLevel === 'high' ? '#EF4444' : volatilityLevel === 'medium' ? '#FBBF24' : '#10B981'};">
+                            ${volatilityValue > 0 ? volatilityValue.toFixed(1) + '%' : volatilityLevel.toUpperCase()}
                         </span>
                     </div>
                 </div>
@@ -875,7 +876,7 @@ const PoolDetailModal = {
                     </span>
                 </div>
                 <div style="font-size: 0.55rem; color: var(--text-muted); margin-top: 2px;">
-                    ${displayTokens.length > 0 ? displayTokens.join(', ') + ' ✓' : `${tokenList.length} tokens checked`}
+                    ${poolSymbols.length > 0 ? poolSymbols.map(s => s + ' ✓').join(', ') : `${tokenList.length} tokens checked`}
                 </div>
             </div>
         `;
