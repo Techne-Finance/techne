@@ -2815,6 +2815,23 @@ const PoolDetailModal = {
 // ============================================
 const detailStyles = document.createElement('style');
 detailStyles.textContent = `
+    /* Slide-up animation keyframes */
+    @keyframes slideUpIn {
+        from {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
     /* Modal Overlay */
     .pool-detail-overlay {
         display: none;
@@ -2827,15 +2844,16 @@ detailStyles.textContent = `
         backdrop-filter: blur(12px);
         z-index: 2000;
         justify-content: center;
-        align-items: center;
+        align-items: flex-end;
         padding: var(--space-4);
+        animation: fadeIn 0.3s ease-out;
     }
     
-    /* Modal Container - ultra compact */
+    /* Modal Container - ultra compact with slide-up animation */
     .pool-detail-modal {
         background: linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(10, 10, 10, 0.98));
         border: 1px solid rgba(212, 168, 83, 0.3);
-        border-radius: 12px;
+        border-radius: 12px 12px 0 0;
         max-width: 1100px;
         width: 95vw;
         max-height: 94vh;
@@ -2843,6 +2861,7 @@ detailStyles.textContent = `
         padding: 12px;
         position: relative;
         box-shadow: 0 0 60px rgba(212, 168, 83, 0.1), 0 0 1px rgba(212, 168, 83, 0.5);
+        animation: slideUpIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
     
     /* Grid layout for sections - 4-column compact layout */

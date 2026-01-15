@@ -988,6 +988,37 @@ async def verify_pool_rpc_first(
         except Exception as e:
             logger.debug(f"GeckoTerminal enrichment failed: {e}")
     
+    # PRIORITY 2.5: AERODROME ON-CHAIN APY (Base only - REAL-TIME from gauge)
+    # This calculates APY from actual on-chain gauge emissions
+    if chain == "base" and pool_data:
+        try:
+            from data_sources.aerodrome import aerodrome_client
+            onchain_apy_data = await aerodrome_client.get_real_time_apy(pool_address)
+            
+            if onchain_apy_data and onchain_apy_data.get("apy", 0) > 0:
+                onchain_apy = onchain_apy_data.get("apy", 0)
+                current_apy = pool_data.get("apy", 0) or 0
+                
+                # Calculate discrepancy
+                if current_apy > 0:
+                    discrepancy = abs(onchain_apy - current_apy) / current_apy
+                else:
+                    discrepancy = 1.0  # If no API APY, always use on-chain
+                
+                # Override if >5% discrepancy or no APY - on-chain is more accurate
+                if discrepancy > 0.05 or current_apy == 0:
+                    logger.info(f"[verify-rpc] APY Override: {current_apy:.2f}% → {onchain_apy:.2f}% (on-chain, diff: {discrepancy*100:.1f}%)")
+                    pool_data["apy"] = onchain_apy
+                    pool_data["apy_reward"] = onchain_apy_data.get("apy_reward", 0)
+                    pool_data["apy_base"] = onchain_apy_data.get("apy_base", 0)
+                    pool_data["apy_source"] = "aerodrome_onchain"
+                    pool_data["gauge_address"] = onchain_apy_data.get("gauge_address")
+                    pool_data["aero_price"] = onchain_apy_data.get("aero_price")
+                    pool_data["epoch_remaining"] = onchain_apy_data.get("epoch_remaining") or aerodrome_client.get_epoch_time_remaining()
+                    source = f"{source}+aero_onchain"
+        except Exception as e:
+            logger.debug(f"Aerodrome on-chain APY failed: {e}")
+    
     # PRIORITY 3: If RPC failed, try GeckoTerminal as primary
     if not pool_data:
         try:
@@ -1016,6 +1047,47 @@ async def verify_pool_rpc_first(
                 logger.info(f"GeckoTerminal found: {pool_data['symbol']}")
         except Exception as e:
             logger.debug(f"GeckoTerminal fallback failed: {e}")
+    
+    # PRIORITY 4: DefiLlama APY enrichment (if APY still 0)
+    if pool_data and (pool_data.get("apy", 0) == 0):
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.get("https://yields.llama.fi/pools")
+                if response.status_code == 200:
+                    data = response.json()
+                    pools = data.get("data", [])
+                    
+                    # Filter to chain first
+                    chain_pools = [p for p in pools if chain in p.get("chain", "").lower()]
+                    
+                    # Strategy 1: Search by pool address
+                    for p in chain_pools:
+                        if pool_address in p.get("pool", "").lower():
+                            pool_data["apy"] = p.get("apy", 0)
+                            pool_data["apy_base"] = p.get("apyBase", 0)
+                            pool_data["apy_reward"] = p.get("apyReward", 0)
+                            pool_data["project"] = p.get("project", pool_data.get("project", "Unknown"))
+                            pool_data["il_risk"] = p.get("ilRisk", "unknown")
+                            source = f"{source}+defillama"
+                            logger.info(f"DefiLlama APY found: {pool_data['apy']:.2f}%")
+                            break
+                    
+                    # Strategy 2: Search by symbol if not found by address
+                    if pool_data.get("apy", 0) == 0 and pool_data.get("symbol"):
+                        symbol = pool_data["symbol"].upper().replace("/", "-")
+                        for p in chain_pools:
+                            p_symbol = (p.get("symbol", "") or "").upper().replace("/", "-")
+                            if symbol == p_symbol or set(symbol.split("-")) == set(p_symbol.split("-")):
+                                pool_data["apy"] = p.get("apy", 0)
+                                pool_data["apy_base"] = p.get("apyBase", 0)
+                                pool_data["apy_reward"] = p.get("apyReward", 0)
+                                pool_data["project"] = p.get("project", pool_data.get("project", "Unknown"))
+                                source = f"{source}+defillama"
+                                logger.info(f"DefiLlama APY found by symbol: {pool_data['apy']:.2f}%")
+                                break
+        except Exception as e:
+            logger.debug(f"DefiLlama APY enrichment failed: {e}")
     
     # If still no data, return error
     if not pool_data:
