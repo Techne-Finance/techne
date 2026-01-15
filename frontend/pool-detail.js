@@ -1719,9 +1719,6 @@ const PoolDetailModal = {
 
         return `
             <div class="pd-section pd-advanced-risk">
-                <div class="pd-section-header">
-                    <h3>📊 Advanced Risk Analysis</h3>
-                </div>
                 
                 <div class="pd-risk-grid">
                     <!-- IL Risk Panel -->

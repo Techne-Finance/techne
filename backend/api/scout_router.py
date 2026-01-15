@@ -1048,8 +1048,8 @@ async def verify_pool_rpc_first(
         except Exception as e:
             logger.debug(f"GeckoTerminal fallback failed: {e}")
     
-    # PRIORITY 4: DefiLlama APY enrichment (if APY still 0)
-    if pool_data and (pool_data.get("apy", 0) == 0):
+    # PRIORITY 4: DefiLlama enrichment (ALWAYS run for historical data like tvl_change, exposure)
+    if pool_data:
         try:
             import httpx
             async with httpx.AsyncClient(timeout=15.0) as client:
@@ -1064,25 +1064,50 @@ async def verify_pool_rpc_first(
                     # Strategy 1: Search by pool address
                     for p in chain_pools:
                         if pool_address in p.get("pool", "").lower():
-                            pool_data["apy"] = p.get("apy", 0)
-                            pool_data["apy_base"] = p.get("apyBase", 0)
-                            pool_data["apy_reward"] = p.get("apyReward", 0)
+                            # APY only if not already set by on-chain
+                            if not pool_data.get("apy") or pool_data.get("apy", 0) == 0:
+                                pool_data["apy"] = p.get("apy", 0)
+                                pool_data["apy_base"] = p.get("apyBase", 0)
+                                pool_data["apy_reward"] = p.get("apyReward", 0)
                             pool_data["project"] = p.get("project", pool_data.get("project", "Unknown"))
                             pool_data["il_risk"] = p.get("ilRisk", "unknown")
+                            # Historical metrics from DefiLlama (ALWAYS add)
+                            pool_data["tvl_change_1d"] = p.get("apyPct1D", 0)
+                            pool_data["tvl_change_7d"] = p.get("apyPct7D", 0)
+                            pool_data["tvl_change_30d"] = p.get("apyPct30D", 0)
+                            pool_data["tvl_stability"] = "stable" if abs(p.get("apyPct7D", 0) or 0) < 10 else "volatile"
+                            pool_data["stablecoin"] = p.get("stablecoin", False)
+                            pool_data["exposure"] = p.get("exposure", "single")
+                            pool_data["pool_meta"] = p.get("poolMeta")
+                            pool_data["underlying_tokens"] = p.get("underlyingTokens", [])
+                            pool_data["reward_tokens"] = p.get("rewardTokens", [])
                             source = f"{source}+defillama"
-                            logger.info(f"DefiLlama APY found: {pool_data['apy']:.2f}%")
+                            logger.info(f"DefiLlama enrichment: APY={pool_data['apy']:.2f}%, stablecoin={pool_data.get('stablecoin')}")
                             break
                     
-                    # Strategy 2: Search by symbol if not found by address
-                    if pool_data.get("apy", 0) == 0 and pool_data.get("symbol"):
+                    # Strategy 2: Search by symbol if not found by address (check for missing historical data)
+                    if pool_data.get("tvl_change_1d") is None and pool_data.get("symbol"):
                         symbol = pool_data["symbol"].upper().replace("/", "-")
                         for p in chain_pools:
                             p_symbol = (p.get("symbol", "") or "").upper().replace("/", "-")
                             if symbol == p_symbol or set(symbol.split("-")) == set(p_symbol.split("-")):
-                                pool_data["apy"] = p.get("apy", 0)
-                                pool_data["apy_base"] = p.get("apyBase", 0)
-                                pool_data["apy_reward"] = p.get("apyReward", 0)
+                                # APY only if not already set by on-chain
+                                if not pool_data.get("apy") or pool_data.get("apy", 0) == 0:
+                                    pool_data["apy"] = p.get("apy", 0)
+                                    pool_data["apy_base"] = p.get("apyBase", 0)
+                                    pool_data["apy_reward"] = p.get("apyReward", 0)
                                 pool_data["project"] = p.get("project", pool_data.get("project", "Unknown"))
+                                pool_data["il_risk"] = p.get("ilRisk", "unknown")
+                                # Historical metrics from DefiLlama
+                                pool_data["tvl_change_1d"] = p.get("apyPct1D", 0)
+                                pool_data["tvl_change_7d"] = p.get("apyPct7D", 0)
+                                pool_data["tvl_change_30d"] = p.get("apyPct30D", 0)
+                                pool_data["tvl_stability"] = "stable" if abs(p.get("apyPct7D", 0) or 0) < 10 else "volatile"
+                                pool_data["stablecoin"] = p.get("stablecoin", False)
+                                pool_data["exposure"] = p.get("exposure", "single")
+                                pool_data["pool_meta"] = p.get("poolMeta")
+                                pool_data["underlying_tokens"] = p.get("underlyingTokens", [])
+                                pool_data["reward_tokens"] = p.get("rewardTokens", [])
                                 source = f"{source}+defillama"
                                 logger.info(f"DefiLlama APY found by symbol: {pool_data['apy']:.2f}%")
                                 break
@@ -1102,17 +1127,102 @@ async def verify_pool_rpc_first(
         
         tokens = [t for t in [pool_data.get("token0"), pool_data.get("token1")] if t]
         
-        # Run security checks
+        # Phase 1: GoPlus security checks
         security_result = await security_checker.check_security(tokens, chain)
         pool_data = await security_checker.clean_pool_symbols(pool_data, chain)
         peg_status = await security_checker.check_stablecoin_peg(pool_data, chain)
         
-        # Calculate risk score
+        # =========================================================
+        # PHASE 4: CHECK AUDIT STATUS (same as verify-any)
+        # =========================================================
+        audit_result = {"audited": False, "source": "unknown"}
+        try:
+            from data_sources.audit_checker import audit_checker
+            project_name = pool_data.get("project", "") or pool_data.get("protocol", "")
+            audit_result = await audit_checker.check_audit_status(
+                protocol_name=project_name,
+                contract_address=pool_address,
+                chain=chain
+            )
+            pool_data["audit_status"] = audit_result
+        except Exception as e:
+            logger.debug(f"Audit check failed: {e}")
+            pool_data["audit_status"] = {"audited": False, "source": "error"}
+        
+        # =========================================================
+        # PHASE 5: CHECK LIQUIDITY LOCK (same as verify-any)
+        # =========================================================
+        lock_result = {"has_lock": False, "source": "unknown"}
+        try:
+            from data_sources.liquidity_lock import liquidity_lock_checker
+            lock_result = await liquidity_lock_checker.check_lp_lock(
+                pool_address=pool_address,
+                chain=chain
+            )
+            pool_data["liquidity_lock"] = lock_result
+        except Exception as e:
+            logger.debug(f"Liquidity lock check failed: {e}")
+            pool_data["liquidity_lock"] = {"has_lock": False, "source": "error"}
+        
+        # =========================================================
+        # PHASE 6: WHALE CONCENTRATION ANALYSIS (same as verify-any)
+        # =========================================================
+        # Skip for stablecoins and major tokens (highly distributed)
+        SKIP_WHALE_TOKENS = {
+            "usdc", "usdt", "dai", "busd", "frax", "tusd", "usdp", "usdd", "gusd", "lusd",
+            "weth", "eth", "wbtc", "btc", "sol", "wsol", "matic", "wmatic", "avax", "wavax",
+            "bnb", "wbnb", "ftm", "wftm", "op", "arb", "aero"
+        }
+        
+        whale_analysis = {"token0": None, "token1": None, "lp_token": None}
+        try:
+            from data_sources.holder_analysis import holder_analyzer
+            token0_addr = pool_data.get("token0") or ""
+            token1_addr = pool_data.get("token1") or ""
+            symbol0 = (pool_data.get("symbol0") or "").lower()
+            symbol1 = (pool_data.get("symbol1") or "").lower()
+            
+            # Only analyze exotic tokens (not stablecoins/majors)
+            if token0_addr and symbol0 not in SKIP_WHALE_TOKENS:
+                whale_analysis["token0"] = await holder_analyzer.get_holder_analysis(
+                    token_address=token0_addr,
+                    chain=chain
+                )
+            else:
+                whale_analysis["token0"] = {"skipped": True, "reason": "major/stable token", "concentration_risk": "low"}
+            
+            if token1_addr and symbol1 not in SKIP_WHALE_TOKENS:
+                whale_analysis["token1"] = await holder_analyzer.get_holder_analysis(
+                    token_address=token1_addr,
+                    chain=chain
+                )
+            else:
+                whale_analysis["token1"] = {"skipped": True, "reason": "major/stable token", "concentration_risk": "low"}
+            
+            # LP token analysis - shows who holds positions in this pool
+            if pool_address:
+                whale_analysis["lp_token"] = await holder_analyzer.get_holder_analysis(
+                    token_address=pool_address,
+                    chain=chain
+                )
+            
+            pool_data["whale_analysis"] = whale_analysis
+        except Exception as e:
+            logger.debug(f"Whale concentration check failed: {e}")
+            pool_data["whale_analysis"] = {"token0": None, "token1": None, "lp_token": None, "source": "error"}
+        
+        # =========================================================
+        # PHASE 7: CALCULATE COMPREHENSIVE RISK SCORE (WITH ALL DATA)
+        # =========================================================
         risk_analysis = security_checker.calculate_risk_score(
             pool_data=pool_data,
             security_result=security_result,
             peg_status=peg_status,
-            symbol_warnings=pool_data.get("symbol_warnings")
+            symbol_warnings=pool_data.get("symbol_warnings"),
+            # Pass additional risk factors (same as verify-any)
+            audit_status=pool_data.get("audit_status"),
+            liquidity_lock=pool_data.get("liquidity_lock"),
+            whale_analysis=pool_data.get("whale_analysis")
         )
         
         pool_data["security"] = {
@@ -1123,9 +1233,14 @@ async def verify_pool_rpc_first(
             "tokens": security_result.get("tokens", {})
         }
         
+        # Add full risk analysis to pool_data (same as verify-any)
         pool_data["risk_score"] = risk_analysis.get("risk_score")
         pool_data["risk_level"] = risk_analysis.get("risk_level")
         pool_data["risk_reasons"] = risk_analysis.get("risk_reasons", [])
+        pool_data["risk_breakdown"] = risk_analysis.get("risk_breakdown", {})
+        pool_data["il_analysis"] = risk_analysis.get("il_analysis", {})
+        pool_data["volatility_analysis"] = risk_analysis.get("volatility_analysis", {})
+        pool_data["pool_age_analysis"] = risk_analysis.get("pool_age_analysis", {})
         
     except Exception as e:
         logger.warning(f"Security check failed: {e}")
