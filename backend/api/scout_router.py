@@ -1027,6 +1027,29 @@ async def verify_pool_rpc_first(
                     pool_data["aero_price"] = onchain_apy_data.get("aero_price")
                     pool_data["epoch_remaining"] = onchain_apy_data.get("epoch_remaining") or aerodrome_client.get_epoch_time_remaining()
                     source = f"{source}+aero_onchain"
+            
+            # HANDLE CL POOLS: Calculate APY from yearly_rewards_usd and TVL
+            elif onchain_apy_data and onchain_apy_data.get("apy_status") == "requires_external_tvl":
+                yearly_rewards = onchain_apy_data.get("yearly_rewards_usd", 0)
+                tvl = pool_data.get("tvl") or pool_data.get("tvlUsd") or 0
+                staked_ratio = onchain_apy_data.get("staked_ratio", 1.0)
+                
+                if yearly_rewards > 0 and tvl > 0:
+                    # Calculate APR: (yearly_rewards / staked_tvl) * 100
+                    # staked_tvl = tvl * staked_ratio (for CL pools)
+                    staked_tvl = tvl * staked_ratio if staked_ratio > 0 else tvl
+                    if staked_tvl > 0:
+                        cl_apy = (yearly_rewards / staked_tvl) * 100
+                        logger.info(f"[verify-rpc] CL Pool APY: {cl_apy:.2f}% (${yearly_rewards:,.0f} / ${staked_tvl:,.0f} staked)")
+                        pool_data["apy"] = cl_apy
+                        pool_data["apy_reward"] = cl_apy
+                        pool_data["apy_source"] = "aerodrome_onchain_cl"
+                        pool_data["gauge_address"] = onchain_apy_data.get("gauge_address")
+                        pool_data["aero_price"] = onchain_apy_data.get("aero_price")
+                        pool_data["staked_ratio"] = staked_ratio
+                        pool_data["yearly_rewards_usd"] = yearly_rewards
+                        pool_data["epoch_remaining"] = aerodrome_client.get_epoch_time_remaining()
+                        source = f"{source}+aero_onchain_cl"
         except Exception as e:
             logger.debug(f"Aerodrome on-chain APY failed: {e}")
     
