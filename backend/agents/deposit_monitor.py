@@ -207,59 +207,64 @@ class DepositMonitor:
         deposits: List[dict], 
         pools: List[dict]
     ):
-        """Execute the actual allocation to pools"""
+        """Execute the actual allocation to pools using strategy executor"""
         try:
-            from integrations.cow_swap import cow_client
+            from agents.strategy_executor import strategy_executor
             
             agent_address = agent.get("agent_address")
-            print(f"[DepositMonitor] Allocating to {len(pools)} pools...")
+            print(f"[DepositMonitor] Executing allocation to {len(pools)} pools...")
             
-            # Calculate allocation per pool
-            vault_count = len(pools)
-            allocation_per_pool = 100 // vault_count
+            # Calculate total deposit value in USD
+            total_usd = 0
+            for d in deposits:
+                if d["token"] in ["USDC", "USDT", "DAI"]:
+                    total_usd += d["amount"] / (10 ** 6)
+                elif d["token"] in ["ETH", "WETH"]:
+                    # Use ETH price from agent or default
+                    eth_price = agent.get("eth_price", 3500)
+                    total_usd += (d["amount"] / (10 ** 18)) * eth_price
             
-            for i, pool in enumerate(pools):
-                pool_symbol = pool.get("symbol", "Unknown")
-                pool_apy = pool.get("apy", 0)
-                pool_allocation = pool.get("_allocation", allocation_per_pool)
-                
-                print(f"  [{i+1}] {pool_symbol} ({pool_apy:.1f}% APY) - {pool_allocation}%")
-                
-                # Determine if swap needed
-                required_token = self.get_required_token(pool)
-                available = self.find_deposit_token(deposits, required_token)
-                
-                if available and available["token"] != required_token:
-                    # Need to swap
-                    swap_amount = int(available["amount"] * (pool_allocation / 100))
-                    print(f"      Swapping {self.format_amount(available['token'], swap_amount)} {available['token']} → {required_token}")
-                    
-                    # In production: execute CoW Swap here
-                    # order_uid = await cow_client.swap(
-                    #     sell_token=available["token"],
-                    #     buy_token=required_token,
-                    #     sell_amount=swap_amount,
-                    #     from_address=agent_address,
-                    #     private_key=agent_private_key  # Would need to retrieve securely
-                    # )
-                
-                # Log allocation (in production: execute deposit to pool)
-                agent.setdefault("allocations", []).append({
-                    "pool": pool_symbol,
-                    "project": pool.get("project"),
-                    "apy": pool_apy,
-                    "allocation_percent": pool_allocation,
-                    "allocated_at": datetime.utcnow().isoformat()
-                })
+            if total_usd < 10:
+                print(f"[DepositMonitor] Deposit too small (${total_usd:.2f}), minimum $10")
+                return
             
-            # Update agent status
-            agent["last_allocation"] = datetime.utcnow().isoformat()
-            agent["allocation_count"] = len(agent.get("allocations", []))
+            # Set recommended pools on agent
+            agent["recommended_pools"] = pools
             
-            print(f"[DepositMonitor] Allocation complete for {agent_address[:10]}")
+            # Execute allocation via strategy executor (real on-chain)
+            result = await strategy_executor.execute_allocation(
+                agent=agent,
+                amount_usdc=total_usd
+            )
+            
+            if result.get("success"):
+                successful = result.get("successful", 0)
+                total = result.get("total_pools", 0)
+                print(f"[DepositMonitor] ✓ Allocated to {successful}/{total} pools")
+                
+                # Update agent status
+                agent["last_allocation"] = datetime.utcnow().isoformat()
+                agent["allocation_count"] = agent.get("allocation_count", 0) + successful
+                agent["total_allocated_usd"] = agent.get("total_allocated_usd", 0) + total_usd
+                
+                # Log individual allocations
+                for pool_result in result.get("results", []):
+                    if pool_result.get("result", {}).get("success"):
+                        agent.setdefault("allocations", []).append({
+                            "pool": pool_result.get("pool"),
+                            "protocol": pool_result.get("protocol"),
+                            "amount": pool_result.get("amount"),
+                            "tx_hash": pool_result.get("result", {}).get("tx_hash"),
+                            "allocated_at": datetime.utcnow().isoformat()
+                        })
+            else:
+                error = result.get("error", "Unknown error")
+                print(f"[DepositMonitor] ✗ Allocation failed: {error}")
+                agent["allocation_error"] = error
             
         except Exception as e:
             print(f"[DepositMonitor] Allocation execution error: {e}")
+            agent["allocation_error"] = str(e)
     
     def get_required_token(self, pool: dict) -> str:
         """Determine what token the pool needs"""

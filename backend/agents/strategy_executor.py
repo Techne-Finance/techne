@@ -29,6 +29,13 @@ except ImportError:
     onchain_executor = None
     execute_lp_entry = None
 
+# Import lending executor for single-sided pools
+try:
+    from integrations.lending_executor import lending_executor, supply_to_lending
+except ImportError:
+    lending_executor = None
+    supply_to_lending = None
+
 # Import risk manager for stop-loss, take-profit, volatility guard
 try:
     from agents.risk_manager import risk_manager, check_position_risk
@@ -409,13 +416,33 @@ class StrategyExecutor:
                         "result": result
                     })
             else:
-                # Single-sided pool - just track, don't execute yet
-                # (Would need protocol-specific integration)
-                results.append({
-                    "pool": symbol,
-                    "amount": allocation_per_pool,
-                    "result": {"success": False, "error": "Single-sided not yet implemented"}
-                })
+                # Single-sided pool - use lending executor
+                protocol = pool.get("project", "").lower()
+                
+                if supply_to_lending:
+                    print(f"[StrategyExecutor] Supplying ${allocation_per_pool:.2f} to {symbol} ({protocol})")
+                    
+                    # Determine token from symbol (e.g., "USDC" or "USDC lending")
+                    token = symbol.split()[0].upper() if symbol else "USDC"
+                    
+                    result = await supply_to_lending(
+                        protocol=protocol,
+                        token=token,
+                        amount_usd=allocation_per_pool,
+                        private_key=private_key
+                    )
+                    results.append({
+                        "pool": symbol,
+                        "protocol": protocol,
+                        "amount": allocation_per_pool,
+                        "result": result
+                    })
+                else:
+                    results.append({
+                        "pool": symbol,
+                        "amount": allocation_per_pool,
+                        "result": {"success": False, "error": "Lending executor not available"}
+                    })
         
         # Update agent with execution results
         agent["last_execution"] = datetime.utcnow().isoformat()
