@@ -67,7 +67,7 @@ class PortfolioDashboard {
 
             if (deployedAgent?.isActive) {
                 // Populate with deployed agent data
-                this.populateFromDeployedAgent(deployedAgent);
+                await this.populateFromDeployedAgent(deployedAgent);
             } else if (agentStatus?.isActive && agentStatus.allocations?.length > 0) {
                 // Legacy: Populate with agent data
                 this.populateMockData(agentStatus);
@@ -93,33 +93,77 @@ class PortfolioDashboard {
         }
     }
 
-    populateFromDeployedAgent(agent) {
+    async populateFromDeployedAgent(agent) {
         // Populate portfolio data from deployed agent config
         console.log('[Portfolio] Loading from deployed agent:', agent);
 
-        // Generate mock positions based on agent config
-        const numPositions = agent.vaultCount || 3;
+        // Try to fetch recommendations from backend
+        const API_BASE = window.API_BASE || '';
+        let recommendedPools = [];
+
+        if (window.connectedWallet) {
+            try {
+                const response = await fetch(`${API_BASE}/api/agent/recommendations/${window.connectedWallet}`);
+                const data = await response.json();
+                if (data.success && data.recommended_pools) {
+                    recommendedPools = data.recommended_pools;
+                    console.log('[Portfolio] Fetched recommendations:', recommendedPools.length);
+                }
+            } catch (e) {
+                console.log('[Portfolio] Could not fetch recommendations:', e);
+            }
+        }
+
+        // Generate positions from recommendations or config
+        const numPositions = recommendedPools.length || agent.vaultCount || 3;
         const protocols = agent.protocols || ['morpho', 'aave'];
         const assets = agent.preferredAssets || ['USDC', 'WETH'];
 
         const positions = [];
-        for (let i = 0; i < numPositions; i++) {
-            positions.push({
-                id: i,
-                vaultName: `${protocols[i % protocols.length]} ${assets[i % assets.length]} Vault`,
-                protocol: protocols[i % protocols.length],
-                deposited: 0,
-                current: 0,
-                apy: agent.minApy + Math.random() * (agent.maxApy - agent.minApy),
-                pnl: 0
-            });
+
+        if (recommendedPools.length > 0) {
+            // Use actual recommendations
+            for (let i = 0; i < recommendedPools.length; i++) {
+                const pool = recommendedPools[i];
+                positions.push({
+                    id: i,
+                    vaultName: pool.symbol || `${pool.project} Vault`,
+                    protocol: pool.project || 'Unknown',
+                    deposited: 0,
+                    current: 0,
+                    apy: pool.apy || 0,
+                    pnl: 0,
+                    allocation: pool._allocation || Math.floor(100 / numPositions),
+                    tvl: pool.tvl || 0,
+                    chain: pool.chain || 'base'
+                });
+            }
+        } else {
+            // Fallback to mock positions
+            for (let i = 0; i < numPositions; i++) {
+                positions.push({
+                    id: i,
+                    vaultName: `${protocols[i % protocols.length]} ${assets[i % assets.length]} Vault`,
+                    protocol: protocols[i % protocols.length],
+                    deposited: 0,
+                    current: 0,
+                    apy: agent.minApy + Math.random() * (agent.maxApy - agent.minApy),
+                    pnl: 0,
+                    allocation: Math.floor(100 / numPositions)
+                });
+            }
         }
+
+        // Calculate average APY from positions
+        const avgApy = positions.length > 0
+            ? positions.reduce((sum, p) => sum + (p.apy || 0), 0) / positions.length
+            : (agent.minApy + agent.maxApy) / 2;
 
         this.portfolio = {
             totalValue: 0,
             totalPnL: 0,
             pnlPercent: 0,
-            avgApy: (agent.minApy + agent.maxApy) / 2,
+            avgApy: avgApy,
             holdings: assets.slice(0, 3).map(asset => ({
                 asset: asset,
                 balance: 0,
@@ -127,7 +171,8 @@ class PortfolioDashboard {
                 change: 0
             })),
             positions: positions,
-            transactions: []
+            transactions: [],
+            recommendedPools: recommendedPools
         };
 
         // Update agent status in sidebar

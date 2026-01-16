@@ -126,6 +126,29 @@ app = FastAPI(
     version="1.1.0"
 )
 
+
+# Startup event - launch background monitors
+@app.on_event("startup")
+async def startup_event():
+    """Start background services"""
+    print("[Startup] Initializing background services...")
+    
+    # Start deposit monitor
+    try:
+        from agents.deposit_monitor import start_deposit_monitoring
+        await start_deposit_monitoring()
+        print("[Startup] Deposit monitor started")
+    except Exception as e:
+        print(f"[Startup] Deposit monitor failed: {e}")
+    
+    # Start strategy executor
+    try:
+        from agents.strategy_executor import start_executor
+        await start_executor()
+        print("[Startup] Strategy executor started")
+    except Exception as e:
+        print(f"[Startup] Strategy executor failed: {e}")
+
 # Include agent wallet routes
 if AGENT_WALLET_AVAILABLE:
     app.include_router(agent_wallet_router)
