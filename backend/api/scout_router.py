@@ -1244,101 +1244,108 @@ async def verify_pool_rpc_first(
     
     try:
         from api.security_module import security_checker
+        from data_sources.audit_checker import audit_checker
+        from data_sources.liquidity_lock import liquidity_lock_checker
+        from data_sources.holder_analysis import holder_analyzer
         
         tokens = [t for t in [pool_data.get("token0"), pool_data.get("token1")] if t]
-        
-        # Phase 1: GoPlus security checks
-        security_result = await security_checker.check_security(tokens, chain)
-        pool_data = await security_checker.clean_pool_symbols(pool_data, chain)
-        peg_status = await security_checker.check_stablecoin_peg(pool_data, chain)
+        project_name = pool_data.get("project", "") or pool_data.get("protocol", "")
         
         # =========================================================
-        # PHASE 4: CHECK AUDIT STATUS (same as verify-any)
+        # PARALLEL SECURITY: Run ALL security checks in parallel!
+        # This saves ~15-20 seconds compared to sequential calls
         # =========================================================
-        audit_result = {"audited": False, "source": "unknown"}
-        try:
-            from data_sources.audit_checker import audit_checker
-            project_name = pool_data.get("project", "") or pool_data.get("protocol", "")
-            audit_result = await audit_checker.check_audit_status(
-                protocol_name=project_name,
-                contract_address=pool_address,
-                chain=chain
-            )
-            pool_data["audit_status"] = audit_result
-        except Exception as e:
-            logger.debug(f"Audit check failed: {e}")
-            pool_data["audit_status"] = {"audited": False, "source": "error"}
         
-        # =========================================================
-        # PHASE 5: CHECK LIQUIDITY LOCK (same as verify-any)
-        # =========================================================
-        lock_result = {"has_lock": False, "source": "unknown"}
-        try:
-            from data_sources.liquidity_lock import liquidity_lock_checker
-            lock_result = await liquidity_lock_checker.check_lp_lock(
-                pool_address=pool_address,
-                chain=chain
-            )
-            pool_data["liquidity_lock"] = lock_result
-        except Exception as e:
-            logger.debug(f"Liquidity lock check failed: {e}")
-            pool_data["liquidity_lock"] = {"has_lock": False, "source": "error"}
-        
-        # =========================================================
-        # PHASE 6: WHALE CONCENTRATION ANALYSIS (same as verify-any)
-        # =========================================================
-        # Skip for stablecoins and major tokens (highly distributed)
         SKIP_WHALE_TOKENS = {
             "usdc", "usdt", "dai", "busd", "frax", "tusd", "usdp", "usdd", "gusd", "lusd",
             "weth", "eth", "wbtc", "btc", "sol", "wsol", "matic", "wmatic", "avax", "wavax",
             "bnb", "wbnb", "ftm", "wftm", "op", "arb", "aero"
         }
         
+        token0_addr = pool_data.get("token0") or ""
+        token1_addr = pool_data.get("token1") or ""
+        symbol0 = (pool_data.get("symbol0") or "").lower()
+        symbol1 = (pool_data.get("symbol1") or "").lower()
+        
+        # Build all security tasks for parallel execution
+        security_tasks = []
+        task_names = []
+        
+        # 1. GoPlus security check
+        security_tasks.append(security_checker.check_security(tokens, chain))
+        task_names.append("goplus")
+        
+        # 2. Stablecoin peg check
+        security_tasks.append(security_checker.check_stablecoin_peg(pool_data, chain))
+        task_names.append("peg")
+        
+        # 3. Audit status
+        security_tasks.append(audit_checker.check_audit_status(project_name, pool_address, chain))
+        task_names.append("audit")
+        
+        # 4. Liquidity lock
+        security_tasks.append(liquidity_lock_checker.check_lp_lock(pool_address, chain))
+        task_names.append("lock")
+        
+        # 5-7. Whale analysis (only for exotic tokens)
         whale_analysis = {"token0": None, "token1": None, "lp_token": None}
-        try:
-            from data_sources.holder_analysis import holder_analyzer
-            token0_addr = pool_data.get("token0") or ""
-            token1_addr = pool_data.get("token1") or ""
-            symbol0 = (pool_data.get("symbol0") or "").lower()
-            symbol1 = (pool_data.get("symbol1") or "").lower()
+        whale_task_mapping = []  # maps task index to whale key
+        
+        if token0_addr and symbol0 not in SKIP_WHALE_TOKENS:
+            security_tasks.append(holder_analyzer.get_holder_analysis(token0_addr, chain))
+            task_names.append("whale_token0")
+            whale_task_mapping.append("token0")
+        else:
+            whale_analysis["token0"] = {"skipped": True, "reason": "major/stable token", "concentration_risk": "low"}
+        
+        if token1_addr and symbol1 not in SKIP_WHALE_TOKENS:
+            security_tasks.append(holder_analyzer.get_holder_analysis(token1_addr, chain))
+            task_names.append("whale_token1")
+            whale_task_mapping.append("token1")
+        else:
+            whale_analysis["token1"] = {"skipped": True, "reason": "major/stable token", "concentration_risk": "low"}
+        
+        if pool_address:
+            security_tasks.append(holder_analyzer.get_holder_analysis(pool_address, chain))
+            task_names.append("whale_lp")
+            whale_task_mapping.append("lp_token")
+        
+        # Execute ALL security checks in parallel!
+        logger.info(f"⚡ Running {len(security_tasks)} security checks in parallel...")
+        results = await asyncio.gather(*security_tasks, return_exceptions=True)
+        
+        # Process results
+        security_result = {"status": "error", "tokens": {}}
+        peg_status = {"has_depeg": False}
+        audit_result = {"audited": False, "source": "unknown"}
+        lock_result = {"has_lock": False, "source": "unknown"}
+        
+        whale_idx = 0
+        for i, (name, result) in enumerate(zip(task_names, results)):
+            if isinstance(result, Exception):
+                logger.debug(f"Security check '{name}' failed: {result}")
+                continue
             
-            # Build parallel tasks for whale analysis (big performance win!)
-            whale_tasks = []
-            task_keys = []  # Track which task corresponds to which result
-            
-            # Token0 analysis (if exotic)
-            if token0_addr and symbol0 not in SKIP_WHALE_TOKENS:
-                whale_tasks.append(holder_analyzer.get_holder_analysis(token0_addr, chain))
-                task_keys.append("token0")
-            else:
-                whale_analysis["token0"] = {"skipped": True, "reason": "major/stable token", "concentration_risk": "low"}
-            
-            # Token1 analysis (if exotic)
-            if token1_addr and symbol1 not in SKIP_WHALE_TOKENS:
-                whale_tasks.append(holder_analyzer.get_holder_analysis(token1_addr, chain))
-                task_keys.append("token1")
-            else:
-                whale_analysis["token1"] = {"skipped": True, "reason": "major/stable token", "concentration_risk": "low"}
-            
-            # LP token analysis
-            if pool_address:
-                whale_tasks.append(holder_analyzer.get_holder_analysis(pool_address, chain))
-                task_keys.append("lp_token")
-            
-            # Execute all whale analysis in parallel!
-            if whale_tasks:
-                results = await asyncio.gather(*whale_tasks, return_exceptions=True)
-                for key, result in zip(task_keys, results):
-                    if isinstance(result, Exception):
-                        logger.debug(f"Whale analysis for {key} failed: {result}")
-                        whale_analysis[key] = None
-                    else:
-                        whale_analysis[key] = result
-            
-            pool_data["whale_analysis"] = whale_analysis
-        except Exception as e:
-            logger.debug(f"Whale concentration check failed: {e}")
-            pool_data["whale_analysis"] = {"token0": None, "token1": None, "lp_token": None, "source": "error"}
+            if name == "goplus":
+                security_result = result or security_result
+            elif name == "peg":
+                peg_status = result or peg_status
+            elif name == "audit":
+                audit_result = result or audit_result
+            elif name == "lock":
+                lock_result = result or lock_result
+            elif name.startswith("whale_"):
+                key = whale_task_mapping[whale_idx]
+                whale_analysis[key] = result
+                whale_idx += 1
+        
+        # Clean pool symbols (quick, doesn't need network call usually)
+        pool_data = await security_checker.clean_pool_symbols(pool_data, chain)
+        
+        # Store results
+        pool_data["audit_status"] = audit_result
+        pool_data["liquidity_lock"] = lock_result
+        pool_data["whale_analysis"] = whale_analysis
         
         # =========================================================
         # PHASE 7: CALCULATE COMPREHENSIVE RISK SCORE (WITH ALL DATA)

@@ -275,7 +275,7 @@ class HolderAnalysis:
         headers = {"X-API-Key": get_moralis_key()}
         params = {"chain": moralis_chain, "limit": 100}
         
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=5) as client:  # Reduced from 15s for performance
             response = await client.get(url, headers=headers, params=params)
             logger.warning(f"[DEBUG] Moralis response for {token_address[:10]}...: status={response.status_code}")
             
