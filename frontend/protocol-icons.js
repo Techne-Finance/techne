@@ -51,7 +51,7 @@ const PROTOCOL_ICONS = {
     // Base/L2 Specific
     aerodrome: {
         name: 'Aerodrome',
-        icon: 'https://icons.llama.fi/aerodrome.png',
+        icon: '/icons/protocols/aerodrome.png',
         color: '#0052FF',
         chains: ['base']
     },
@@ -195,6 +195,26 @@ function getChainIcon(chainId, size = 20) {
     return '';
 }
 
+// Get protocol icon URL (used by pool-detail.js)
+function getProtocolIconUrl(protocolName) {
+    if (!protocolName) return '/icons/default.svg';
+    const key = protocolName.toLowerCase().replace(/\s+/g, '-').replace('slipstream', '').replace('finance', '').trim();
+    // Check known protocols first
+    const protocol = PROTOCOL_ICONS[key];
+    if (protocol && protocol.icon) return protocol.icon;
+    // Check for local icon file
+    const localPath = `/icons/protocols/${key}.png`;
+    return localPath;
+}
+
+// Get chain icon URL
+function getChainIconUrl(chainName) {
+    if (!chainName) return '';
+    const chain = CHAIN_ICONS[chainName.toLowerCase()];
+    if (chain) return chain.icon;
+    return `https://icons.llama.fi/chains/rsz_${chainName.toLowerCase()}.jpg`;
+}
+
 // Export for use
 window.ProtocolIcons = {
     protocols: PROTOCOL_ICONS,
@@ -202,3 +222,7 @@ window.ProtocolIcons = {
     getProtocolIcon,
     getChainIcon
 };
+
+// Global helper functions for pool-detail.js
+window.getProtocolIconUrl = getProtocolIconUrl;
+window.getChainIconUrl = getChainIconUrl;
