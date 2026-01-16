@@ -1748,13 +1748,15 @@ const PoolDetailModal = {
 
         // Get risk breakdown but override Audit with actual audit_status
         const riskBreakdown = { ...(pool.risk_breakdown || {}) };
+        // Remove any existing audit keys (different casing)
+        delete riskBreakdown.audit;
+        delete riskBreakdown.Audit;
+
         const audit = pool.audit_status || pool.audit || {};
         const hasAudit = audit.audited === true ||
             (audit.status && audit.status !== 'none' && audit.status !== 'unknown') ||
             (audit.auditors && audit.auditors.length > 0);
-        if (hasAudit) {
-            riskBreakdown.Audit = 'verified';
-        }
+        riskBreakdown.Audit = hasAudit ? 'verified' : 'unverified';
 
         console.log('[PoolDetailModal] Advanced Risk - il_analysis:', ilAnalysis);
         console.log('[PoolDetailModal] Advanced Risk - volatility_analysis:', volatilityAnalysis);
