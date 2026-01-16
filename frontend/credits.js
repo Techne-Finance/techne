@@ -156,10 +156,23 @@ const CreditsManager = {
         const btn = document.getElementById('confirmBuyCreditsBtn');
         if (!btn) return;
 
-        // Check wallet connection
+        // Check wallet provider exists
+        if (!window.ethereum) {
+            alert('No Web3 wallet detected. Please install MetaMask.');
+            return;
+        }
+
+        // Check wallet is connected
         if (!window.connectedWallet) {
             alert('Please connect your wallet first');
             if (typeof connectWallet === 'function') connectWallet();
+            return;
+        }
+
+        // Check ethers library is loaded
+        if (typeof ethers === 'undefined') {
+            alert('Payment library not loaded. Please refresh the page.');
+            console.error('[Credits] ethers.js not loaded');
             return;
         }
 
