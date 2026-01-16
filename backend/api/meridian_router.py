@@ -88,17 +88,19 @@ async def settle_payment(request: PaymentRequest):
         payment_payload = request.paymentPayload
         
         # Construct payment requirements (must match Meridian API format)
-        # See: https://docs.mrdn.finance/api-reference/endpoint/verify-payment
+        # Format based on working cashback-sniper.js
         payment_requirements = {
-            "scheme": "exact",
+            "recipient": MERIDIAN_RECIPIENT,  # Final recipient of funds
             "network": NETWORK,
-            "maxAmountRequired": CREDITS_PACKAGE["price_usdc"],
+            "asset": USDC_ADDRESS,
+            "scheme": "exact",
+            "payTo": MERIDIAN_CONTRACT,  # Meridian contract address
+            "maxTimeoutSeconds": 3600,
             "resource": "https://techne.finance/credits",
             "description": f"{CREDITS_PACKAGE['credits']} Filter Credits",
             "mimeType": "application/json",
-            "payTo": MERIDIAN_CONTRACT,
-            "maxTimeoutSeconds": 3600,
-            "asset": USDC_ADDRESS
+            "amount": CREDITS_PACKAGE["price_usdc"],
+            "maxAmountRequired": CREDITS_PACKAGE["price_usdc"]
         }
         
         async with httpx.AsyncClient(timeout=30) as client:
@@ -140,6 +142,7 @@ async def settle_payment(request: PaymentRequest):
             )
             
             settle_data = settle_response.json()
+            logger.info(f"Settle response status: {settle_response.status_code}")
             logger.info(f"Settle response: {settle_data}")
             
             if settle_data.get("success"):
@@ -150,9 +153,13 @@ async def settle_payment(request: PaymentRequest):
                     transaction=settle_data.get("transaction")
                 )
             else:
+                # Check for error in multiple places (API can return error or errorReason)
+                error_msg = settle_data.get('errorReason') or settle_data.get('error') or 'Unknown error'
+                logger.error(f"Settlement failed: {error_msg}")
+                logger.error(f"Full settle response: {settle_data}")
                 return PaymentResponse(
                     success=False,
-                    error=f"Settlement failed: {settle_data.get('error', 'Unknown error')}"
+                    error=f"Settlement failed: {error_msg}"
                 )
                 
     except httpx.TimeoutException:
