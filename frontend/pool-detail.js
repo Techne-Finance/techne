@@ -710,28 +710,47 @@ const PoolDetailModal = {
         if (apy <= 0) return '<div class="pd-no-data">No yield data</div>';
 
         const totalApy = apyBase + apyReward;
-        const feePercent = totalApy > 0 ? (apyBase / totalApy * 100) : 0;
-        const emissionPercent = totalApy > 0 ? (apyReward / totalApy * 100) : 0;
+
+        // If breakdown not available but APY exists, show full circle
+        const hasBreakdown = totalApy > 0;
+        const feePercent = hasBreakdown ? (apyBase / totalApy * 100) : 0;
+        const emissionPercent = hasBreakdown ? (apyReward / totalApy * 100) : 0;
 
         let sustainColor = '#10B981';
         if (emissionPercent > 80) sustainColor = '#EF4444';
         else if (emissionPercent > 50) sustainColor = '#FBBF24';
 
+        // SVG params - if no breakdown, show full circle in gold
+        const svgContent = hasBreakdown ? `
+            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#10B981" stroke-width="16"
+                stroke-dasharray="${feePercent * 2.51} 251" transform="rotate(-90 50 50)" />
+            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#F59E0B" stroke-width="16"
+                stroke-dasharray="${emissionPercent * 2.51} 251" stroke-dashoffset="${-feePercent * 2.51}"
+                transform="rotate(-90 50 50)" />
+        ` : `
+            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#D4A853" stroke-width="16"
+                stroke-dasharray="251 251" transform="rotate(-90 50 50)" />
+        `;
+
+        const breakdownText = hasBreakdown ? `
+            <div style="margin-bottom: 4px;"><span style="color: #10B981;">●</span> Fees: ${apyBase.toFixed(2)}% (${feePercent.toFixed(0)}%)</div>
+            <div style="margin-bottom: 4px;"><span style="color: #F59E0B;">●</span> Emissions: ${apyReward.toFixed(2)}% (${emissionPercent.toFixed(0)}%)</div>
+            <div style="color: ${sustainColor}; font-weight: 500;">${emissionPercent > 80 ? '⚠️ High emission dependency' : emissionPercent > 50 ? 'Moderate reliance' : '✅ Sustainable'}</div>
+        ` : `
+            <div style="margin-bottom: 4px;"><span style="color: #D4A853;">●</span> Total APY: ${apy.toFixed(2)}%</div>
+            <div style="color: #6B7280; font-size: 0.6rem;">Breakdown not available for this vault</div>
+            <div style="color: #10B981; font-weight: 500; margin-top: 4px;">✅ Yield verified</div>
+        `;
+
         return `
             <div class="pd-compact-yield">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <svg viewBox="0 0 100 100" style="width: 70px; height: 70px;">
-                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#10B981" stroke-width="16"
-                            stroke-dasharray="${feePercent * 2.51} 251" transform="rotate(-90 50 50)" />
-                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#F59E0B" stroke-width="16"
-                            stroke-dasharray="${emissionPercent * 2.51} 251" stroke-dashoffset="${-feePercent * 2.51}"
-                            transform="rotate(-90 50 50)" />
+                        ${svgContent}
                         <text x="50" y="52" text-anchor="middle" fill="white" font-size="14" font-weight="bold">${apy.toFixed(1)}%</text>
                     </svg>
                     <div style="font-size: 0.65rem;">
-                        <div style="margin-bottom: 4px;"><span style="color: #10B981;">●</span> Fees: ${apyBase.toFixed(2)}% (${feePercent.toFixed(0)}%)</div>
-                        <div style="margin-bottom: 4px;"><span style="color: #F59E0B;">●</span> Emissions: ${apyReward.toFixed(2)}% (${emissionPercent.toFixed(0)}%)</div>
-                        <div style="color: ${sustainColor}; font-weight: 500;">${emissionPercent > 80 ? '⚠️ High emission dependency' : emissionPercent > 50 ? 'Moderate reliance' : '✅ Sustainable'}</div>
+                        ${breakdownText}
                     </div>
                 </div>
             </div>
