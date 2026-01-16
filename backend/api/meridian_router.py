@@ -132,7 +132,8 @@ async def settle_payment(request: PaymentRequest):
             settle_response = await client.post(
                 f"{MERIDIAN_API_URL}/settle",
                 headers={
-                    "Authorization": f"Bearer {MERIDIAN_SK}",
+                    # Using PK like cashback-sniper - both verify and settle use public key
+                    "Authorization": f"Bearer {MERIDIAN_PK}",
                     "Content-Type": "application/json"
                 },
                 json={
