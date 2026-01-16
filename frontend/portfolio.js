@@ -59,12 +59,17 @@ class PortfolioDashboard {
         this.showLoadingState();
 
         try {
-            // In production, fetch from API/blockchain
-            // For now, check if agent is deployed and has mock data
+            // Check localStorage for deployed agent first
+            const deployedAgent = this.getDeployedAgent();
+
+            // Also check VaultAgent for legacy compatibility
             const agentStatus = window.VaultAgent?.getStatus?.();
 
-            if (agentStatus?.isActive && agentStatus.allocations?.length > 0) {
-                // Populate with agent data
+            if (deployedAgent?.isActive) {
+                // Populate with deployed agent data
+                this.populateFromDeployedAgent(deployedAgent);
+            } else if (agentStatus?.isActive && agentStatus.allocations?.length > 0) {
+                // Legacy: Populate with agent data
                 this.populateMockData(agentStatus);
             } else {
                 // Show empty state
@@ -74,6 +79,95 @@ class PortfolioDashboard {
             this.updateUI();
         } catch (error) {
             console.error('[Portfolio] Failed to load data:', error);
+        }
+    }
+
+    getDeployedAgent() {
+        // Retrieve deployed agent from localStorage
+        try {
+            const saved = localStorage.getItem('techne_deployed_agent');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            console.error('[Portfolio] Failed to load deployed agent:', e);
+            return null;
+        }
+    }
+
+    populateFromDeployedAgent(agent) {
+        // Populate portfolio data from deployed agent config
+        console.log('[Portfolio] Loading from deployed agent:', agent);
+
+        // Generate mock positions based on agent config
+        const numPositions = agent.vaultCount || 3;
+        const protocols = agent.protocols || ['morpho', 'aave'];
+        const assets = agent.preferredAssets || ['USDC', 'WETH'];
+
+        const positions = [];
+        for (let i = 0; i < numPositions; i++) {
+            positions.push({
+                id: i,
+                vaultName: `${protocols[i % protocols.length]} ${assets[i % assets.length]} Vault`,
+                protocol: protocols[i % protocols.length],
+                deposited: 0,
+                current: 0,
+                apy: agent.minApy + Math.random() * (agent.maxApy - agent.minApy),
+                pnl: 0
+            });
+        }
+
+        this.portfolio = {
+            totalValue: 0,
+            totalPnL: 0,
+            pnlPercent: 0,
+            avgApy: (agent.minApy + agent.maxApy) / 2,
+            holdings: assets.slice(0, 3).map(asset => ({
+                asset: asset,
+                balance: 0,
+                value: 0,
+                change: 0
+            })),
+            positions: positions,
+            transactions: []
+        };
+
+        // Update agent status in sidebar
+        this.updateAgentSidebarFromDeployed(agent);
+    }
+
+    updateAgentSidebarFromDeployed(agent) {
+        const badge = document.getElementById('agentStatusBadge');
+        const addrEl = document.getElementById('agentAddrDisplay');
+        const strategyEl = document.getElementById('agentStrategy');
+        const lastActionEl = document.getElementById('agentLastAction');
+
+        if (badge) {
+            badge.textContent = 'Active';
+            badge.className = 'status-badge active';
+        }
+
+        if (addrEl) {
+            addrEl.textContent = agent.address ?
+                `${agent.address.slice(0, 6)}...${agent.address.slice(-4)}` :
+                'Not deployed';
+        }
+
+        if (strategyEl) {
+            strategyEl.textContent = agent.preset?.replace(/-/g, ' ') || 'Custom';
+        }
+
+        if (lastActionEl) {
+            const deployedTime = new Date(agent.deployedAt);
+            const now = new Date();
+            const diffMs = now - deployedTime;
+            const diffMins = Math.floor(diffMs / 60000);
+
+            if (diffMins < 1) {
+                lastActionEl.textContent = 'Just deployed';
+            } else if (diffMins < 60) {
+                lastActionEl.textContent = `Deployed ${diffMins}m ago`;
+            } else {
+                lastActionEl.textContent = `Deployed ${Math.floor(diffMins / 60)}h ago`;
+            }
         }
     }
 

@@ -642,8 +642,23 @@ What would you like to configure?`;
 
             this.addAgentMessage(configSummary);
 
+            // Save deployed agent to localStorage for Portfolio integration
+            this.saveDeployedAgent(address, isProMode, proConfig);
+
             // Log to backend (optional - for analytics)
             this.logDeploymentToBackend(address, isProMode, proConfig);
+
+            // Redirect to Portfolio after 3 seconds
+            setTimeout(() => {
+                this.addAgentMessage('🚀 Redirecting to Portfolio Dashboard...');
+                setTimeout(() => {
+                    // Navigate to Portfolio section
+                    const portfolioNav = document.querySelector('[data-section="portfolio"]');
+                    if (portfolioNav) {
+                        portfolioNav.click();
+                    }
+                }, 1500);
+            }, 2000);
 
         } catch (error) {
             btn.innerHTML = '<span class="techne-icon">' + TechneIcons.error + '</span> Deploy Failed';
@@ -676,6 +691,45 @@ What would you like to configure?`;
         }
     }
 
+    saveDeployedAgent(address, isProMode, proConfig) {
+        // Save agent configuration to localStorage for Portfolio integration
+        const deployedAgent = {
+            address: address,
+            chain: this.config.chain,
+            preset: this.config.preset,
+            riskLevel: this.config.riskLevel,
+            minApy: this.config.minApy,
+            maxApy: this.config.maxApy,
+            protocols: this.config.protocols,
+            preferredAssets: this.config.preferredAssets,
+            maxAllocation: this.config.maxAllocation,
+            vaultCount: this.config.vaultCount,
+            isProMode: isProMode,
+            proConfig: proConfig,
+            deployedAt: new Date().toISOString(),
+            isActive: true
+        };
+
+        // Save to localStorage
+        localStorage.setItem('techne_deployed_agent', JSON.stringify(deployedAgent));
+
+        // Also update global state
+        window.deployedAgent = deployedAgent;
+
+        console.log('[AgentBuilder] Agent saved to localStorage:', deployedAgent);
+    }
+
+    static getDeployedAgent() {
+        // Static method to retrieve deployed agent from localStorage
+        try {
+            const saved = localStorage.getItem('techne_deployed_agent');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            console.error('[AgentBuilder] Failed to load deployed agent:', e);
+            return null;
+        }
+    }
+
     stopAgent() {
         const statusBar = document.getElementById('agentStatusBar');
         const btn = document.getElementById('deployAgentBtn');
@@ -683,6 +737,21 @@ What would you like to configure?`;
         statusBar.style.display = 'none';
         btn.innerHTML = '<span class="techne-icon">' + TechneIcons.rocket + '</span> Deploy Agent';
         btn.disabled = false;
+
+        // Mark agent as inactive in localStorage
+        try {
+            const saved = localStorage.getItem('techne_deployed_agent');
+            if (saved) {
+                const agent = JSON.parse(saved);
+                agent.isActive = false;
+                agent.stoppedAt = new Date().toISOString();
+                localStorage.setItem('techne_deployed_agent', JSON.stringify(agent));
+                window.deployedAgent = agent;
+                console.log('[AgentBuilder] Agent marked as inactive');
+            }
+        } catch (e) {
+            console.error('[AgentBuilder] Failed to update agent status:', e);
+        }
 
         this.addAgentMessage("Agent stopped. All positions will remain until you manually withdraw. You can redeploy anytime with new settings.");
     }
