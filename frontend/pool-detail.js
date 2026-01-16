@@ -878,7 +878,8 @@ const PoolDetailModal = {
         };
 
         const formatVol = (vol) => {
-            if (vol === 0 || vol === null || vol === undefined) return 'N/A';
+            if (vol === null || vol === undefined) return 'N/A';
+            if (vol === 0) return '0%';  // Zero is valid - means stable price
             const sign = vol > 0 ? '+' : '';
             return `${sign}${vol.toFixed(1)}%`;
         };
