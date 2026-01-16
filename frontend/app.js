@@ -455,8 +455,9 @@ function initFilters() {
             updateTvlDisplay();
             if (typeof updateSliderFill === 'function') updateSliderFill('tvl');
         });
-        tvlMinSlider.addEventListener('change', loadPools);
-        tvlMaxSlider.addEventListener('change', loadPools);
+        // Disabled - users must click Apply button (which checks credits)
+        // tvlMinSlider.addEventListener('change', loadPools);
+        // tvlMaxSlider.addEventListener('change', loadPools);
     }
 
     // APY dual slider
