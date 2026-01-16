@@ -7,12 +7,40 @@ const AgentWalletUI = {
     // Contract address - DEPLOYED ON BASE MAINNET
     contractAddress: '0x567D1Fc55459224132aB5148c6140E8900f9a607',
 
-    // Base USDC
+    // Supported tokens on Base
+    TOKENS: {
+        USDC: {
+            address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+            decimals: 6,
+            symbol: 'USDC',
+            name: 'USD Coin',
+            icon: '💵'
+        },
+        WETH: {
+            address: '0x4200000000000000000000000000000000000006',
+            decimals: 18,
+            symbol: 'WETH',
+            name: 'Wrapped Ether',
+            icon: '⟠'
+        }
+    },
+
+    // Legacy (keep for compatibility)
     USDC_ADDRESS: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
 
-    // ABI for read/write
+    // ERC20 ABI for read/write
+    ERC20_ABI: [
+        'function approve(address spender, uint256 amount) returns (bool)',
+        'function balanceOf(address account) view returns (uint256)',
+        'function allowance(address owner, address spender) view returns (uint256)',
+        'function decimals() view returns (uint8)',
+        'function symbol() view returns (string)'
+    ],
+
+    // Vault ABI for read/write
     WALLET_ABI: [
         'function deposit(uint256 amount)',
+        'function depositToken(address token, uint256 amount)',
         'function withdraw(uint256 shares)',
         'function totalValue() view returns (uint256)',
         'function totalShares() view returns (uint256)',
@@ -32,6 +60,7 @@ const AgentWalletUI = {
     userValue: 0,
     totalVaultValue: 0,
     estimatedAPY: 0,
+    selectedToken: 'USDC', // Currently selected deposit token
 
     /**
      * Initialize the Agent Wallet UI
@@ -187,9 +216,48 @@ const AgentWalletUI = {
 
                 <!-- Body -->
                 <div style="padding: 24px;">
+                    <!-- Token Selector -->
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Select Token</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <button id="tokenSelectUSDC" onclick="AgentWalletUI.selectToken('USDC')" style="
+                                padding: 12px;
+                                background: rgba(212, 168, 83, 0.15);
+                                border: 2px solid #d4a853;
+                                border-radius: 10px;
+                                color: #fff;
+                                font-weight: 600;
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 8px;
+                                transition: all 0.2s;
+                            ">
+                                💵 USDC
+                            </button>
+                            <button id="tokenSelectWETH" onclick="AgentWalletUI.selectToken('WETH')" style="
+                                padding: 12px;
+                                background: rgba(255,255,255,0.03);
+                                border: 1px solid rgba(255,255,255,0.1);
+                                border-radius: 10px;
+                                color: rgba(255,255,255,0.7);
+                                font-weight: 600;
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 8px;
+                                transition: all 0.2s;
+                            ">
+                                ⟠ WETH
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Amount Input -->
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Amount (USDC)</label>
+                        <label style="display: block; font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Amount (<span id="selectedTokenLabel">USDC</span>)</label>
                         <div style="
                             display: flex;
                             background: rgba(0,0,0,0.4);
@@ -198,7 +266,7 @@ const AgentWalletUI = {
                             overflow: hidden;
                             transition: border-color 0.2s;
                         " onfocus="this.style.borderColor='rgba(212,168,83,0.5)'">
-                            <input type="number" id="depositAmount" placeholder="0.00" min="10" step="0.01" style="
+                            <input type="number" id="depositAmount" placeholder="0.00" min="0.001" step="any" style="
                                 flex: 1;
                                 background: transparent;
                                 border: none;
@@ -222,8 +290,8 @@ const AgentWalletUI = {
                                onmouseout="this.style.background='linear-gradient(135deg, rgba(212, 168, 83, 0.2), rgba(212, 168, 83, 0.1))'">MAX</button>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.4);">
-                            <span>Balance: <span id="usdcBalance" style="color: #d4a853;">--</span> USDC</span>
-                            <span>Min: 10 USDC</span>
+                            <span>Balance: <span id="tokenBalance" style="color: #d4a853;">--</span> <span id="tokenSymbol">USDC</span></span>
+                            <span id="minAmountHint">Min: 10 USDC</span>
                         </div>
                     </div>
 
@@ -518,28 +586,81 @@ const AgentWalletUI = {
     },
 
     /**
-     * Load user's USDC balance
+     * Select deposit token (USDC or WETH)
      */
-    async loadUSDCBalance() {
+    selectToken(symbol) {
+        this.selectedToken = symbol;
+        const token = this.TOKENS[symbol];
+
+        // Update UI
+        const usdcBtn = document.getElementById('tokenSelectUSDC');
+        const wethBtn = document.getElementById('tokenSelectWETH');
+
+        if (symbol === 'USDC') {
+            usdcBtn.style.background = 'rgba(212, 168, 83, 0.15)';
+            usdcBtn.style.border = '2px solid #d4a853';
+            usdcBtn.style.color = '#fff';
+            wethBtn.style.background = 'rgba(255,255,255,0.03)';
+            wethBtn.style.border = '1px solid rgba(255,255,255,0.1)';
+            wethBtn.style.color = 'rgba(255,255,255,0.7)';
+        } else {
+            wethBtn.style.background = 'rgba(212, 168, 83, 0.15)';
+            wethBtn.style.border = '2px solid #d4a853';
+            wethBtn.style.color = '#fff';
+            usdcBtn.style.background = 'rgba(255,255,255,0.03)';
+            usdcBtn.style.border = '1px solid rgba(255,255,255,0.1)';
+            usdcBtn.style.color = 'rgba(255,255,255,0.7)';
+        }
+
+        // Update labels
+        document.getElementById('selectedTokenLabel').textContent = symbol;
+        document.getElementById('tokenSymbol').textContent = symbol;
+        document.getElementById('minAmountHint').textContent =
+            symbol === 'USDC' ? 'Min: 10 USDC' : 'Min: 0.005 WETH';
+
+        // Clear and reload balance
+        document.getElementById('depositAmount').value = '';
+        this.loadTokenBalance();
+    },
+
+    /**
+     * Load selected token balance
+     */
+    async loadTokenBalance() {
         if (!window.connectedWallet || !window.ethereum) return;
+
+        const token = this.TOKENS[this.selectedToken];
 
         try {
             const provider = new ethers.BrowserProvider(window.ethereum);
-            const usdc = new ethers.Contract(this.USDC_ADDRESS, this.USDC_ABI, provider);
-            const balance = await usdc.balanceOf(window.connectedWallet);
+            const contract = new ethers.Contract(token.address, this.ERC20_ABI, provider);
+            const balance = await contract.balanceOf(window.connectedWallet);
 
-            document.getElementById('usdcBalance').textContent =
-                (Number(balance) / 1e6).toFixed(2);
+            const formatted = (Number(balance) / Math.pow(10, token.decimals)).toFixed(
+                token.decimals === 18 ? 4 : 2
+            );
+
+            document.getElementById('tokenBalance').textContent = formatted;
+            this.currentBalance = formatted;
         } catch (e) {
             console.error('[AgentWallet] Error loading balance:', e);
+            document.getElementById('tokenBalance').textContent = '--';
         }
+    },
+
+    /**
+     * Legacy: Load user's USDC balance (for compatibility)
+     */
+    async loadUSDCBalance() {
+        this.selectedToken = 'USDC';
+        await this.loadTokenBalance();
     },
 
     /**
      * Set max deposit amount
      */
     setMaxDeposit() {
-        const balanceText = document.getElementById('usdcBalance')?.textContent;
+        const balanceText = document.getElementById('tokenBalance')?.textContent;
         if (balanceText && balanceText !== '--') {
             document.getElementById('depositAmount').value = balanceText;
         }
@@ -570,12 +691,16 @@ const AgentWalletUI = {
     },
 
     /**
-     * Execute deposit transaction
+     * Execute deposit transaction (multi-token support)
      */
     async executeDeposit() {
         const amount = document.getElementById('depositAmount')?.value;
-        if (!amount || amount < 10) {
-            alert('Minimum deposit is 10 USDC');
+        const token = this.TOKENS[this.selectedToken];
+
+        // Validate minimum amounts
+        const minAmount = this.selectedToken === 'USDC' ? 10 : 0.005;
+        if (!amount || parseFloat(amount) < minAmount) {
+            alert(`Minimum deposit is ${minAmount} ${this.selectedToken}`);
             return;
         }
 
@@ -592,24 +717,32 @@ const AgentWalletUI = {
             const provider = new ethers.BrowserProvider(window.ethereum);
             const signer = await provider.getSigner();
 
-            const amountWei = BigInt(Math.floor(parseFloat(amount) * 1e6));
+            // Calculate amount in token's decimals
+            const amountWei = BigInt(Math.floor(parseFloat(amount) * Math.pow(10, token.decimals)));
 
-            // Approve USDC
-            const usdc = new ethers.Contract(this.USDC_ADDRESS, this.USDC_ABI, signer);
-            const approveTx = await usdc.approve(this.contractAddress, amountWei);
+            // Approve token
+            const tokenContract = new ethers.Contract(token.address, this.ERC20_ABI, signer);
+            const approveTx = await tokenContract.approve(this.contractAddress, amountWei);
             await approveTx.wait();
 
             btn.innerHTML = '<span>⏳</span> Depositing...';
 
-            // Deposit
+            // Deposit - use depositToken for non-USDC, deposit for USDC
             const wallet = new ethers.Contract(this.contractAddress, this.WALLET_ABI, signer);
-            const depositTx = await wallet.deposit(amountWei);
+            let depositTx;
+
+            if (this.selectedToken === 'USDC') {
+                depositTx = await wallet.deposit(amountWei);
+            } else {
+                // For WETH and other tokens, use depositToken
+                depositTx = await wallet.depositToken(token.address, amountWei);
+            }
             await depositTx.wait();
 
-            btn.innerHTML = '<span class="techne-icon">' + TechneIcons.success + '</span> Deposited!';
-            btn.style.background = 'var(--success)';
+            btn.innerHTML = '<span>✓</span> Deposited!';
+            btn.style.background = '#22c55e';
 
-            Toast?.show('Successfully deposited to Agent Vault!', 'success');
+            Toast?.show(`Successfully deposited ${amount} ${this.selectedToken}!`, 'success');
 
             // Refresh stats
             await this.refreshStats();
@@ -621,7 +754,7 @@ const AgentWalletUI = {
         } catch (e) {
             console.error('[AgentWallet] Deposit error:', e);
             alert('Deposit failed: ' + (e.reason || e.message));
-            btn.innerHTML = '<span class="techne-icon">' + TechneIcons.lock + '</span> Approve & Deposit';
+            btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 2L4 6v6c0 5.5 3.5 10.7 8 12 4.5-1.3 8-6.5 8-12V6l-8-4z" stroke="currentColor" stroke-width="2"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2"/></svg> Approve & Deposit';
             btn.disabled = false;
         }
     },
