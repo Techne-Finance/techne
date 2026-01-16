@@ -120,6 +120,14 @@ except ImportError as e:
     print(f"[Warning] Agent config router not available: {e}")
     AGENT_CONFIG_AVAILABLE = False
 
+# Import agent operations router (Harvest, Rebalance, Pause, Audit)
+try:
+    from api.agent_router import router as agent_ops_router, audit_router
+    AGENT_OPS_AVAILABLE = True
+except ImportError as e:
+    print(f"[Warning] Agent operations router not available: {e}")
+    AGENT_OPS_AVAILABLE = False
+
 app = FastAPI(
     title="Techne.finance API",
     description="AI-powered yield optimizer - Production Grade | Security + AI + Revenue",
@@ -199,6 +207,12 @@ if MERIDIAN_AVAILABLE:
 if AGENT_CONFIG_AVAILABLE:
     app.include_router(agent_config_router)
     print("[AgentConfig] Agent deployment router loaded")
+
+# Include agent operations routes (Harvest, Rebalance, Pause, Audit)
+if AGENT_OPS_AVAILABLE:
+    app.include_router(agent_ops_router)
+    app.include_router(audit_router)
+    print("[AgentOps] Agent operations + Audit router loaded")
 
 # Include Telegram bot API routes
 try:
