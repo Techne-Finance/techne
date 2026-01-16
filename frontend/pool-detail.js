@@ -786,11 +786,22 @@ const PoolDetailModal = {
     },
 
     renderAuditStatusCompact(pool) {
-        const audit = pool.audit_status || pool.audit;
-        const hasAudit = audit && audit.status !== 'none' && audit.status !== 'unknown';
+        const audit = pool.audit_status || pool.audit || {};
+        // Check multiple ways audit status can be indicated
+        const hasAudit = audit.audited === true ||
+            (audit.status && audit.status !== 'none' && audit.status !== 'unknown') ||
+            (audit.auditors && audit.auditors.length > 0);
         const statusColor = hasAudit ? '#10B981' : '#6B7280';
         const statusIcon = hasAudit ? '✅' : '❌';
-        const auditUrl = audit?.url || audit?.report_url;
+        const auditUrl = audit.url || audit.report_url;
+
+        // Get auditor name(s)
+        let auditorName = 'Verified';
+        if (audit.auditors && Array.isArray(audit.auditors) && audit.auditors.length > 0) {
+            auditorName = audit.auditors.slice(0, 2).join(', ');
+        } else if (audit.auditor) {
+            auditorName = audit.auditor;
+        }
 
         return `
             <div class="pd-section pd-section-compact">
@@ -798,11 +809,11 @@ const PoolDetailModal = {
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="font-size: 1rem;">${statusIcon}</span>
                     ${auditUrl ? `
-                        <a href="${auditUrl}" target="_blank" style="font-size: 0.7rem; color: ${statusColor}; text-decoration: underline; cursor: pointer;">
-                            ${hasAudit ? (audit.auditor || 'Verified') : 'Not audited'} ↗
+                        <a href="${auditUrl}" target="_blank" rel="noopener" style="font-size: 0.7rem; color: ${statusColor}; text-decoration: underline; cursor: pointer;">
+                            ${hasAudit ? auditorName : 'Not audited'} ↗
                         </a>
                     ` : `
-                        <span style="font-size: 0.7rem; color: ${statusColor};">${hasAudit ? (audit.auditor || 'Verified') : 'Not audited'}</span>
+                        <span style="font-size: 0.7rem; color: ${statusColor};">${hasAudit ? auditorName : 'Not audited'}</span>
                     `}
                 </div>
                 ${hasAudit && audit.date ? `<div style="font-size: 0.55rem; color: var(--text-muted); margin-top: 2px;">${audit.date}</div>` : ''}
@@ -1733,8 +1744,17 @@ const PoolDetailModal = {
         const ilAnalysis = pool.il_analysis || {};
         const volatilityAnalysis = pool.volatility_analysis || {};
         const poolAgeAnalysis = pool.pool_age_analysis || {};
-        const riskBreakdown = pool.risk_breakdown || {};
         const whaleAnalysis = pool.whale_analysis || {};
+
+        // Get risk breakdown but override Audit with actual audit_status
+        const riskBreakdown = { ...(pool.risk_breakdown || {}) };
+        const audit = pool.audit_status || pool.audit || {};
+        const hasAudit = audit.audited === true ||
+            (audit.status && audit.status !== 'none' && audit.status !== 'unknown') ||
+            (audit.auditors && audit.auditors.length > 0);
+        if (hasAudit) {
+            riskBreakdown.Audit = 'verified';
+        }
 
         console.log('[PoolDetailModal] Advanced Risk - il_analysis:', ilAnalysis);
         console.log('[PoolDetailModal] Advanced Risk - volatility_analysis:', volatilityAnalysis);
