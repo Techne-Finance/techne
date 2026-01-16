@@ -330,8 +330,8 @@ def get_security_headers() -> Dict[str, str]:
         "Referrer-Policy": "strict-origin-when-cross-origin",
         # Permissions policy
         "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-        # Content Security Policy
-        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+        # Content Security Policy - allowing required external resources
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:",
     }
 
 
