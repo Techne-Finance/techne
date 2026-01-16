@@ -508,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // APYCalculator.init(); // Disabled - removed yield calculator
         YieldComparison.init();
         AlertsSystem.init();
-        LiveStats.init();
+        // LiveStats.init(); // Disabled - removed ticker bar per user request
     }, 500);
 });
 

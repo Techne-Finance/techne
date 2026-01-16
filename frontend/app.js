@@ -782,9 +782,6 @@ function showWalletMenu() {
             <div style="font-size: 0.75rem; color: var(--text-muted);">Connected</div>
             <div style="font-family: monospace; font-size: 0.9rem;">${connectedWallet}</div>
         </div>
-        <button onclick="showPoolHistory()" style="width: 100%; padding: 10px; background: var(--bg-surface); border: none; border-radius: 8px; color: var(--text); cursor: pointer; margin-bottom: 8px; text-align: left;">
-            <span class="techne-icon">${TechneIcons.history}</span> Pool Order History
-        </button>
         <button onclick="disconnectWallet()" style="width: 100%; padding: 10px; background: var(--danger); border: none; border-radius: 8px; color: white; cursor: pointer;">
             <span class="techne-icon">${TechneIcons.error}</span> Disconnect
         </button>
