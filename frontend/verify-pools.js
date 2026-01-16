@@ -679,7 +679,7 @@ const VerifyPools = {
         Toast?.show('🧠 Analyzing pool with SmartRouter...', 'info');
 
         try {
-            // Call backend API for pair search
+            // STEP 1: Call backend API to find pool address from token pair
             const response = await fetch(
                 `/api/scout/pool-pair?token0=${encodeURIComponent(token0)}&token1=${encodeURIComponent(token1)}&protocol=${encodeURIComponent(protocol || '')}&chain=${encodeURIComponent(chain || '')}&stable=${stable ? 'true' : 'false'}`
             );
@@ -687,7 +687,33 @@ const VerifyPools = {
             if (response.ok) {
                 const data = await response.json();
                 if (data && data.pool) {
-                    console.log('[VerifyPools] Found pair pool:', data.pool);
+                    const poolAddress = data.pool.pool_address || data.pool.address || data.pool.pool;
+                    console.log('[VerifyPools] Found pair pool address:', poolAddress);
+
+                    // STEP 2: Now call /verify-rpc with the pool address for full RPC enrichment
+                    // This ensures we get volatility, whale analysis, audit data, etc.
+                    if (poolAddress && poolAddress.startsWith('0x')) {
+                        Toast?.show('🔍 Enriching with on-chain data...', 'info');
+
+                        try {
+                            const verifyResponse = await fetch(
+                                `/api/scout/verify-rpc?pool_address=${encodeURIComponent(poolAddress)}&chain=${encodeURIComponent(chain || 'base')}`
+                            );
+
+                            if (verifyResponse.ok) {
+                                const verifyData = await verifyResponse.json();
+                                if (verifyData && verifyData.success && verifyData.pool) {
+                                    console.log('[VerifyPools] Enriched pool data:', verifyData.pool);
+                                    Toast?.show('Pool verified with on-chain data!', 'success');
+                                    return verifyData.pool;
+                                }
+                            }
+                        } catch (verifyError) {
+                            console.warn('[VerifyPools] RPC enrichment failed, using basic data:', verifyError);
+                        }
+                    }
+
+                    // Fallback to basic pool data if RPC enrichment fails
                     Toast?.show('Pool found!', 'success');
                     return data.pool;
                 }
