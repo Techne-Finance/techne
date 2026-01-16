@@ -307,6 +307,9 @@ class PortfolioDashboard {
 
         // Update agent status in sidebar
         this.updateAgentSidebarFromDeployed(agent);
+
+        // Update Risk Indicators Panel
+        this.updateRiskIndicators(agent);
     }
 
     updateAgentSidebarFromDeployed(agent) {
@@ -343,6 +346,86 @@ class PortfolioDashboard {
             } else {
                 lastActionEl.textContent = `Deployed ${Math.floor(diffMins / 60)}h ago`;
             }
+        }
+    }
+
+    updateRiskIndicators(agent) {
+        // Update Risk Indicators Panel from Pro Mode config
+        const proConfig = agent?.proConfig || agent?.pro_config || {};
+
+        // IL Risk - calculate from positions
+        const ilRiskEl = document.getElementById('ilRiskValue');
+        const positions = this.portfolio.positions || [];
+        let maxIlRisk = 'None';
+
+        for (const pos of positions) {
+            const ilRisk = pos.il_risk || 'None';
+            if (ilRisk === 'High') maxIlRisk = 'High';
+            else if (ilRisk === 'Medium' && maxIlRisk !== 'High') maxIlRisk = 'Medium';
+            else if (ilRisk === 'Low' && maxIlRisk === 'None') maxIlRisk = 'Low';
+        }
+
+        if (ilRiskEl) {
+            ilRiskEl.textContent = maxIlRisk;
+            ilRiskEl.className = 'risk-value ' +
+                (maxIlRisk === 'High' ? 'danger' : maxIlRisk === 'Medium' ? 'warning' : '');
+        }
+
+        // Stop Loss
+        const stopLossEl = document.getElementById('stopLossValue');
+        if (stopLossEl) {
+            const stopLossEnabled = proConfig.stopLossEnabled ?? true;
+            const stopLossPercent = proConfig.stopLossPercent || 15;
+            stopLossEl.textContent = stopLossEnabled ? `${stopLossPercent}% Active` : 'Off';
+            stopLossEl.className = 'risk-value ' + (stopLossEnabled ? 'active' : '');
+        }
+
+        // Volatility Guard
+        const volatilityEl = document.getElementById('volatilityValue');
+        if (volatilityEl) {
+            const volGuard = proConfig.volatilityGuard ?? true;
+            const agentPaused = agent?.paused;
+            if (agentPaused) {
+                volatilityEl.textContent = 'PAUSED';
+                volatilityEl.className = 'risk-value danger';
+            } else if (volGuard) {
+                volatilityEl.textContent = 'OK';
+                volatilityEl.className = 'risk-value active';
+            } else {
+                volatilityEl.textContent = 'Off';
+                volatilityEl.className = 'risk-value';
+            }
+        }
+
+        // APY Alert
+        const apyAlertEl = document.getElementById('apyAlertValue');
+        if (apyAlertEl) {
+            const hasSpike = positions.some(p => p.apy_spike);
+            if (hasSpike) {
+                apyAlertEl.textContent = 'Spike Detected!';
+                apyAlertEl.className = 'risk-value warning';
+            } else {
+                apyAlertEl.textContent = 'None';
+                apyAlertEl.className = 'risk-value';
+            }
+        }
+
+        // Overall Risk Badge
+        const overallBadge = document.getElementById('overallRiskBadge');
+        if (overallBadge) {
+            let risk = 'Low Risk';
+            let riskClass = 'low';
+
+            if (maxIlRisk === 'High' || agent?.paused) {
+                risk = 'High Risk';
+                riskClass = 'high';
+            } else if (maxIlRisk === 'Medium') {
+                risk = 'Medium Risk';
+                riskClass = 'medium';
+            }
+
+            overallBadge.textContent = risk;
+            overallBadge.className = 'risk-badge ' + riskClass;
         }
     }
 
