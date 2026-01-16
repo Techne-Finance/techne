@@ -419,6 +419,12 @@ const VerifyPools = {
     // Normalize DefiLlama pool data to match our PoolDetailModal expected format
     normalizePoolData(pool) {
         console.log('[VerifyPools] Normalizing pool data:', pool);
+        console.log('[VerifyPools] 🔥 RAW Volatility:', {
+            token0_volatility_24h: pool.token0_volatility_24h,
+            token1_volatility_24h: pool.token1_volatility_24h,
+            token0_volatility_1h: pool.token0_volatility_1h,
+            token1_volatility_1h: pool.token1_volatility_1h
+        });
 
         // Calculate risk data
         const riskScore = this.calculateRiskScore(pool);
