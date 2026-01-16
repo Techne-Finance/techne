@@ -13,6 +13,13 @@ from eth_account import Account
 from datetime import datetime
 import json
 
+# Import audit trail for logging
+try:
+    from agents.audit_trail import log_deposit, log_lp_entry
+except ImportError:
+    log_deposit = None
+    log_lp_entry = None
+
 # Contract ABI (simplified for key functions)
 WALLET_ABI = [
     {
@@ -309,6 +316,15 @@ class OnChainExecutor:
             if result["success"]:
                 self.completed_txs.append(result)
                 print(f"[OnChainExecutor] ✓ Deposit confirmed: block {receipt.blockNumber}")
+                
+                # Log to audit trail
+                if log_deposit:
+                    log_deposit(
+                        agent_id="executor",
+                        wallet=account.address,
+                        amount=amount / 1e6,
+                        tx_hash=tx_hash.hex()
+                    )
             else:
                 self.failed_txs.append(result)
                 print(f"[OnChainExecutor] ✗ Deposit failed")
@@ -378,6 +394,16 @@ class OnChainExecutor:
             if result["success"]:
                 print(f"[OnChainExecutor] ✓ LP position entered")
                 self.completed_txs.append(result)
+                
+                # Log to audit trail
+                if log_lp_entry:
+                    log_lp_entry(
+                        agent_id="executor",
+                        wallet=account.address,
+                        pool=f"USDC-{token_b[:8]}",
+                        amount=usdc_amount / 1e6,
+                        tx_hash=tx_hash.hex()
+                    )
             else:
                 print(f"[OnChainExecutor] ✗ LP entry failed")
                 self.failed_txs.append(result)

@@ -1,0 +1,3 @@
+Timestamp,Action,Agent ID,Wallet,TX Hash,Value (USD),Gas Used,Success,Details
+2026-01-16T22:02:18.128127,deposit,test-agent,0x123,0xabc123,100,,Yes,"{""amount"": 100}"
+2026-01-16T22:02:18.129213,enter_lp,test-agent,0x123,,50,,Yes,"{""pool"": ""USDC-WETH""}"

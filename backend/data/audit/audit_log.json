@@ -1,0 +1,30 @@
+[
+  {
+    "timestamp": "2026-01-16T22:02:18.128127",
+    "action_type": "deposit",
+    "agent_id": "test-agent",
+    "wallet_address": "0x123",
+    "details": {
+      "amount": 100
+    },
+    "tx_hash": "0xabc123",
+    "gas_used": null,
+    "value_usd": 100,
+    "success": true,
+    "error": null
+  },
+  {
+    "timestamp": "2026-01-16T22:02:18.129213",
+    "action_type": "enter_lp",
+    "agent_id": "test-agent",
+    "wallet_address": "0x123",
+    "details": {
+      "pool": "USDC-WETH"
+    },
+    "tx_hash": null,
+    "gas_used": null,
+    "value_usd": 50,
+    "success": true,
+    "error": null
+  }
+]
