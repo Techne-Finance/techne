@@ -9051,3 +9051,329 @@ body.builder-pro .basic-mode-only {
 .earnings-value.negative {
     color: #ef4444;
 }
+
+/* ===========================================
+   PORTFOLIO LAYOUT OPTIMIZATION
+   Less scrolling, wider cards, compact spacing
+   =========================================== */
+
+/* Full-width section */
+#section-portfolio {
+    max-width: 100%;
+    padding: var(--space-4);
+}
+
+/* Stats grid - horizontal, wider */
+.portfolio-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.portfolio-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.portfolio-stat-card.primary {
+    border-color: rgba(212, 168, 83, 0.3);
+    background: linear-gradient(135deg, rgba(212, 168, 83, 0.05), transparent);
+}
+
+.portfolio-stat-card .stat-icon {
+    flex-shrink: 0;
+}
+
+.portfolio-stat-card .stat-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.portfolio-stat-card .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.portfolio-stat-card .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.portfolio-stat-card .stat-change {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.portfolio-stat-card .stat-change.positive {
+    color: #22c55e;
+}
+
+.portfolio-stat-card .stat-change.negative {
+    color: #ef4444;
+}
+
+.portfolio-stat-card .stat-subtext {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* Risk Panel - horizontal compact */
+.portfolio-risk-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.risk-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.risk-panel-header h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+}
+
+.risk-indicators-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-3);
+}
+
+/* Main content - two column layout */
+.portfolio-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--space-4);
+}
+
+.portfolio-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.portfolio-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+/* Portfolio cards - compact */
+.portfolio-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.portfolio-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.portfolio-card .card-header h3 {
+    margin: 0;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+}
+
+.portfolio-card .card-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    background: rgba(212, 168, 83, 0.15);
+    border: 1px solid rgba(212, 168, 83, 0.3);
+    border-radius: 10px;
+    color: var(--gold);
+}
+
+/* Holdings table compact */
+.holdings-table {
+    padding: var(--space-2);
+}
+
+.table-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+}
+
+.table-empty {
+    padding: var(--space-6);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.table-empty p {
+    margin: 0 0 var(--space-2);
+    font-size: 0.85rem;
+}
+
+.btn-link {
+    color: var(--gold);
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+/* Agent card compact */
+.agent-card .agent-info {
+    padding: var(--space-3);
+}
+
+.agent-card .agent-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+}
+
+.agent-card .agent-row:last-child {
+    border-bottom: none;
+}
+
+.agent-card .agent-row .label {
+    color: var(--text-muted);
+}
+
+.agent-card .agent-row .value {
+    color: var(--text);
+    font-weight: 500;
+}
+
+.agent-card .agent-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    padding-top: 0;
+}
+
+.agent-card .btn-fund,
+.agent-card .btn-withdraw-all {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.agent-card .btn-fund {
+    background: rgba(212, 168, 83, 0.15);
+    border: 1px solid rgba(212, 168, 83, 0.3);
+    color: var(--gold);
+}
+
+.agent-card .btn-withdraw-all {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+/* Quick actions horizontal */
+.quick-action-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-2);
+    padding: var(--space-3);
+}
+
+.quick-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: var(--space-3);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.quick-action:hover {
+    border-color: rgba(212, 168, 83, 0.3);
+    color: var(--text);
+}
+
+.quick-action .action-icon {
+    font-size: 1.2rem;
+}
+
+/* Allocation chart compact */
+.allocation-chart {
+    padding: var(--space-3);
+}
+
+.donut-chart {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: conic-gradient(var(--gold) 0deg 360deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.donut-hole {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.donut-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Responsive - mobile */
+@media (max-width: 1024px) {
+    .portfolio-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .risk-indicators-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .portfolio-content {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-action-buttons {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
