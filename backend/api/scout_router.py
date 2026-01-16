@@ -939,6 +939,9 @@ async def verify_pool_rpc_first(
     from data_sources.geckoterminal import gecko_client
     import httpx
     
+    start_time = time.time()  # Track total time
+    timings = {}  # Log time for each step
+    
     chain = chain.lower()
     pool_address = pool_address.lower() if chain != "solana" else pool_address
     
@@ -1042,67 +1045,76 @@ async def verify_pool_rpc_first(
         except Exception as e:
             logger.debug(f"GeckoTerminal enrichment failed: {e}")
     
-    # PRIORITY 2.3: Per-token volatility from DexScreener (real-time 1h, 24h for each token)
+    # PARALLEL ENRICHMENT: Run DexScreener, OHLCV, and Aerodrome APY in parallel!
+    # This saves ~10 seconds compared to sequential calls
     if pool_data:
-        try:
-            from data_sources.dexscreener import dexscreener_client
-            ds_volatility = await dexscreener_client.get_token_volatility(chain, pool_address)
-            
-            if ds_volatility:
-                # Per-token volatility objects (with symbol, 1h, 24h, etc.)
-                pool_data["token0_volatility"] = ds_volatility.get("token0", {})
-                pool_data["token1_volatility"] = ds_volatility.get("token1", {})
-                
-                # Also store flat fields for backward compatibility
-                t0 = ds_volatility.get("token0", {})
-                t1 = ds_volatility.get("token1", {})
-                pool_data["token0_volatility_1h"] = t0.get("price_change_1h", 0)
-                pool_data["token0_volatility_24h"] = t0.get("price_change_24h", 0)
-                pool_data["token1_volatility_1h"] = t1.get("price_change_1h", 0)
-                pool_data["token1_volatility_24h"] = t1.get("price_change_24h", 0)
-                
-                # Pair-level price changes
-                pool_data["pair_price_change_24h"] = ds_volatility.get("pair_price_change_24h", 0)
-                pool_data["pair_price_change_1h"] = ds_volatility.get("pair_price_change_1h", 0)
-                
-                logger.info(f"DexScreener volatility: {t0.get('symbol', 'T0')} 24h={t0.get('price_change_24h', 0):.2f}%")
-                source = f"{source}+dexscreener"
-        except Exception as e:
-            logger.debug(f"DexScreener volatility fetch failed: {e}")
-    
-    # PRIORITY 2.4: LP/Pool volatility from GeckoTerminal OHLCV (24h, 7d)
-    if pool_data:
-        try:
-            ohlcv_data = await gecko_client.get_pool_ohlcv(chain, pool_address, timeframe="day", limit=7)
-            if ohlcv_data:
-                pool_data["token_volatility_24h"] = ohlcv_data.get("price_change_24h", 0)
-                pool_data["token_volatility_7d"] = ohlcv_data.get("price_change_7d", 0)
-                pool_data["price_high_7d"] = ohlcv_data.get("price_high_7d", 0)
-                pool_data["price_low_7d"] = ohlcv_data.get("price_low_7d", 0)
-                logger.info(f"LP Volatility: 24h={pool_data['token_volatility_24h']:.2f}%, 7d={pool_data['token_volatility_7d']:.2f}%")
-        except Exception as e:
-            logger.debug(f"OHLCV fetch failed: {e}")
-    
-    # PRIORITY 2.5: AERODROME ON-CHAIN APY (Base only - REAL-TIME from gauge)
-    # This calculates APY from actual on-chain gauge emissions
-    if chain == "base" and pool_data:
-        try:
+        from data_sources.dexscreener import dexscreener_client
+        
+        # Build parallel tasks
+        enrichment_tasks = []
+        task_names = []
+        
+        # DexScreener volatility
+        enrichment_tasks.append(dexscreener_client.get_token_volatility(chain, pool_address))
+        task_names.append("dexscreener")
+        
+        # GeckoTerminal OHLCV
+        enrichment_tasks.append(gecko_client.get_pool_ohlcv(chain, pool_address, timeframe="day", limit=7))
+        task_names.append("ohlcv")
+        
+        # Aerodrome on-chain APY (Base only)
+        if chain == "base":
             from data_sources.aerodrome import aerodrome_client
-            onchain_apy_data = await aerodrome_client.get_real_time_apy(pool_address)
+            enrichment_tasks.append(aerodrome_client.get_real_time_apy(pool_address))
+            task_names.append("aerodrome")
+        
+        # Execute all in parallel with exception handling
+        results = await asyncio.gather(*enrichment_tasks, return_exceptions=True)
+        
+        # Process DexScreener result
+        ds_idx = task_names.index("dexscreener") if "dexscreener" in task_names else -1
+        if ds_idx >= 0 and not isinstance(results[ds_idx], Exception) and results[ds_idx]:
+            ds_volatility = results[ds_idx]
+            pool_data["token0_volatility"] = ds_volatility.get("token0", {})
+            pool_data["token1_volatility"] = ds_volatility.get("token1", {})
+            t0 = ds_volatility.get("token0", {})
+            t1 = ds_volatility.get("token1", {})
+            pool_data["token0_volatility_1h"] = t0.get("price_change_1h", 0)
+            pool_data["token0_volatility_24h"] = t0.get("price_change_24h", 0)
+            pool_data["token1_volatility_1h"] = t1.get("price_change_1h", 0)
+            pool_data["token1_volatility_24h"] = t1.get("price_change_24h", 0)
+            pool_data["pair_price_change_24h"] = ds_volatility.get("pair_price_change_24h", 0)
+            pool_data["pair_price_change_1h"] = ds_volatility.get("pair_price_change_1h", 0)
+            logger.info(f"DexScreener volatility: {t0.get('symbol', 'T0')} 24h={t0.get('price_change_24h', 0):.2f}%")
+            source = f"{source}+dexscreener"
+        
+        # Process OHLCV result
+        ohlcv_idx = task_names.index("ohlcv") if "ohlcv" in task_names else -1
+        if ohlcv_idx >= 0 and not isinstance(results[ohlcv_idx], Exception) and results[ohlcv_idx]:
+            ohlcv_data = results[ohlcv_idx]
+            pool_data["token_volatility_24h"] = ohlcv_data.get("price_change_24h", 0)
+            pool_data["token_volatility_7d"] = ohlcv_data.get("price_change_7d", 0)
+            pool_data["price_high_7d"] = ohlcv_data.get("price_high_7d", 0)
+            pool_data["price_low_7d"] = ohlcv_data.get("price_low_7d", 0)
+            logger.info(f"LP Volatility: 24h={pool_data['token_volatility_24h']:.2f}%, 7d={pool_data['token_volatility_7d']:.2f}%")
+        
+        # Process Aerodrome result (only on Base)
+        aero_idx = task_names.index("aerodrome") if "aerodrome" in task_names else -1
+        if aero_idx >= 0 and not isinstance(results[aero_idx], Exception) and results[aero_idx]:
+            from data_sources.aerodrome import aerodrome_client
+            onchain_apy_data = results[aero_idx]
             
-            if onchain_apy_data and onchain_apy_data.get("apy", 0) > 0:
+            if onchain_apy_data.get("apy", 0) > 0:
                 onchain_apy = onchain_apy_data.get("apy", 0)
                 current_apy = pool_data.get("apy", 0) or 0
                 
-                # Calculate discrepancy
                 if current_apy > 0:
                     discrepancy = abs(onchain_apy - current_apy) / current_apy
                 else:
-                    discrepancy = 1.0  # If no API APY, always use on-chain
+                    discrepancy = 1.0
                 
-                # Override if >5% discrepancy or no APY - on-chain is more accurate
                 if discrepancy > 0.05 or current_apy == 0:
-                    logger.info(f"[verify-rpc] APY Override: {current_apy:.2f}% → {onchain_apy:.2f}% (on-chain, diff: {discrepancy*100:.1f}%)")
+                    logger.info(f"[verify-rpc] APY Override: {current_apy:.2f}% → {onchain_apy:.2f}% (on-chain)")
                     pool_data["apy"] = onchain_apy
                     pool_data["apy_reward"] = onchain_apy_data.get("apy_reward", 0)
                     pool_data["apy_base"] = onchain_apy_data.get("apy_base", 0)
@@ -1112,19 +1124,16 @@ async def verify_pool_rpc_first(
                     pool_data["epoch_remaining"] = onchain_apy_data.get("epoch_remaining") or aerodrome_client.get_epoch_time_remaining()
                     source = f"{source}+aero_onchain"
             
-            # HANDLE CL POOLS: Calculate APY from yearly_rewards_usd and TVL
-            elif onchain_apy_data and onchain_apy_data.get("apy_status") == "requires_external_tvl":
+            elif onchain_apy_data.get("apy_status") == "requires_external_tvl":
                 yearly_rewards = onchain_apy_data.get("yearly_rewards_usd", 0)
                 tvl = pool_data.get("tvl") or pool_data.get("tvlUsd") or 0
                 staked_ratio = onchain_apy_data.get("staked_ratio", 1.0)
                 
                 if yearly_rewards > 0 and tvl > 0:
-                    # Calculate APR: (yearly_rewards / staked_tvl) * 100
-                    # staked_tvl = tvl * staked_ratio (for CL pools)
                     staked_tvl = tvl * staked_ratio if staked_ratio > 0 else tvl
                     if staked_tvl > 0:
                         cl_apy = (yearly_rewards / staked_tvl) * 100
-                        logger.info(f"[verify-rpc] CL Pool APY: {cl_apy:.2f}% (${yearly_rewards:,.0f} / ${staked_tvl:,.0f} staked)")
+                        logger.info(f"[verify-rpc] CL Pool APY: {cl_apy:.2f}%")
                         pool_data["apy"] = cl_apy
                         pool_data["apy_reward"] = cl_apy
                         pool_data["apy_source"] = "aerodrome_onchain_cl"
@@ -1134,8 +1143,6 @@ async def verify_pool_rpc_first(
                         pool_data["yearly_rewards_usd"] = yearly_rewards
                         pool_data["epoch_remaining"] = aerodrome_client.get_epoch_time_remaining()
                         source = f"{source}+aero_onchain_cl"
-        except Exception as e:
-            logger.debug(f"Aerodrome on-chain APY failed: {e}")
     
     # PRIORITY 3: If RPC failed, try GeckoTerminal as primary
     if not pool_data:
@@ -1373,13 +1380,18 @@ async def verify_pool_rpc_first(
             risk_analysis["risk_level"] = "High"
             risk_analysis["risk_reasons"].append("Low TVL (<$100K)")
     
+    # Log total time for performance debugging
+    total_time = time.time() - start_time
+    logger.info(f"⏱️ verify-rpc total time: {total_time:.2f}s for {pool_address[:10]}...")
+    
     return {
         "success": True,
         "pool": pool_data,
         "risk_analysis": risk_analysis,
         "source": source,
         "data_quality": "rpc" if "rpc" in source else "api",
-        "chain": chain
+        "chain": chain,
+        "timing_seconds": round(total_time, 2)  # Include timing in response
     }
 
 
