@@ -212,8 +212,9 @@ const CreditsManager = {
             const USDC_ADDRESS = paymentReq.usdcAddress;
             const recipient = paymentReq.recipientAddress;
             const amount = paymentReq.amount; // "100000" = 0.10 USDC
-            const validAfter = 0;
-            const validBefore = Math.floor(Date.now() / 1000) + 3600; // 1 hour
+            const now = Math.floor(Date.now() / 1000);
+            const validAfter = now - 3600; // 1 hour ago (like cashback-sniper)
+            const validBefore = now + 3600; // 1 hour from now
             const nonce = '0x' + [...crypto.getRandomValues(new Uint8Array(32))].map(b => b.toString(16).padStart(2, '0')).join('');
 
             const domain = {
