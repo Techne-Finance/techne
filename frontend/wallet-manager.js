@@ -345,15 +345,8 @@ const WalletMgr = new WalletManager();
 document.addEventListener('DOMContentLoaded', () => {
     WalletMgr.init();
 
-    // Bind connect button - use correct ID
-    // NOTE: Don't toggle on click! app.js shows wallet menu when connected
-    //       Only disconnect via dedicated Disconnect button in menu
-    document.getElementById('connectWallet')?.addEventListener('click', () => {
-        if (!WalletMgr.isConnected) {
-            WalletMgr.connect();
-        }
-        // If connected, do nothing - app.js showWalletMenu handles it
-    });
+    // Connect button is handled by app.js (with showWalletMenu when connected)
+    // Don't add another listener here to avoid conflicts
 
     // Fund agent button
     document.getElementById('btnFundAgent')?.addEventListener('click', async () => {
