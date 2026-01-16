@@ -656,11 +656,17 @@ async function connectWallet() {
                 setTimeout(() => reject(new Error('Connection timeout - please check MetaMask popup')), 30000);
             });
 
-            // Race between wallet request and timeout
-            const accounts = await Promise.race([
-                window.ethereum.request({ method: 'eth_requestAccounts' }),
+            // Use wallet_requestPermissions to force account picker (allows switching wallets)
+            await Promise.race([
+                window.ethereum.request({
+                    method: 'wallet_requestPermissions',
+                    params: [{ eth_accounts: {} }]
+                }),
                 timeoutPromise
             ]);
+
+            // Get the selected account
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
 
             if (accounts && accounts.length > 0) {
                 connectedWallet = accounts[0];
