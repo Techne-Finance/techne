@@ -1053,7 +1053,7 @@ const PoolDetailModal = {
         const coveragePercent = Math.round((availableCount / totalCount) * 100);
 
         return `
-    < div class="pd-data-coverage" >
+        <div class="pd-data-coverage">
                 <div class="pd-coverage-header">
                     <span class="pd-coverage-title">📋 Data Coverage</span>
                     <span class="pd-coverage-score">${availableCount}/${totalCount} (${coveragePercent}%)</span>
@@ -1067,7 +1067,7 @@ const PoolDetailModal = {
                         </div>
                     `).join('')}
                 </div>
-            </div >
+            </div>
     `;
     },
 
@@ -1187,7 +1187,7 @@ const PoolDetailModal = {
         }
 
         return `
-    < div class="pd-confidence-section" >
+        <div class="pd-confidence-section">
                 <div class="pd-confidence-header">
                     <span class="pd-confidence-title">🔍 Data Confidence</span>
                     <span class="pd-confidence-badge" style="background: ${confidenceColor}20; color: ${confidenceColor}">
@@ -1206,7 +1206,7 @@ const PoolDetailModal = {
                         </div>
                     `).join('')}
                 </div>
-            </div >
+            </div>
     `;
     },
 
