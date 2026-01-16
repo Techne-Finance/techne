@@ -694,6 +694,13 @@ What would you like to configure?`;
                     const portfolioNav = document.querySelector('[data-section="portfolio"]');
                     if (portfolioNav) {
                         portfolioNav.click();
+                        // Refresh Portfolio data after navigation
+                        setTimeout(() => {
+                            if (window.PortfolioDash) {
+                                console.log('[AgentBuilder] Refreshing Portfolio data...');
+                                window.PortfolioDash.loadPortfolioData();
+                            }
+                        }, 500);
                     }
                 }, 1500);
             }, 2000);
