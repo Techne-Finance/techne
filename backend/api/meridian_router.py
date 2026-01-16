@@ -19,6 +19,10 @@ MERIDIAN_PK = os.getenv("MERIDIAN_PUBLIC_KEY", "pk_9e408b7d2b5068cc1b5e2d9c01c62
 MERIDIAN_SK = os.getenv("MERIDIAN_SECRET_KEY", "sk_46deb55781b5df700713ecfe5fd56b58654f989e901a1b7a6e54a7553d3ed328")
 MERIDIAN_RECIPIENT = os.getenv("MERIDIAN_RECIPIENT", "0xa30A689ec0F9D717C5bA1098455B031b868B720f")
 
+# Meridian contract address for Base mainnet (per docs)
+# authorization.to and payTo must point to this address
+MERIDIAN_CONTRACT = "0x8E7769D440b3460b92159Dd9C6D17302b036e2d6"
+
 # USDC on Base
 USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 NETWORK = "base"
@@ -54,7 +58,7 @@ async def get_payment_requirements():
     
     return {
         "amount": CREDITS_PACKAGE["price_usdc"],
-        "recipient": MERIDIAN_RECIPIENT,
+        "recipient": MERIDIAN_CONTRACT,  # Meridian contract, not our wallet
         "network": NETWORK,
         "asset": USDC_ADDRESS,
         "scheme": "exact",
@@ -68,7 +72,7 @@ async def get_payment_requirements():
         "credits": CREDITS_PACKAGE["credits"],
         "priceDisplay": CREDITS_PACKAGE["price_display"],
         "usdcAddress": USDC_ADDRESS,
-        "recipientAddress": MERIDIAN_RECIPIENT
+        "recipientAddress": MERIDIAN_CONTRACT  # Must match authorization.to
     }
 
 
@@ -83,19 +87,18 @@ async def settle_payment(request: PaymentRequest):
     try:
         payment_payload = request.paymentPayload
         
-        # Construct payment requirements (must match frontend)
-        import time
+        # Construct payment requirements (must match Meridian API format)
+        # See: https://docs.mrdn.finance/api-reference/endpoint/verify-payment
         payment_requirements = {
-            "amount": CREDITS_PACKAGE["price_usdc"],
-            "recipient": MERIDIAN_RECIPIENT,
-            "network": NETWORK,
-            "asset": USDC_ADDRESS,
             "scheme": "exact",
+            "network": NETWORK,
             "maxAmountRequired": CREDITS_PACKAGE["price_usdc"],
-            "maxTimeoutSeconds": 3600,
             "resource": "https://techne.finance/credits",
             "description": f"{CREDITS_PACKAGE['credits']} Filter Credits",
             "mimeType": "application/json",
+            "payTo": MERIDIAN_CONTRACT,
+            "maxTimeoutSeconds": 3600,
+            "asset": USDC_ADDRESS
         }
         
         async with httpx.AsyncClient(timeout=30) as client:

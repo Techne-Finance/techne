@@ -95,45 +95,46 @@ const CreditsManager = {
         modal.id = 'buyCreditsModal';
         modal.className = 'credits-modal';
         modal.innerHTML = `
-            <div class="modal-overlay"></div>
-            <div class="modal-content" onclick="event.stopPropagation()">
-                <button class="modal-close-btn" id="modalCloseBtn">✕</button>
-                
-                <div class="modal-header">
-                    <svg width="32" height="32" viewBox="0 0 16 16" fill="none" class="modal-icon">
-                        <path d="M9 1L3 9H8L7 15L13 7H8L9 1Z" stroke="#d4a853" stroke-width="1.5" fill="rgba(212,168,83,0.15)" stroke-linejoin="round"/>
-                    </svg>
-                    <h2>Buy Filter Credits</h2>
-                </div>
-
-                <div class="modal-body">
-                    <div class="credits-package">
-                        <div class="package-amount">100</div>
-                        <div class="package-label">filter credits</div>
-                        <div class="package-info">= 4 filter searches</div>
+            <div class="modal-overlay">
+                <div class="modal-content">
+                    <button class="modal-close-btn" id="modalCloseBtn">✕</button>
+                    
+                    <div class="modal-header">
+                        <svg width="32" height="32" viewBox="0 0 16 16" fill="none" class="modal-icon">
+                            <path d="M9 1L3 9H8L7 15L13 7H8L9 1Z" stroke="#d4a853" stroke-width="1.5" fill="rgba(212,168,83,0.15)" stroke-linejoin="round"/>
+                        </svg>
+                        <h2>Buy Filter Credits</h2>
                     </div>
 
-                    <div class="price-row">
-                        <span class="price-label">Price:</span>
-                        <span class="price-value">0.10 USDC</span>
-                    </div>
-
-                    <button id="confirmBuyCreditsBtn" class="btn-pay-wallet">
-                        Pay with Wallet
-                    </button>
-
-                    <p class="payment-method" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <img src="/meridian-logo.png" alt="Meridian" style="width: 18px; height: 18px;">
-                        Payment via Meridian x402 protocol
-                    </p>
-
-                    <div class="premium-cta">
-                        <div class="premium-icon">⚡</div>
-                        <div class="premium-text">
-                            <strong>Go Premium</strong>
-                            <p>Get 3000 free credits every day!</p>
+                    <div class="modal-body">
+                        <div class="credits-package">
+                            <div class="package-amount">100</div>
+                            <div class="package-label">filter credits</div>
+                            <div class="package-info">= 4 filter searches</div>
                         </div>
-                        <a href="#premium" class="premium-link" id="premiumLink">Learn more →</a>
+
+                        <div class="price-row">
+                            <span class="price-label">Price:</span>
+                            <span class="price-value">0.10 USDC</span>
+                        </div>
+
+                        <button id="confirmBuyCreditsBtn" class="btn-pay-wallet">
+                            Pay with Wallet
+                        </button>
+
+                        <p class="payment-method" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <img src="/meridian-logo.png" alt="Meridian" style="width: 18px; height: 18px;">
+                            Payment via Meridian x402 protocol
+                        </p>
+
+                        <div class="premium-cta">
+                            <div class="premium-icon">⚡</div>
+                            <div class="premium-text">
+                                <strong>Go Premium</strong>
+                                <p>Get 3000 free credits every day!</p>
+                            </div>
+                            <a href="#premium" class="premium-link" id="premiumLink">Learn more →</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -142,9 +143,15 @@ const CreditsManager = {
         document.body.appendChild(modal);
         setTimeout(() => modal.classList.add('show'), 10);
 
-        // Close on overlay click (not content)
+        // Stop propagation on modal content
+        const content = modal.querySelector('.modal-content');
+        content.addEventListener('click', (e) => e.stopPropagation());
+
+        // Close on overlay click (background only)
         const overlay = modal.querySelector('.modal-overlay');
-        overlay.addEventListener('click', () => modal.remove());
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) modal.remove();
+        });
 
         // Close button
         document.getElementById('modalCloseBtn').addEventListener('click', (e) => {
@@ -153,7 +160,8 @@ const CreditsManager = {
         });
 
         // Premium link
-        document.getElementById('premiumLink').addEventListener('click', () => {
+        document.getElementById('premiumLink').addEventListener('click', (e) => {
+            e.stopPropagation();
             modal.remove();
         });
 
@@ -246,19 +254,23 @@ const CreditsManager = {
 
             console.log('[Credits] Signature obtained:', signature.substring(0, 20) + '...');
 
-            // Step 4: Build payment payload for Meridian
+            // Step 4: Build payment payload for Meridian (x402 format)
+            // Format per https://docs.mrdn.finance/api-reference/endpoint/verify-payment
             const paymentPayload = {
-                authorization: {
-                    from: window.connectedWallet,
-                    to: recipient,
-                    value: amount,
-                    validAfter: validAfter.toString(),
-                    validBefore: validBefore.toString(),
-                    nonce: nonce
-                },
-                signature: signature,
-                asset: USDC_ADDRESS,
-                network: 'base'
+                x402Version: 1,
+                scheme: "exact",
+                network: "base",
+                payload: {
+                    signature: signature,
+                    authorization: {
+                        from: window.connectedWallet,
+                        to: recipient,
+                        value: amount,
+                        validAfter: validAfter.toString(),
+                        validBefore: validBefore.toString(),
+                        nonce: nonce
+                    }
+                }
             };
 
             // Step 5: Submit to backend for verification and settlement

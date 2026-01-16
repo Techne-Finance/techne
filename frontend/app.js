@@ -656,11 +656,18 @@ async function connectWallet() {
                 setTimeout(() => reject(new Error('Connection timeout - please check MetaMask popup')), 30000);
             });
 
-            // Race between wallet request and timeout
-            const accounts = await Promise.race([
-                window.ethereum.request({ method: 'eth_requestAccounts' }),
+            // Use wallet_requestPermissions to force account picker (allows switching wallets)
+            // This opens MetaMask and shows all accounts to choose from
+            await Promise.race([
+                window.ethereum.request({
+                    method: 'wallet_requestPermissions',
+                    params: [{ eth_accounts: {} }]
+                }),
                 timeoutPromise
             ]);
+
+            // Now get the selected account
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
 
             if (accounts && accounts.length > 0) {
                 connectedWallet = accounts[0];
@@ -802,6 +809,9 @@ function disconnectWallet() {
     ethersProvider = null;
     ethersSigner = null;
 
+    // Clear any cached wallet preference
+    localStorage.removeItem('techne_wallet_connected');
+
     const connectBtn = document.getElementById('connectWallet');
     if (connectBtn) {
         connectBtn.innerHTML = '<span>🔗</span> Connect';
@@ -811,7 +821,7 @@ function disconnectWallet() {
     document.querySelector('.wallet-menu-popup')?.remove();
     document.querySelector('.pool-history-btn')?.remove();
 
-    Toast?.show('Wallet disconnected', 'info');
+    Toast?.show('Wallet disconnected - click Connect to switch wallets', 'info');
     updateWalletGatedSections();
 }
 
