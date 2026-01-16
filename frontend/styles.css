@@ -4682,7 +4682,7 @@ body.section-verify .main-content {
 /* Portfolio section should not show sidebar */
 #section-portfolio {
     position: relative;
-    padding: 0 24px;
+    padding: 0 12px;
     /* Add horizontal padding */
     max-width: 1600px;
     /* Limit max width */
