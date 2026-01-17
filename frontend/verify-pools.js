@@ -7,6 +7,7 @@
 const VerifyPools = {
     VERIFY_COST: 10,
     STORAGE_KEY: 'techne_verify_history',
+    API_BASE: window.API_BASE || 'http://localhost:8080',
 
     // Initialize module
     init() {
@@ -687,7 +688,7 @@ const VerifyPools = {
         try {
             // STEP 1: Call backend API to find pool address from token pair
             const response = await fetch(
-                `/api/scout/pool-pair?token0=${encodeURIComponent(token0)}&token1=${encodeURIComponent(token1)}&protocol=${encodeURIComponent(protocol || '')}&chain=${encodeURIComponent(chain || '')}&stable=${stable ? 'true' : 'false'}`
+                `${this.API_BASE}/api/scout/pool-pair?token0=${encodeURIComponent(token0)}&token1=${encodeURIComponent(token1)}&protocol=${encodeURIComponent(protocol || '')}&chain=${encodeURIComponent(chain || '')}&stable=${stable ? 'true' : 'false'}`
             );
 
             if (response.ok) {
@@ -703,7 +704,7 @@ const VerifyPools = {
 
                         try {
                             const verifyResponse = await fetch(
-                                `/api/scout/verify-rpc?pool_address=${encodeURIComponent(poolAddress)}&chain=${encodeURIComponent(chain || 'base')}`
+                                `${this.API_BASE}/api/scout/verify-rpc?pool_address=${encodeURIComponent(poolAddress)}&chain=${encodeURIComponent(chain || 'base')}`
                             );
 
                             if (verifyResponse.ok) {
@@ -821,7 +822,7 @@ const VerifyPools = {
                     Toast?.show('🧠 Resolving input...', 'info');
 
                     const resolveResponse = await fetch(
-                        `/api/scout/resolve?input=${encodeURIComponent(rawInput)}&chain=base`
+                        `${this.API_BASE}/api/scout/resolve?input=${encodeURIComponent(rawInput)}&chain=base`
                     );
 
                     if (resolveResponse.ok) {
@@ -839,7 +840,7 @@ const VerifyPools = {
                 // STEP 2: Verify the pool using RPC-FIRST approach
                 // Use /verify-rpc for direct address verification (RPC-first)
                 // This endpoint prioritizes on-chain RPC data over API aggregators
-                const searchUrl = `/api/scout/verify-rpc?pool_address=${encodeURIComponent(addressToVerify)}&chain=base`;
+                const searchUrl = `${this.API_BASE}/api/scout/verify-rpc?pool_address=${encodeURIComponent(addressToVerify)}&chain=base`;
 
                 const response = await fetch(searchUrl);
                 if (response.ok) {
