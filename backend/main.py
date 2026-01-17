@@ -120,13 +120,21 @@ except ImportError as e:
     print(f"[Warning] Agent config router not available: {e}")
     AGENT_CONFIG_AVAILABLE = False
 
-# Import agent operations router (Harvest, Rebalance, Pause, Audit)
+# Import agent operations router (Harvest, Rebalance, Pause)
 try:
-    from api.agent_router import router as agent_ops_router, audit_router
+    from api.agent_router import router as agent_ops_router
     AGENT_OPS_AVAILABLE = True
 except ImportError as e:
     print(f"[Warning] Agent operations router not available: {e}")
     AGENT_OPS_AVAILABLE = False
+
+# Import audit router (Transaction history)
+try:
+    from api.audit_router import router as audit_router
+    AUDIT_AVAILABLE = True
+except ImportError as e:
+    print(f"[Warning] Audit router not available: {e}")
+    AUDIT_AVAILABLE = False
 
 # Import WebSocket router (Real-Time Updates)
 try:
@@ -216,11 +224,15 @@ if AGENT_CONFIG_AVAILABLE:
     app.include_router(agent_config_router)
     print("[AgentConfig] Agent deployment router loaded")
 
-# Include agent operations routes (Harvest, Rebalance, Pause, Audit)
+# Include agent operations routes (Harvest, Rebalance, Pause)
 if AGENT_OPS_AVAILABLE:
     app.include_router(agent_ops_router)
+    print("[AgentOps] Agent operations router loaded")
+
+# Include audit routes (Transaction History)
+if AUDIT_AVAILABLE:
     app.include_router(audit_router)
-    print("[AgentOps] Agent operations + Audit router loaded")
+    print("[Audit] Transaction audit router loaded")
 
 # Include WebSocket routes (Real-Time Updates)
 if WEBSOCKET_AVAILABLE:
