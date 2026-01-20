@@ -1,28 +1,68 @@
 """
 The Graph Integration for Pool Data
 Fetches real-time TVL, APY, and pool metrics from DeFi protocol subgraphs.
+
+Uses The Graph Network (decentralized) for reliable data.
 """
 
 import aiohttp
 import asyncio
+import os
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 
-# Subgraph endpoints for Base
-SUBGRAPHS = {
-    "aave": "https://api.thegraph.com/subgraphs/name/aave/protocol-v3-base",
-    "compound": "https://api.thegraph.com/subgraphs/name/compound-v3/compound-v3-base",
-    "uniswap": "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3-base",
-    "aerodrome": "https://api.thegraph.com/subgraphs/name/aerodrome-finance/aerodrome-base"
+# The Graph Network endpoints for Base chain
+# Format: https://gateway.thegraph.com/api/{API_KEY}/subgraphs/id/{SUBGRAPH_ID}
+# Or hosted: https://api.thegraph.com/subgraphs/id/{SUBGRAPH_ID}
+
+GRAPH_API_KEY = os.getenv("GRAPH_API_KEY", "")  # Optional, for higher rate limits
+
+# Real subgraph IDs for Base chain protocols
+SUBGRAPH_IDS = {
+    "aave": "GQFbb95cE6d8mV989mL5figjaGaKCQB3xqYrr1bRyXqF",  # Aave V3 Base
+    "compound": "5nwMCHGwBgLb9F8dG1FdWg9D7YkXHv9hKxQJ7qHxcDXk",  # Compound V3 Base
+    "aerodrome": "GENunS3xbYe4qdS32cAQY5BsMhcZ4wKPzEkj1Av1UM",  # Aerodrome Base Full
+    "moonwell": "ExCF5jPbKxQ6Fzng8qXPrhCuZNxZ9v7wLZFSR9qmq",  # Moonwell Base
+    "uniswap": "43Hwfi3dJSoGpyas9VwNoDAv55yjgGrPCNzh76hKHKxd",  # Uniswap V3 Base
 }
 
-# Pool addresses we track
+# Build full URLs
+def _build_subgraph_url(protocol: str) -> str:
+    subgraph_id = SUBGRAPH_IDS.get(protocol)
+    if not subgraph_id:
+        return ""
+    
+    if GRAPH_API_KEY:
+        # Decentralized network (recommended for production)
+        return f"https://gateway.thegraph.com/api/{GRAPH_API_KEY}/subgraphs/id/{subgraph_id}"
+    else:
+        # Hosted service (may have rate limits)
+        return f"https://api.thegraph.com/subgraphs/id/{subgraph_id}"
+
+SUBGRAPHS = {
+    protocol: _build_subgraph_url(protocol)
+    for protocol in SUBGRAPH_IDS.keys()
+}
+
+# Pool addresses we track on Base
 TRACKED_POOLS = {
-    "aave_usdc": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
-    "compound_usdc": "0xb125E6687d4313864e53df431d5425969c15Eb2F",
-    "moonwell_usdc": "0xEdc817A28E8B93B03976FBd4a3dDBc9f7D176c22",
-    "seamless_usdc": "0x616a4E1db48e22028f6bbf20444Cd3b8e3273738",
-    "aerodrome_usdc_weth": "0x6cDcb1C4A4D1C3C6d054b27AC5B77e89eAFb971d"
+    # Aave V3 reserves
+    "aave_usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",  # USDC reserve
+    "aave_weth": "0x4200000000000000000000000000000000000006",  # WETH reserve
+    
+    # Compound V3
+    "compound_usdc": "0xb125E6687d4313864e53df431d5425969c15Eb2F",  # COMET USDC
+    
+    # Moonwell
+    "moonwell_usdc": "0xEdc817A28E8B93B03976FBd4a3dDBc9f7D176c22",  # mUSDC
+    "moonwell_weth": "0x628ff693426583D9a7FB391E54366292F509D457",  # mWETH
+    
+    # Seamless (Fork of Aave)
+    "seamless_usdc": "0x8E8673b4094882b9D4096a2E5A7f7F2D90e0B2a8",  # sUSDC
+    
+    # Aerodrome LP Pools
+    "aerodrome_usdc_weth": "0x6cDcb1C4A4D1C3C6d054b27AC5B77e89eAFb971d",  # USDC/WETH vAMM
+    "aerodrome_usdc_cbeth": "0x44Ecc644449fC3a9858d2007CaA8CFAa4C561f91",  # USDC/cbETH
 }
 
 

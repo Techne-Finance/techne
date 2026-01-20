@@ -275,6 +275,14 @@ try:
 except ImportError as e:
     print(f"[Leverage] Router not available: {e}")
 
+# Include Pool Data API (The Graph Integration)
+try:
+    from api.pool_data_router import router as pool_data_router
+    app.include_router(pool_data_router)
+    print("[PoolData] The Graph integration API loaded - real-time TVL/APY")
+except ImportError as e:
+    print(f"[PoolData] Router not available: {e}")
+
 # Security Middleware (Production-grade protection)
 try:
     from security import SecurityMiddleware, RateLimiter, RateLimitConfig
