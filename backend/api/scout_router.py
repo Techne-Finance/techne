@@ -921,79 +921,58 @@ async def verify_pool_rpc_first(
     chain: str = Query("base", description="Chain name")
 ):
     """
-    🔗 RPC-First Pool Verification.
+    🔗 Pool Verification via SmartRouter (Optimized).
     
-    Unlike verify-any which uses SmartRouter (GeckoTerminal→DefiLlama→RPC),
-    this endpoint goes DIRECTLY to on-chain RPC for pool data.
+    Uses SmartRouter with Multicall optimization for fast APY calculation.
+    - Multicall batches 15+ RPC calls into 2 calls
+    - GeckoTerminal for TVL
+    - GoPlus for security
     
-    Priority order:
-    1. On-chain RPC (get pool reserves, tokens, factory)
-    2. Enrich with GeckoTerminal for volume/APY (optional)
-    3. Security checks (GoPlus, audit, whale analysis)
-    
-    Use this for:
-    - Direct pool address verification
-    - When GeckoTerminal/DefiLlama don't have the pool
-    - Real-time on-chain data
+    Response time: ~10s (was 40s+)
     """
-    from data_sources.geckoterminal import gecko_client
-    import httpx
+    from api.smart_router import SmartRouter
     
-    start_time = time.time()  # Track total time
-    timings = {}  # Log time for each step
+    start_time = time.time()
     
     chain = chain.lower()
     pool_address = pool_address.lower() if chain != "solana" else pool_address
     
-    logger.info(f"🔗 RPC-First verify for {pool_address} on {chain}")
+    logger.info(f"🔗 verify-rpc via SmartRouter for {pool_address} on {chain}")
     
-    pool_data = None
-    source = "unknown"
-    
-    # PRIORITY 1: On-chain RPC (FIRST - this is the key difference)
     try:
-        if onchain_client.is_chain_available(chain):
-            rpc_data = await onchain_client.get_any_pool_data(chain, pool_address)
-            
-            if rpc_data:
-                symbol0 = rpc_data.get("symbol0", "???")
-                symbol1 = rpc_data.get("symbol1", "???")
-                pool_type = rpc_data.get("pool_type", "unknown")
-                
-                # Get token prices for TVL calculation
-                price0 = await get_token_price(symbol0, rpc_data.get("token0"))
-                price1 = await get_token_price(symbol1, rpc_data.get("token1"))
-                
-                reserve0 = rpc_data.get("reserve0", 0)
-                reserve1 = rpc_data.get("reserve1", 0)
-                tvl = (reserve0 * price0) + (reserve1 * price1)
-                
-                pool_data = {
-                    "symbol": f"{symbol0}/{symbol1}",
-                    "name": f"{symbol0}-{symbol1} Pool",
-                    "project": rpc_data.get("protocol", "Unknown"),
-                    "chain": chain.capitalize(),
-                    "pool_address": pool_address,
-                    "tvl": tvl,
-                    "tvlUsd": tvl,
-                    "apy": 0,  # Will be enriched
-                    "apy_base": 0,
-                    "apy_reward": 0,
-                    "pool_type": pool_type,
-                    "token0": rpc_data.get("token0", ""),
-                    "token1": rpc_data.get("token1", ""),
-                    "symbol0": symbol0,
-                    "symbol1": symbol1,
-                    "reserve0": reserve0,
-                    "reserve1": reserve1,
-                    "factory": rpc_data.get("factory", ""),
-                }
-                source = "rpc"
-                logger.info(f"RPC found: {symbol0}/{symbol1}, TVL: ${tvl:,.0f}")
+        router = SmartRouter()
+        result = await router.smart_route_pool_check(pool_address, chain)
+        
+        elapsed = time.time() - start_time
+        logger.info(f"⏱️ verify-rpc completed in {elapsed:.2f}s")
+        
+        # SmartRouter returns {success, pool, data_quality, source, chain}
+        if result.get("success"):
+            pool_data = result.get("pool", {})
+            pool_data["timings"] = {"total": elapsed}
+            return {
+                "success": True,
+                "pool": pool_data,
+                "data_quality": result.get("data_quality"),
+                "source": result.get("source"),
+                "chain": chain,
+                "timings": {"total": elapsed}
+            }
         else:
-            logger.warning(f"Chain {chain} RPC not available")
+            return {
+                "success": False,
+                "error": result.get("error", "SmartRouter failed"),
+                "pool_address": pool_address,
+                "chain": chain
+            }
     except Exception as e:
-        logger.warning(f"RPC lookup failed: {e}")
+        logger.error(f"verify-rpc failed: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "pool_address": pool_address,
+            "chain": chain
+        }
     
     # PRIORITY 2: Enrich with GeckoTerminal (for APY and volume)
     if pool_data:
