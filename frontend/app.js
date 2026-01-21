@@ -1486,7 +1486,7 @@ function getProtocolIconUrl(protocol) {
         'peapods-finance': 'peapods'
     };
 
-    const lower = protocol.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/\s+/g, '-');
+    const lower = protocol.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const slug = protocolMap[lower] || lower;
 
     // Use local icons - SVG for some protocols
