@@ -681,19 +681,19 @@ class AerodromeOnChain:
             elif v2_reward_rate > 0 and cl_liquidity > 0:
                 pool_type = "cl"
                 reward_rate = v2_reward_rate  # CL gauges also have rewardRate
-                # NOTE: For CL pools, liquidity() returns only ACTIVE tick liquidity
-                # This is NOT the same as staked TVL. The ratio stakedLiquidity/liquidity
-                # can be misleading (often ~99%) because both measure active tick only.
-                # 
-                # For accurate APY, we need to estimate staked TVL differently.
-                # Aerodrome uses the actual staked liquidity value and gauge emissions.
-                # We'll use a more conservative estimate based on typical staking rates.
-                # 
-                # Set staked_ratio to reflect that typically only a small portion
-                # of total pool TVL is actually staked in the gauge.
-                # This ratio will be applied to GeckoTerminal TVL to estimate staked TVL.
-                staked_ratio = 0.05  # Conservative estimate: ~5% of TVL typically staked
-                logger.info(f"CL detected: rewardRate={reward_rate}, using estimated staked_ratio=0.05")
+                # For CL pools: use stakedLiquidity/liquidity ratio
+                # stakedLiquidity() = liquidity staked in gauge
+                # liquidity() = total active liquidity in current tick
+                # This gives accurate staked ratio for CL pools
+                if cl_staked > 0 and cl_liquidity > 0:
+                    staked_ratio = cl_staked / cl_liquidity
+                    # Cap at 1.0 in case of rounding
+                    staked_ratio = min(staked_ratio, 1.0)
+                    logger.info(f"CL detected: staked_ratio={staked_ratio:.4f} ({staked_ratio*100:.1f}%) from on-chain")
+                else:
+                    # Fallback if stakedLiquidity not available
+                    staked_ratio = 0.50  # Conservative 50% estimate
+                    logger.info(f"CL detected: using fallback staked_ratio=0.50")
             elif v2_reward_rate > 0:
                 # Has reward but can't determine type - use V2 as fallback
                 pool_type = "v2"
