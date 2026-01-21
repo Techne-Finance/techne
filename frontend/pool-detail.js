@@ -1619,7 +1619,8 @@ const PoolDetailModal = {
     // TOKEN SECURITY ANALYSIS - Per-Token Checks
     // =========================================
     renderTokenSecurityAnalysis(pool) {
-        const security = pool.security || {};
+        // API returns security_result (not security)
+        const security = pool.security_result || pool.security || {};
         const tokens = security.tokens || {};
         const source = security.source || 'goplus';
 
