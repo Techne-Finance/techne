@@ -959,13 +959,29 @@ class ContractMonitor:
         if user not in self.user_positions:
             self.user_positions[user] = {}
         
+        entry_time = datetime.utcnow()
         self.user_positions[user][protocol_key] = {
             "entry_value": amount,
-            "entry_time": datetime.utcnow().isoformat(),
+            "entry_time": entry_time.isoformat(),
             "current_value": amount,
             "high_water_mark": amount  # Track peak value for drawdown calculation
         }
         print(f"[ContractMonitor] Position tracked: {user[:10]}... -> {protocol_key} = ${amount/1e6:.2f}")
+        
+        # Persist to Supabase
+        try:
+            import asyncio
+            from infrastructure.supabase_client import supabase
+            if supabase.is_available:
+                asyncio.create_task(supabase.save_position(
+                    user_address=user,
+                    protocol=protocol_key,
+                    entry_value=amount / 1e6,
+                    current_value=amount / 1e6,
+                    entry_time=entry_time
+                ))
+        except Exception as e:
+            print(f"[ContractMonitor] Supabase save failed: {e}")
     
     async def execute_emergency_exit(self, user: str, protocol_key: str, pos_data: dict, agent_config: dict, drawdown_pct: float):
         """
@@ -1002,6 +1018,14 @@ class ContractMonitor:
             # For now, remove from tracking to prevent repeated alerts
             if user in self.user_positions and protocol_key in self.user_positions[user]:
                 del self.user_positions[user][protocol_key]
+                
+                # Remove from Supabase
+                try:
+                    from infrastructure.supabase_client import supabase
+                    if supabase.is_available:
+                        asyncio.create_task(supabase.delete_position(user, protocol_key))
+                except Exception as e:
+                    print(f"[ContractMonitor] Supabase delete failed: {e}")
                 print(f"[ContractMonitor] Position removed from monitoring")
             
         except Exception as e:

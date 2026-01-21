@@ -121,6 +121,21 @@ class AuditTrail:
         
         print(f"[AuditTrail] {action_type.value}: {agent_id[:8]}... | ${value_usd or 0:.2f}")
         
+        # Persist to Supabase
+        try:
+            import asyncio
+            from infrastructure.supabase_client import supabase
+            if supabase.is_available:
+                asyncio.create_task(supabase.log_transaction(
+                    user_address=wallet_address,
+                    action_type=action_type.value,
+                    tx_hash=tx_hash,
+                    details=details,
+                    status="success" if success else "error"
+                ))
+        except Exception as e:
+            print(f"[AuditTrail] Supabase log failed: {e}")
+        
         return entry
     
     def log_deposit(self, agent_id: str, wallet: str, amount: float, tx_hash: str = None):
