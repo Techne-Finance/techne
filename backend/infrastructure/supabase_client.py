@@ -100,7 +100,7 @@ class SupabaseClient:
                 return None
     
     # ==========================================
-    # POSITIONS
+    # POSITIONS (legacy table)
     # ==========================================
     
     async def save_position(
@@ -160,6 +160,136 @@ class SupabaseClient:
             }
         )
         return result is not None
+    
+    # ==========================================
+    # USER POSITIONS (new fast-loading table)
+    # ==========================================
+    
+    async def save_user_position(
+        self,
+        user_address: str,
+        protocol: str,
+        entry_value: float,
+        current_value: float,
+        asset: str = "USDC",
+        pool_type: str = "single",
+        apy: float = 0,
+        pool_address: str = None,
+        metadata: dict = None
+    ) -> Optional[dict]:
+        """Save or upsert a user position to user_positions table"""
+        if not self.is_available:
+            return None
+            
+        data = {
+            "user_address": user_address.lower(),
+            "protocol": protocol,
+            "entry_value": entry_value,
+            "current_value": current_value,
+            "asset": asset,
+            "pool_type": pool_type,
+            "apy": apy,
+            "pool_address": pool_address,
+            "last_updated": datetime.utcnow().isoformat(),
+            "status": "active",
+            "metadata": json.dumps(metadata or {})
+        }
+        
+        # Upsert via POST with on_conflict (user_address, protocol)
+        headers = self._headers()
+        headers["Prefer"] = "return=representation,resolution=merge-duplicates"
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                resp = await client.post(
+                    f"{self.url}/rest/v1/user_positions",
+                    headers=headers,
+                    json=data,
+                    params={"on_conflict": "user_address,protocol"}
+                )
+                if resp.status_code in [200, 201]:
+                    logger.info(f"[Supabase] User position saved: {user_address[:10]}... @ {protocol}")
+                    return resp.json()[0] if resp.text else data
+                else:
+                    logger.error(f"[Supabase] Save user position failed: {resp.status_code} - {resp.text}")
+                return None
+            except Exception as e:
+                logger.error(f"[Supabase] Save user position error: {e}")
+                return None
+    
+    async def get_user_positions(self, user_address: str) -> List[dict]:
+        """Get all active positions for a user from user_positions table - FAST"""
+        result = await self._request(
+            "GET", "user_positions",
+            params={
+                "user_address": f"eq.{user_address.lower()}",
+                "status": "eq.active",
+                "select": "*",
+                "order": "entry_time.desc"
+            }
+        )
+        return result or []
+    
+    async def update_user_position_value(
+        self,
+        user_address: str,
+        protocol: str,
+        current_value: float,
+        apy: float = None
+    ) -> bool:
+        """Update current value of a position (for yield updates)"""
+        data = {
+            "current_value": current_value,
+            "last_updated": datetime.utcnow().isoformat()
+        }
+        if apy is not None:
+            data["apy"] = apy
+            
+        result = await self._request(
+            "PATCH", "user_positions",
+            data=data,
+            params={
+                "user_address": f"eq.{user_address.lower()}",
+                "protocol": f"eq.{protocol}"
+            }
+        )
+        return result is not None
+    
+    async def close_user_position(self, user_address: str, protocol: str) -> bool:
+        """Mark a position as closed"""
+        result = await self._request(
+            "PATCH", "user_positions",
+            data={
+                "status": "closed",
+                "last_updated": datetime.utcnow().isoformat()
+            },
+            params={
+                "user_address": f"eq.{user_address.lower()}",
+                "protocol": f"eq.{protocol}"
+            }
+        )
+        return result is not None
+    
+    async def log_position_history(
+        self,
+        user_address: str,
+        protocol: str,
+        action: str,
+        amount: float,
+        tx_hash: str = None,
+        metadata: dict = None
+    ) -> Optional[dict]:
+        """Log position history entry"""
+        data = {
+            "user_address": user_address.lower(),
+            "protocol": protocol,
+            "action": action,
+            "amount": amount,
+            "tx_hash": tx_hash,
+            "metadata": json.dumps(metadata or {})
+        }
+        result = await self._request("POST", "position_history", data=data)
+        return result[0] if result else None
     
     # ==========================================
     # TRANSACTIONS / AUDIT

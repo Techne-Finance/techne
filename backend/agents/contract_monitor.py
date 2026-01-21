@@ -960,6 +960,8 @@ class ContractMonitor:
             self.user_positions[user] = {}
         
         entry_time = datetime.utcnow()
+        protocol_info = PROTOCOLS.get(protocol_key, {})
+        
         self.user_positions[user][protocol_key] = {
             "entry_value": amount,
             "entry_time": entry_time.isoformat(),
@@ -968,18 +970,30 @@ class ContractMonitor:
         }
         print(f"[ContractMonitor] Position tracked: {user[:10]}... -> {protocol_key} = ${amount/1e6:.2f}")
         
-        # Persist to Supabase
+        # Persist to Supabase user_positions table (NEW - for fast loading)
         try:
             import asyncio
             from infrastructure.supabase_client import supabase
             if supabase.is_available:
-                asyncio.create_task(supabase.save_position(
+                asyncio.create_task(supabase.save_user_position(
                     user_address=user,
                     protocol=protocol_key,
                     entry_value=amount / 1e6,
                     current_value=amount / 1e6,
-                    entry_time=entry_time
+                    asset=protocol_info.get("asset", "USDC"),
+                    pool_type=protocol_info.get("pool_type", "single"),
+                    apy=protocol_info.get("apy", 0),
+                    pool_address=protocol_info.get("address"),
+                    metadata={"entry_time": entry_time.isoformat()}
                 ))
+                # Also log to position_history
+                asyncio.create_task(supabase.log_position_history(
+                    user_address=user,
+                    protocol=protocol_key,
+                    action="deposit",
+                    amount=amount / 1e6
+                ))
+                print(f"[ContractMonitor] Position saved to Supabase")
         except Exception as e:
             print(f"[ContractMonitor] Supabase save failed: {e}")
     

@@ -159,14 +159,75 @@ async def close_position(request: ClosePositionRequest):
 @position_router.get("/{user_address}")
 async def get_user_positions(user_address: str):
     """
-    Get all real positions for a user from on-chain tracking.
-    Returns position details with protocol info, APY, and values.
+    Get all real positions for a user.
+    
+    Priority:
+    1. Supabase user_positions table (FAST - ~50ms)
+    2. In-memory contract_monitor cache (medium)
+    3. On-chain data (slow - last resort)
     """
     try:
+        from infrastructure.supabase_client import supabase
         from agents.contract_monitor import contract_monitor, PROTOCOLS
         from web3 import Web3
         
         user_addr = user_address.lower()
+        result_positions = []
+        total_value = 0
+        weighted_apy_sum = 0
+        
+        # =============================================
+        # STEP 1: Try Supabase (FASTEST)
+        # =============================================
+        if supabase.is_available:
+            try:
+                db_positions = await supabase.get_user_positions(user_address)
+                
+                if db_positions:
+                    for pos in db_positions:
+                        entry_value = float(pos.get("entry_value", 0))
+                        current_value = float(pos.get("current_value", entry_value))
+                        apy = float(pos.get("apy", 0))
+                        
+                        result_positions.append({
+                            "id": hash(f"{user_address}{pos['protocol']}") % 1000000,
+                            "protocol": pos["protocol"],
+                            "protocol_name": pos["protocol"].replace("_", " ").title(),
+                            "vaultName": pos["protocol"].replace("_", " ").title(),
+                            "asset": pos.get("asset", "USDC"),
+                            "pool_type": pos.get("pool_type", "single"),
+                            "deposited": entry_value,
+                            "current": current_value,
+                            "pnl": current_value - entry_value,
+                            "apy": apy,
+                            "entry_time": pos.get("entry_time", ""),
+                            "source": "supabase"
+                        })
+                        
+                        total_value += current_value
+                        weighted_apy_sum += apy * current_value
+                    
+                    avg_apy = (weighted_apy_sum / total_value) if total_value > 0 else 0
+                    
+                    print(f"[Position API] Loaded {len(result_positions)} positions from Supabase for {user_addr[:10]}...")
+                    
+                    return {
+                        "success": True,
+                        "user_address": user_address,
+                        "positions": result_positions,
+                        "summary": {
+                            "total_value": total_value,
+                            "position_count": len(result_positions),
+                            "avg_apy": round(avg_apy, 2)
+                        },
+                        "source": "supabase"
+                    }
+            except Exception as e:
+                print(f"[Position API] Supabase read failed: {e}")
+        
+        # =============================================
+        # STEP 2: Fallback to in-memory cache
+        # =============================================
         positions = contract_monitor.user_positions.get(user_addr, {})
         
         if not positions:
@@ -175,10 +236,6 @@ async def get_user_positions(user_address: str):
                 positions = contract_monitor.user_positions.get(user_addr, {})
             except:
                 pass
-        
-        result_positions = []
-        total_value = 0
-        weighted_apy_sum = 0
         
         for proto_key, pos_data in positions.items():
             proto_info = PROTOCOLS.get(proto_key, {})
@@ -200,7 +257,8 @@ async def get_user_positions(user_address: str):
                 "current": current_value / 1e6,
                 "pnl": pnl / 1e6,
                 "apy": apy,
-                "entry_time": entry_time
+                "entry_time": entry_time,
+                "source": "memory"
             })
             
             total_value += current_value
@@ -216,7 +274,8 @@ async def get_user_positions(user_address: str):
                 "total_value": total_value / 1e6,
                 "position_count": len(result_positions),
                 "avg_apy": round(avg_apy, 2)
-            }
+            },
+            "source": "memory"
         }
         
     except Exception as e:
