@@ -240,19 +240,22 @@ class SmartRouter:
                         token0 = Web3.to_checksum_address(token0_match.group(1))
                         token1 = Web3.to_checksum_address(token1_match.group(1))
                         
-                        # Determine which factory to use
-                        # type=100 typically means CL Slipstream, type=0/1 means V2
+                        # type param = tick spacing for CL pools
                         tick_spacing = int(type_match.group(1)) if type_match else 0
                         
-                        # Use factory from URL if provided, otherwise infer from type
+                        logger.info(f"🔗 Aerodrome deposit URL: token0={token0[:10]}..., token1={token1[:10]}..., type={tick_spacing}")
+                        
+                        # Use factory from URL if provided
                         if factory_match:
                             factory_addr = Web3.to_checksum_address(factory_match.group(1))
+                            logger.info(f"🏭 Using factory from URL: {factory_addr}")
                         else:
-                            # Default to CL if type >= 100, otherwise V2
-                            factory_addr = KNOWN_FACTORIES["base"].get(
-                                "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a" if tick_spacing >= 100 
-                                else "0x420dd381b31aef6683db6b902084cb0ffece40da"
-                            )
+                            # Default CL factory for type >= 100, V2 otherwise
+                            if tick_spacing >= 100:
+                                factory_addr = Web3.to_checksum_address("0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A")
+                            else:
+                                factory_addr = Web3.to_checksum_address("0x420DD381b31aEf6683db6B902084cB0FFECe40Da")
+                            logger.info(f"🏭 Using default factory: {factory_addr}")
                         
                         w3 = self._get_web3("base")
                         if w3:
@@ -289,8 +292,9 @@ class SmartRouter:
                                 try:
                                     factory = w3.eth.contract(address=factory_addr, abi=CL_FACTORY_ABI)
                                     pool_addr = factory.functions.getPool(token0, token1, tick_spacing).call()
+                                    logger.info(f"🎯 CL factory.getPool({token0[:10]}, {token1[:10]}, {tick_spacing}) = {pool_addr}")
                                 except Exception as e:
-                                    logger.debug(f"CL factory.getPool failed: {e}")
+                                    logger.warning(f"CL factory.getPool failed: {e}")
                             
                             # Fallback to V2 factory
                             if not pool_addr or pool_addr == "0x0000000000000000000000000000000000000000":
@@ -301,14 +305,17 @@ class SmartRouter:
                                     for stable in [False, True]:
                                         pool_addr = factory.functions.getPool(token0, token1, stable).call()
                                         if pool_addr and pool_addr != "0x0000000000000000000000000000000000000000":
+                                            logger.info(f"🎯 V2 factory.getPool(stable={stable}) = {pool_addr}")
                                             break
                                 except Exception as e:
                                     logger.debug(f"V2 factory.getPool failed: {e}")
                             
                             if pool_addr and pool_addr != "0x0000000000000000000000000000000000000000":
                                 pool_addr = pool_addr.lower()
-                                logger.info(f"🎯 Resolved /deposit? URL to pool via factory: {pool_addr[:10]}...")
+                                logger.info(f"✅ Resolved /deposit? URL to pool: {pool_addr}")
                                 return (pool_addr, "base", None)
+                            else:
+                                logger.warning(f"❌ Could not resolve pool from deposit URL")
                             
                 except Exception as e:
                     logger.warning(f"Factory.getPool failed for /deposit? URL, falling back to regex: {e}")
