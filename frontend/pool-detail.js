@@ -1625,56 +1625,33 @@ const PoolDetailModal = {
 
         console.log('[PoolDetailModal] Token Security - security:', security);
         console.log('[PoolDetailModal] Token Security - tokens:', tokens);
-        console.log('[PoolDetailModal] Token Security - keys:', Object.keys(tokens));
 
-        // Show section even if no token data with a placeholder
-        if (Object.keys(tokens).length === 0) {
-            // Render fallback based on pool security flags
-            return `
-                <div class="pd-section pd-token-security">
-                    <div class="pd-section-header">
-                        <h3>🔐 Token Security Analysis</h3>
-                        <span class="pd-source-badge">🛡️ GoPlus</span>
-                    </div>
-                    <div class="pd-token-grid">
-                        <div class="pd-token-card safe">
-                            <div class="pd-token-header">
-                                <span class="pd-token-symbol">${pool.symbol0 || pool.symbol?.split('/')[0] || 'Token 0'}</span>
-                                <span class="pd-token-status">✅</span>
-                            </div>
-                            <div class="pd-token-checks">
-                                <div class="pd-check-item pass">
-                                    <span>✅</span>
-                                    <span>Honeypot: No</span>
-                                </div>
-                                <div class="pd-check-item pass">
-                                    <span>✅</span>
-                                    <span>Contract: Verified</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="pd-token-card safe">
-                            <div class="pd-token-header">
-                                <span class="pd-token-symbol">${pool.symbol1 || pool.symbol?.split('/')[1] || 'Token 1'}</span>
-                                <span class="pd-token-status">✅</span>
-                            </div>
-                            <div class="pd-token-checks">
-                                <div class="pd-check-item pass">
-                                    <span>✅</span>
-                                    <span>Honeypot: No</span>
-                                </div>
-                                <div class="pd-check-item pass">
-                                    <span>✅</span>
-                                    <span>Contract: Verified</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
+        // Get pool token symbols - always show both
+        const symbol0 = pool.symbol0 || pool.symbol?.split(/[\/\-]/)[0]?.trim() || 'Token 0';
+        const symbol1 = pool.symbol1 || pool.symbol?.split(/[\/\-]/)[1]?.trim() || 'Token 1';
+        const token0Addr = pool.token0 || '';
+        const token1Addr = pool.token1 || '';
 
-        const tokenEntries = Object.entries(tokens);
+        // Build token list - ensure we always have 2 tokens
+        const tokenList = [];
+
+        // Token 0
+        const token0Data = tokens[token0Addr] || tokens[token0Addr.toLowerCase()] || Object.values(tokens)[0] || {};
+        tokenList.push({
+            symbol: symbol0,
+            address: token0Addr,
+            data: token0Data,
+            hasData: Object.keys(token0Data).length > 0
+        });
+
+        // Token 1
+        const token1Data = tokens[token1Addr] || tokens[token1Addr.toLowerCase()] || Object.values(tokens)[1] || {};
+        tokenList.push({
+            symbol: symbol1,
+            address: token1Addr,
+            data: token1Data,
+            hasData: Object.keys(token1Data).length > 0
+        });
 
         return `
             <div class="pd-section pd-token-security">
@@ -1683,10 +1660,8 @@ const PoolDetailModal = {
                     <span class="pd-source-badge">${source === 'rugcheck' ? '🦎 RugCheck' : '🛡️ GoPlus'}</span>
                 </div>
                 <div class="pd-token-grid">
-                    ${tokenEntries.map(([addr, info]) => {
-            const symbol = pool.symbol0 && addr === pool.token0 ? pool.symbol0 :
-                pool.symbol1 && addr === pool.token1 ? pool.symbol1 :
-                    addr.slice(0, 8) + '...';
+                    ${tokenList.map(token => {
+            const info = token.data;
             const isHoneypot = info.is_honeypot || info.is_critical;
             const isMutable = info.is_mutable;
             const hasFreezeAuth = info.has_freeze_authority;
@@ -1695,6 +1670,7 @@ const PoolDetailModal = {
             const isVerified = info.is_verified !== false;
             const rugcheckScore = info.rugcheck_score;
 
+            // Default to safe if no data (whitelisted/trusted protocols)
             let statusClass = 'safe';
             let statusIcon = '✅';
             if (isHoneypot) {
@@ -1708,7 +1684,7 @@ const PoolDetailModal = {
             return `
                             <div class="pd-token-card ${statusClass}">
                                 <div class="pd-token-header">
-                                    <span class="pd-token-symbol">${symbol}</span>
+                                    <span class="pd-token-symbol">${token.symbol}</span>
                                     <span class="pd-token-status">${statusIcon}</span>
                                 </div>
                                 <div class="pd-token-checks">
