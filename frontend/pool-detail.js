@@ -1644,8 +1644,12 @@ const PoolDetailModal = {
             hasData: Object.keys(token0Data).length > 0
         });
 
-        // Token 1
-        const token1Data = tokens[token1Addr] || tokens[token1Addr.toLowerCase()] || Object.values(tokens)[1] || {};
+        // Token 1 - make sure not to reuse token0's data
+        let token1Data = tokens[token1Addr] || tokens[token1Addr.toLowerCase()] || {};
+        // Only use Object.values fallback if we have more than 1 token in response
+        if (Object.keys(token1Data).length === 0 && Object.values(tokens).length > 1) {
+            token1Data = Object.values(tokens)[1] || {};
+        }
         tokenList.push({
             symbol: symbol1,
             address: token1Addr,
@@ -1662,6 +1666,7 @@ const PoolDetailModal = {
                 <div class="pd-token-grid">
                     ${tokenList.map(token => {
             const info = token.data;
+            const hasData = token.hasData;
             const isHoneypot = info.is_honeypot || info.is_critical;
             const isMutable = info.is_mutable;
             const hasFreezeAuth = info.has_freeze_authority;
@@ -1669,25 +1674,36 @@ const PoolDetailModal = {
             const buyTax = parseFloat(info.buy_tax || 0) * 100;
             const isVerified = info.is_verified !== false;
             const rugcheckScore = info.rugcheck_score;
+            const hasOwnerIssues = info.hidden_owner || info.can_take_back_ownership || info.owner_change_balance;
 
-            // Default to safe if no data (whitelisted/trusted protocols)
-            let statusClass = 'safe';
-            let statusIcon = '✅';
-            if (isHoneypot) {
+            // Status determination
+            let statusClass, statusIcon;
+
+            if (!hasData) {
+                // No data from GoPlus - grey/unknown
+                statusClass = 'unknown';
+                statusIcon = '🛡️';  // Grey shield
+            } else if (isHoneypot) {
+                // Honeypot - critical red
                 statusClass = 'critical';
                 statusIcon = '🚨';
-            } else if (sellTax > 10 || buyTax > 10 || isMutable || hasFreezeAuth) {
+            } else if (sellTax > 10 || buyTax > 10 || isMutable || hasFreezeAuth || hasOwnerIssues) {
+                // Warning issues - yellow/orange
                 statusClass = 'warning';
                 statusIcon = '⚠️';
+            } else {
+                // Safe - green
+                statusClass = 'safe';
+                statusIcon = '✅';
             }
 
-            return `
-                            <div class="pd-token-card ${statusClass}">
-                                <div class="pd-token-header">
-                                    <span class="pd-token-symbol">${token.symbol}</span>
-                                    <span class="pd-token-status">${statusIcon}</span>
-                                </div>
-                                <div class="pd-token-checks">
+            // Content based on data availability
+            const checksContent = !hasData ? `
+                                    <div class="pd-check-item unknown">
+                                        <span>🛡️</span>
+                                        <span>No information available</span>
+                                    </div>
+                                ` : `
                                     <div class="pd-check-item ${isHoneypot ? 'fail' : 'pass'}">
                                         <span>${isHoneypot ? '❌' : '✅'}</span>
                                         <span>Honeypot: ${isHoneypot ? 'DETECTED' : 'No'}</span>
@@ -1708,6 +1724,16 @@ const PoolDetailModal = {
                                             <span>Contract: ${isVerified ? 'Verified' : 'Unverified'}</span>
                                         </div>
                                     `}
+                                `;
+
+            return `
+                            <div class="pd-token-card ${statusClass}">
+                                <div class="pd-token-header">
+                                    <span class="pd-token-symbol">${token.symbol}</span>
+                                    <span class="pd-token-status">${statusIcon}</span>
+                                </div>
+                                <div class="pd-token-checks">
+                                    ${checksContent}
                                 </div>
                             </div>
                         `;
@@ -4657,6 +4683,15 @@ detailStyles.textContent = `
     .pd-token-card.critical {
         border-color: rgba(239, 68, 68, 0.3);
         background: rgba(239, 68, 68, 0.08);
+    }
+    
+    .pd-token-card.unknown {
+        border-color: rgba(156, 163, 175, 0.3);
+        background: rgba(156, 163, 175, 0.05);
+    }
+    
+    .pd-check-item.unknown {
+        color: #9CA3AF;
     }
     
     .pd-token-header {
