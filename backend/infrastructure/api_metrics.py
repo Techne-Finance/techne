@@ -83,6 +83,7 @@ class APIMetricsTracker:
         'thegraph': {'rate_limit': 1000, 'window': 60},
         'moralis': {'rate_limit': 25, 'window': 1},        # per second (free tier)
         'coingecko': {'rate_limit': 30, 'window': 60},
+        'goplus': {'rate_limit': 100, 'window': 60},       # security API
     }
     
     def __init__(self):
@@ -160,22 +161,6 @@ class APIMetricsTracker:
         # Log slow calls
         if response_time_ms > 2000:
             logger.warning(f"[APIMetrics] Slow call: {service} {endpoint} took {response_time_ms:.0f}ms")
-        
-        # Persist to Supabase (fire-and-forget, non-blocking)
-        try:
-            import asyncio
-            from infrastructure.supabase_client import supabase
-            if supabase.is_available:
-                asyncio.create_task(supabase.log_api_call(
-                    service=service,
-                    endpoint=endpoint,
-                    status=status,
-                    response_time_ms=response_time_ms,
-                    error_message=error_message,
-                    status_code=status_code
-                ))
-        except Exception:
-            pass  # Don't fail metrics tracking if Supabase fails
     
     def check_rate_limit(self, service: str) -> Dict[str, Any]:
         """Check current rate limit status for a service"""
@@ -271,38 +256,30 @@ class APIMetricsTracker:
         return slow[:limit]
     
     async def persist_to_supabase(self):
-        """Persist current metrics snapshot to Supabase (called every 5 min)"""
+        """Persist current daily metrics to Supabase (called every 5 min)"""
         try:
             from infrastructure.supabase_client import supabase
             if not supabase.is_available:
                 logger.debug("[APIMetrics] Supabase not available for persistence")
                 return False
             
-            stats = self.get_all_stats()
             saved_count = 0
             
-            # Save snapshot for each service with data
-            for service, data in stats['services'].items():
-                if data.get('total_calls', 0) > 0:
-                    m = self._metrics.get(service)
-                    if m:
-                        await supabase.save_api_metrics_snapshot(
-                            service=service,
-                            total_calls=m.total_calls,
-                            success_count=m.success_count,
-                            error_count=m.error_count,
-                            timeout_count=m.timeout_count,
-                            rate_limit_count=m.rate_limit_count,
-                            success_rate=data.get('success_rate', 0),
-                            avg_response_ms=m.avg_response_time_ms,
-                            min_response_ms=m.min_response_time_ms,
-                            max_response_ms=m.max_response_time_ms,
-                            last_error=m.last_error,
-                            last_error_time=m.last_error_time
-                        )
-                        saved_count += 1
+            # Save daily aggregates for each service with data
+            for service, m in self._metrics.items():
+                if m.total_calls > 0:
+                    await supabase.update_daily_metrics(
+                        service=service,
+                        total_calls=m.total_calls,
+                        success_count=m.success_count,
+                        error_count=m.error_count,
+                        avg_response_ms=m.avg_response_time_ms,
+                        min_response_ms=m.min_response_time_ms,
+                        max_response_ms=m.max_response_time_ms
+                    )
+                    saved_count += 1
             
-            logger.info(f"[APIMetrics] Persisted {saved_count} service snapshots to Supabase")
+            logger.info(f"[APIMetrics] Persisted {saved_count} services to daily metrics")
             return True
         except Exception as e:
             logger.error(f"[APIMetrics] Supabase persist failed: {e}")

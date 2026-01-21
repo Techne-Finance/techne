@@ -113,15 +113,24 @@ class SecurityChecker:
             return {"status": "no_tokens", "tokens": {}}
         
         try:
+            import time
+            from infrastructure.api_metrics import api_metrics
+            
             addresses_param = ",".join(valid_addresses)
             url = f"{GOPLUS_BASE_URL}/{chain_id}?contract_addresses={addresses_param}"
             
+            start_time = time.time()
             async with httpx.AsyncClient(timeout=10) as client:
                 response = await client.get(url)
+                response_time = time.time() - start_time
                 
                 if response.status_code != 200:
+                    api_metrics.record_call('goplus', '/token_security', 'error', response_time,
+                                           error_message=f"HTTP {response.status_code}", status_code=response.status_code)
                     logger.warning(f"GoPlus API returned {response.status_code}")
                     return {"status": "api_error", "tokens": {}}
+                
+                api_metrics.record_call('goplus', '/token_security', 'success', response_time)
                 
                 data = response.json()
                 result = data.get("result", {})
@@ -139,6 +148,8 @@ class SecurityChecker:
                 }
                 
         except Exception as e:
+            api_metrics.record_call('goplus', '/token_security', 'error', time.time() - start_time if 'start_time' in dir() else 0,
+                                   error_message=str(e)[:200])
             logger.error(f"GoPlus API failed: {e}")
             return {"status": "unknown", "error": str(e), "tokens": {}}
     

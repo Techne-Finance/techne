@@ -382,6 +382,12 @@ async def root():
     return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 
+@app.get("/metrics-dashboard")
+async def metrics_dashboard():
+    """Serve the API metrics dashboard"""
+    return FileResponse(os.path.join(FRONTEND_DIR, "metrics-dashboard.html"))
+
+
 # ============================================
 # PORTFOLIO API ENDPOINT
 # ============================================

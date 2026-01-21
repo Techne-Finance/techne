@@ -575,117 +575,121 @@ class SupabaseClient:
         return result or []
     
     # ==========================================
-    # API METRICS PERSISTENCE
+    # API METRICS - Daily Aggregates (Simplified)
     # ==========================================
     
-    async def log_api_call(
+    async def update_daily_metrics(
         self,
         service: str,
-        endpoint: str,
-        status: str,
-        response_time_ms: float,
-        error_message: str = None,
-        status_code: int = None
+        total_calls: int,
+        success_count: int,
+        error_count: int,
+        avg_response_ms: float,
+        min_response_ms: float = 0,
+        max_response_ms: float = 0
     ) -> bool:
         """
-        Log individual API call to Supabase for persistent metrics.
-        Uses fire-and-forget pattern (non-blocking).
+        Upsert daily API metrics for a service.
+        Called periodically to persist aggregates.
+        Data is keyed by (date, service) - resets each day automatically.
         """
         if not self.is_available:
             return False
         
-        data = {
-            "service": service.lower(),
-            "endpoint": endpoint,
-            "status": status,
-            "response_time_ms": round(response_time_ms, 2),
-            "error_message": error_message[:500] if error_message else None,
-            "status_code": status_code
-        }
-        
-        try:
-            result = await self._request("POST", "api_call_logs", data=data)
-            return result is not None
-        except Exception as e:
-            # Don't log errors for metrics logging to avoid infinite loops
-            return False
-    
-    async def update_service_metrics(
-        self,
-        service: str,
-        metrics_data: dict
-    ) -> bool:
-        """
-        Update aggregated service metrics in Supabase.
-        Called periodically (every 5 minutes) to persist aggregates.
-        """
-        if not self.is_available:
-            return False
+        today = datetime.utcnow().date().isoformat()
         
         data = {
+            "date": today,
             "service": service.lower(),
-            "total_calls": metrics_data.get("total_calls", 0),
-            "success_count": metrics_data.get("success_count", 0),
-            "error_count": metrics_data.get("error_count", 0),
-            "timeout_count": metrics_data.get("timeout_count", 0),
-            "rate_limit_count": metrics_data.get("rate_limit_count", 0),
-            "avg_response_ms": metrics_data.get("avg_response_ms", 0),
-            "min_response_ms": metrics_data.get("min_response_ms", 0),
-            "max_response_ms": metrics_data.get("max_response_ms", 0),
-            "last_error": metrics_data.get("last_error"),
-            "last_error_time": metrics_data.get("last_error_time"),
-            "last_success_time": metrics_data.get("last_success_time"),
+            "total_calls": total_calls,
+            "success_count": success_count,
+            "error_count": error_count,
+            "avg_response_ms": round(avg_response_ms, 2),
+            "min_response_ms": round(min_response_ms, 2) if min_response_ms != float('inf') else 0,
+            "max_response_ms": round(max_response_ms, 2),
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        # Upsert by service name
+        # Upsert by (date, service)
         headers = self._headers()
         headers["Prefer"] = "return=representation,resolution=merge-duplicates"
         
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(
-                    f"{self.url}/rest/v1/api_service_metrics",
+                    f"{self.url}/rest/v1/api_metrics_daily",
                     headers=headers,
                     json=data,
-                    params={"on_conflict": "service"}
+                    params={"on_conflict": "date,service"}
                 )
                 return resp.status_code in [200, 201]
         except Exception:
             return False
     
-    async def get_api_metrics_from_db(self, service: str = None) -> list:
+    async def get_daily_metrics(self, days: int = 7) -> list:
         """
-        Get aggregated API metrics from Supabase.
-        Used to restore metrics on backend restart.
+        Get daily API metrics for the last N days.
+        Returns aggregated stats per service per day.
         """
         if not self.is_available:
             return []
         
-        params = {"select": "*"}
-        if service:
-            params["service"] = f"eq.{service.lower()}"
-        
-        result = await self._request("GET", "api_service_metrics", params=params)
+        result = await self._request(
+            "GET", "api_metrics_daily",
+            params={
+                "select": "*",
+                "order": "date.desc,service",
+                "limit": str(days * 10)  # ~10 services max
+            }
+        )
         return result or []
     
-    async def get_recent_api_calls(self, service: str = None, limit: int = 100) -> list:
+    async def get_weekly_metrics(self, weeks: int = 4) -> list:
         """
-        Get recent API call logs for debugging/analytics.
+        Get weekly API metrics for the last N weeks.
         """
         if not self.is_available:
             return []
         
-        params = {
-            "select": "*",
-            "order": "timestamp.desc",
-            "limit": str(limit)
-        }
-        if service:
-            params["service"] = f"eq.{service.lower()}"
-        
-        result = await self._request("GET", "api_call_logs", params=params)
+        result = await self._request(
+            "GET", "api_metrics_weekly",
+            params={
+                "select": "*",
+                "order": "week_start.desc,service",
+                "limit": str(weeks * 10)
+            }
+        )
         return result or []
+    
+    async def get_today_metrics_summary(self) -> dict:
+        """
+        Get today's metrics summary for all services.
+        Returns dict with total calls and avg response time per service.
+        """
+        if not self.is_available:
+            return {}
+        
+        today = datetime.utcnow().date().isoformat()
+        result = await self._request(
+            "GET", "api_metrics_daily",
+            params={
+                "date": f"eq.{today}",
+                "select": "service,total_calls,success_count,error_count,avg_response_ms"
+            }
+        )
+        
+        if not result:
+            return {}
+        
+        return {
+            row["service"]: {
+                "total_calls": row["total_calls"],
+                "success_count": row["success_count"],
+                "error_count": row["error_count"],
+                "avg_response_ms": row["avg_response_ms"]
+            }
+            for row in result
+        }
 
 
 # Global instance

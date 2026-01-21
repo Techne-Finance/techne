@@ -241,7 +241,17 @@ class ContractMonitor:
                 abi=CONTRACT_ABI
             )
             self.last_block = self.w3.eth.block_number - 100  # Start 100 blocks back
+            self._track_rpc_call('eth_blockNumber', True)
         return self.w3
+    
+    def _track_rpc_call(self, method: str, success: bool, response_time: float = 0.05, error: str = None):
+        """Track RPC calls to API metrics"""
+        try:
+            from infrastructure.api_metrics import api_metrics
+            status = 'success' if success else 'error'
+            api_metrics.record_call('alchemy', method, status, response_time, error_message=error)
+        except Exception:
+            pass  # Don't fail on metrics
     
     def check_twap_price(self, pool_address: str = None) -> tuple:
         """
@@ -355,18 +365,24 @@ class ContractMonitor:
     
     async def check_for_deposits(self):
         """Check for new Deposited events"""
+        import time
         w3 = self._get_web3()
+        
+        start = time.time()
         current_block = w3.eth.block_number
+        self._track_rpc_call('eth_blockNumber', True, time.time() - start)
         
         if current_block <= self.last_block:
             return
         
         # Get Deposited events
         try:
+            start = time.time()
             events = self.contract.events.Deposited.get_logs(
                 from_block=self.last_block + 1,
                 to_block=current_block
             )
+            self._track_rpc_call('eth_getLogs', True, time.time() - start)
             
             for event in events:
                 await self.handle_deposit(event)
@@ -374,6 +390,7 @@ class ContractMonitor:
             self.last_block = current_block
             
         except Exception as e:
+            self._track_rpc_call('eth_getLogs', False, 0, str(e)[:100])
             logger.error(f"[ContractMonitor] Event fetch error: {e}")
     
     async def handle_deposit(self, event):

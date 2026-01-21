@@ -1499,9 +1499,34 @@ async def verify_any_pool(
         if smart_result.get("success") and smart_result.get("pool"):
             pool = smart_result["pool"]
             
-            # =========================================================
-            # SECURITY & DATA HYGIENE LAYER
-            # =========================================================
+            # =============================================================
+            # SKIP SECURITY IF SMARTROUTER ALREADY DID IT (avoid duplicate calls)
+            # SmartRouter does: GoPlus, whale analysis, audit, lock, risk scoring
+            # =============================================================
+            if pool.get("risk_score") is not None and pool.get("whale_analysis"):
+                # SmartRouter already computed everything - just return it
+                logger.info(f"⚡ SmartRouter already did security checks (risk_score={pool.get('risk_score')}) - skipping duplicate")
+                
+                risk_analysis = {
+                    "risk_score": pool.get("risk_score"),
+                    "risk_level": pool.get("risk_level", "Medium"),
+                    "risk_reasons": pool.get("risk_reasons", []),
+                    "is_honeypot": pool.get("is_honeypot", False),
+                    "risk_breakdown": pool.get("risk_breakdown", {})
+                }
+                
+                return {
+                    "success": True,
+                    "pool": pool,
+                    "risk_analysis": risk_analysis,
+                    "source": smart_result.get("source", "smart_router"),
+                    "data_quality": smart_result.get("data_quality", "unknown"),
+                    "chain": chain
+                }
+            
+            # =============================================================
+            # SECURITY & DATA HYGIENE LAYER (only if SmartRouter didn't do it)
+            # =============================================================
             from api.security_module import security_checker
             
             # Get token addresses for security check
@@ -1530,93 +1555,111 @@ async def verify_any_pool(
             
             # Run security checks in parallel
             try:
-                # Phase 1: GoPlus RugCheck
-                security_result = await security_checker.check_security(tokens, chain)
-                
-                # Phase 2: Clean symbols (fix 0x addresses)
-                pool = await security_checker.clean_pool_symbols(pool, chain)
-                
-                # Phase 3: Stablecoin peg check
-                peg_status = await security_checker.check_stablecoin_peg(pool, chain)
-                
                 # =========================================================
-                # COLLECT ALL DATA BEFORE SCORING
+                # PARALLEL SECURITY: Run ALL security checks in parallel!
+                # This saves ~15 seconds compared to sequential calls
                 # =========================================================
+                from data_sources.audit_checker import audit_checker
+                from data_sources.liquidity_lock import liquidity_lock_checker
+                from data_sources.holder_analysis import holder_analyzer
                 
-                # Phase 4: Check audit status
-                audit_result = {"audited": False, "source": "unknown"}
-                try:
-                    from data_sources.audit_checker import audit_checker
-                    project_name = pool.get("project", "") or pool.get("protocol", "")
-                    audit_result = await audit_checker.check_audit_status(
-                        protocol_name=project_name,
-                        contract_address=pool_address,
-                        chain=chain
-                    )
-                    pool["audit_status"] = audit_result
-                except Exception as e:
-                    logger.debug(f"Audit check failed: {e}")
-                    pool["audit_status"] = {"audited": False, "source": "error"}
+                project_name = pool.get("project", "") or pool.get("protocol", "")
                 
-                # Phase 5: Check liquidity lock
-                lock_result = {"has_lock": False, "source": "unknown"}
-                try:
-                    from data_sources.liquidity_lock import liquidity_lock_checker
-                    lock_result = await liquidity_lock_checker.check_lp_lock(
-                        pool_address=pool_address,
-                        chain=chain
-                    )
-                    pool["liquidity_lock"] = lock_result
-                except Exception as e:
-                    logger.debug(f"Liquidity lock check failed: {e}")
-                    pool["liquidity_lock"] = {"has_lock": False, "source": "error"}
-                
-                # Phase 6: Analyze whale concentration
-                # SKIP for stablecoins and major tokens (highly distributed, waste of API calls)
                 SKIP_WHALE_TOKENS = {
-                    # Stablecoins
                     "usdc", "usdt", "dai", "busd", "frax", "tusd", "usdp", "usdd", "gusd", "lusd",
-                    # Major tokens (highly distributed)
                     "weth", "eth", "wbtc", "btc", "sol", "wsol", "matic", "wmatic", "avax", "wavax",
-                    "bnb", "wbnb", "ftm", "wftm", "op", "arb"
+                    "bnb", "wbnb", "ftm", "wftm", "op", "arb", "aero"
                 }
                 
-                whale_analysis = {"token0": None, "token1": None, "lp_token": None}
-                try:
-                    from data_sources.holder_analysis import holder_analyzer
-                    token0_addr = pool.get("token0") or ""
-                    token1_addr = pool.get("token1") or ""
-                    symbol0 = (pool.get("symbol0") or "").lower()
-                    symbol1 = (pool.get("symbol1") or "").lower()
+                token0_addr = pool.get("token0") or ""
+                token1_addr = pool.get("token1") or ""
+                symbol0 = (pool.get("symbol0") or "").lower()
+                symbol1 = (pool.get("symbol1") or "").lower()
+                
+                # Build all security tasks for parallel execution
+                security_tasks = []
+                task_names = []
+                whale_task_mapping = []
+                
+                # 1. GoPlus security check
+                security_tasks.append(security_checker.check_security(tokens, chain))
+                task_names.append("goplus")
+                
+                # 2. Clean symbols
+                security_tasks.append(security_checker.clean_pool_symbols(pool, chain))
+                task_names.append("clean_symbols")
+                
+                # 3. Stablecoin peg check
+                security_tasks.append(security_checker.check_stablecoin_peg(pool, chain))
+                task_names.append("peg")
+                
+                # 4. Audit status
+                security_tasks.append(audit_checker.check_audit_status(project_name, pool_address, chain))
+                task_names.append("audit")
+                
+                # 5. Liquidity lock
+                security_tasks.append(liquidity_lock_checker.check_lp_lock(pool_address, chain))
+                task_names.append("lock")
+                
+                # 6-8. Whale analysis (only for exotic tokens)
+                if token0_addr and symbol0 not in SKIP_WHALE_TOKENS:
+                    security_tasks.append(holder_analyzer.get_holder_analysis(token0_addr, chain))
+                    task_names.append("whale_token0")
+                    whale_task_mapping.append("token0")
+                
+                if token1_addr and symbol1 not in SKIP_WHALE_TOKENS:
+                    security_tasks.append(holder_analyzer.get_holder_analysis(token1_addr, chain))
+                    task_names.append("whale_token1")
+                    whale_task_mapping.append("token1")
+                
+                if pool_address:
+                    security_tasks.append(holder_analyzer.get_holder_analysis(pool_address, chain))
+                    task_names.append("whale_lp")
+                    whale_task_mapping.append("lp_token")
+                
+                # Execute ALL security checks in parallel!
+                import time as timing_module
+                gather_start = timing_module.time()
+                logger.info(f"⚡ verify-any: Running {len(security_tasks)} security checks in parallel...")
+                results = await asyncio.gather(*security_tasks, return_exceptions=True)
+                gather_time = timing_module.time() - gather_start
+                logger.info(f"⚡ verify-any: Parallel execution took {gather_time:.2f}s (should be ~max of individual calls, not sum)")
+                
+                # Process results
+                security_result = {"status": "error", "tokens": {}}
+                peg_status = {"has_depeg": False}
+                audit_result = {"audited": False, "source": "unknown"}
+                lock_result = {"has_lock": False, "source": "unknown"}
+                whale_analysis = {
+                    "token0": {"skipped": True, "reason": "major/stable token", "concentration_risk": "low"} if symbol0 in SKIP_WHALE_TOKENS else None,
+                    "token1": {"skipped": True, "reason": "major/stable token", "concentration_risk": "low"} if symbol1 in SKIP_WHALE_TOKENS else None,
+                    "lp_token": None
+                }
+                
+                whale_idx = 0
+                for i, (name, result) in enumerate(zip(task_names, results)):
+                    if isinstance(result, Exception):
+                        logger.debug(f"Security check '{name}' failed: {result}")
+                        continue
                     
-                    # Only analyze exotic tokens (not stablecoins/majors)
-                    if token0_addr and symbol0 not in SKIP_WHALE_TOKENS:
-                        whale_analysis["token0"] = await holder_analyzer.get_holder_analysis(
-                            token_address=token0_addr,
-                            chain=chain
-                        )
-                    else:
-                        whale_analysis["token0"] = {"skipped": True, "reason": "major/stable token", "concentration_risk": "low"}
-                    
-                    if token1_addr and symbol1 not in SKIP_WHALE_TOKENS:
-                        whale_analysis["token1"] = await holder_analyzer.get_holder_analysis(
-                            token_address=token1_addr,
-                            chain=chain
-                        )
-                    else:
-                        whale_analysis["token1"] = {"skipped": True, "reason": "major/stable token", "concentration_risk": "low"}
-                    
-                    # LP token analysis is useful - shows who holds positions in this pool
-                    if pool_address:
-                        whale_analysis["lp_token"] = await holder_analyzer.get_holder_analysis(
-                            token_address=pool_address,
-                            chain=chain
-                        )
-                    
-                    pool["whale_analysis"] = whale_analysis
-                except Exception as e:
-                    logger.debug(f"Whale concentration check failed: {e}")
-                    pool["whale_analysis"] = {"token0": None, "token1": None, "lp_token": None, "source": "error"}
+                    if name == "goplus":
+                        security_result = result or security_result
+                    elif name == "clean_symbols":
+                        pool = result or pool
+                    elif name == "peg":
+                        peg_status = result or peg_status
+                    elif name == "audit":
+                        audit_result = result or audit_result
+                    elif name == "lock":
+                        lock_result = result or lock_result
+                    elif name.startswith("whale_"):
+                        key = whale_task_mapping[whale_idx]
+                        whale_analysis[key] = result
+                        whale_idx += 1
+                
+                pool["audit_status"] = audit_result
+                pool["liquidity_lock"] = lock_result
+                pool["whale_analysis"] = whale_analysis
                 
                 # =========================================================
                 # PHASE 7: CALCULATE COMPREHENSIVE RISK SCORE (WITH ALL DATA)
