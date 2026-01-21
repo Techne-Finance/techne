@@ -1680,7 +1680,15 @@ const PoolDetailModal = {
             // Status determination
             let statusClass, statusIcon;
 
-            if (!hasData) {
+            // Check if token is a known stablecoin (they don't have GoPlus data but are safe)
+            const knownStables = ['USDC', 'USDT', 'DAI', 'USDbC', 'FRAX', 'LUSD', 'BUSD', 'USDM'];
+            const isKnownStable = knownStables.some(s => token.symbol.toUpperCase().includes(s));
+
+            if (!hasData && isKnownStable) {
+                // Known stablecoin without GoPlus data = safe
+                statusClass = 'safe';
+                statusIcon = '✅';
+            } else if (!hasData) {
                 // No data from GoPlus - grey/unknown
                 statusClass = 'unknown';
                 statusIcon = '🛡️';  // Grey shield
@@ -1699,7 +1707,12 @@ const PoolDetailModal = {
             }
 
             // Content based on data availability
-            const checksContent = !hasData ? `
+            const checksContent = (!hasData && isKnownStable) ? `
+                                    <div class="pd-check-item pass">
+                                        <span>✅</span>
+                                        <span>Trusted Stablecoin</span>
+                                    </div>
+                                ` : !hasData ? `
                                     <div class="pd-check-item unknown">
                                         <span>🛡️</span>
                                         <span>No information available</span>
