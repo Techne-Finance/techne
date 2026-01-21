@@ -346,6 +346,103 @@ class SupabaseClient:
         }
         result = await self._request("POST", "harvests", data=data)
         return result[0] if result else None
+    
+    # ==========================================
+    # API METRICS PERSISTENCE
+    # ==========================================
+    
+    async def save_api_metrics_snapshot(
+        self,
+        service: str,
+        total_calls: int,
+        success_count: int,
+        error_count: int,
+        timeout_count: int = 0,
+        rate_limit_count: int = 0,
+        success_rate: float = 0,
+        avg_response_ms: float = 0,
+        min_response_ms: float = 0,
+        max_response_ms: float = 0,
+        last_error: str = None,
+        last_error_time: str = None
+    ) -> Optional[dict]:
+        """Save API metrics snapshot for a service"""
+        if not self.is_available:
+            return None
+            
+        data = {
+            "service": service.lower(),
+            "total_calls": total_calls,
+            "success_count": success_count,
+            "error_count": error_count,
+            "timeout_count": timeout_count,
+            "rate_limit_count": rate_limit_count,
+            "success_rate": round(success_rate, 2),
+            "avg_response_ms": round(avg_response_ms, 2),
+            "min_response_ms": round(min_response_ms, 2) if min_response_ms != float('inf') else 0,
+            "max_response_ms": round(max_response_ms, 2),
+            "last_error": last_error[:500] if last_error else None,
+            "last_error_time": last_error_time
+        }
+        result = await self._request("POST", "api_metrics_snapshots", data=data)
+        return result[0] if result else None
+    
+    async def log_api_error(
+        self,
+        service: str,
+        endpoint: str,
+        status: str,
+        response_time_ms: float,
+        error_message: str = None,
+        status_code: int = None
+    ) -> Optional[dict]:
+        """Log an API error for real-time tracking"""
+        if not self.is_available:
+            return None
+            
+        data = {
+            "service": service.lower(),
+            "endpoint": endpoint,
+            "status": status,
+            "status_code": status_code,
+            "error_message": error_message[:500] if error_message else None,
+            "response_time_ms": round(response_time_ms, 2)
+        }
+        result = await self._request("POST", "api_error_log", data=data)
+        return result[0] if result else None
+    
+    async def get_api_metrics_history(
+        self,
+        service: str = None,
+        hours: int = 24,
+        limit: int = 100
+    ) -> List[dict]:
+        """Get API metrics history for dashboard"""
+        if not self.is_available:
+            return []
+            
+        params = {
+            "select": "*",
+            "order": "created_at.desc",
+            "limit": str(limit)
+        }
+        
+        if service:
+            params["service"] = f"eq.{service.lower()}"
+        
+        result = await self._request("GET", "api_metrics_snapshots", params=params)
+        return result or []
+    
+    async def get_recent_api_errors(self, limit: int = 50) -> List[dict]:
+        """Get recent API errors"""
+        if not self.is_available:
+            return []
+            
+        result = await self._request(
+            "GET", "api_error_log",
+            params={"select": "*", "order": "created_at.desc", "limit": str(limit)}
+        )
+        return result or []
 
 
 # Global instance

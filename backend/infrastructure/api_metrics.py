@@ -255,29 +255,66 @@ class APIMetricsTracker:
         return slow[:limit]
     
     async def persist_to_supabase(self):
-        """Persist current metrics snapshot to Supabase"""
+        """Persist current metrics snapshot to Supabase (called every 5 min)"""
         try:
             from infrastructure.supabase_client import supabase
             if not supabase.is_available:
+                logger.debug("[APIMetrics] Supabase not available for persistence")
                 return False
             
             stats = self.get_all_stats()
+            saved_count = 0
             
-            # Save as pool_snapshot (reusing existing table structure)
-            # Or could create a dedicated metrics table
+            # Save snapshot for each service with data
             for service, data in stats['services'].items():
                 if data.get('total_calls', 0) > 0:
-                    await supabase.save_pool_snapshot(
-                        pool_name=f"api_metrics_{service}",
-                        protocol="metrics",
-                        apy=data.get('success_rate', 0),
-                        tvl=data.get('total_calls', 0)
-                    )
+                    m = self._metrics.get(service)
+                    if m:
+                        await supabase.save_api_metrics_snapshot(
+                            service=service,
+                            total_calls=m.total_calls,
+                            success_count=m.success_count,
+                            error_count=m.error_count,
+                            timeout_count=m.timeout_count,
+                            rate_limit_count=m.rate_limit_count,
+                            success_rate=data.get('success_rate', 0),
+                            avg_response_ms=m.avg_response_time_ms,
+                            min_response_ms=m.min_response_time_ms,
+                            max_response_ms=m.max_response_time_ms,
+                            last_error=m.last_error,
+                            last_error_time=m.last_error_time
+                        )
+                        saved_count += 1
             
+            logger.info(f"[APIMetrics] Persisted {saved_count} service snapshots to Supabase")
             return True
         except Exception as e:
             logger.error(f"[APIMetrics] Supabase persist failed: {e}")
             return False
+    
+    async def log_error_to_supabase(
+        self,
+        service: str,
+        endpoint: str,
+        status: str,
+        response_time_ms: float,
+        error_message: str = None,
+        status_code: int = None
+    ):
+        """Log an API error to Supabase in real-time"""
+        try:
+            from infrastructure.supabase_client import supabase
+            if supabase.is_available:
+                await supabase.log_api_error(
+                    service=service,
+                    endpoint=endpoint,
+                    status=status,
+                    response_time_ms=response_time_ms,
+                    error_message=error_message,
+                    status_code=status_code
+                )
+        except Exception as e:
+            logger.debug(f"[APIMetrics] Error logging to Supabase failed: {e}")
 
 
 # Global instance

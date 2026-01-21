@@ -156,6 +156,7 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     """Start background services"""
+    import asyncio
     print("[Startup] Initializing background services...")
     
     # Start CONTRACT monitor (V4.3.2 - watches Deposited events)
@@ -180,6 +181,20 @@ async def startup_event():
         print("[Startup] Strategy executor started")
     except Exception as e:
         print(f"[Startup] Strategy executor failed: {e}")
+    
+    # Start API Metrics persistence (every 5 minutes)
+    async def metrics_persistence_loop():
+        """Background task to persist API metrics to Supabase"""
+        while True:
+            await asyncio.sleep(300)  # 5 minutes
+            try:
+                from infrastructure.api_metrics import api_metrics
+                await api_metrics.persist_to_supabase()
+            except Exception as e:
+                print(f"[Metrics] Persistence error: {e}")
+    
+    asyncio.create_task(metrics_persistence_loop())
+    print("[Startup] ✅ API Metrics persistence started (every 5 min → Supabase)")
 
 # Include agent wallet routes
 if AGENT_WALLET_AVAILABLE:
