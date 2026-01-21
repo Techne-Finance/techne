@@ -42,23 +42,32 @@ class GeckoTerminalClient:
         Returns:
             Pool data dict or None if not found
         """
+        import time
+        from infrastructure.api_metrics import api_metrics
+        
         network = NETWORK_MAP.get(chain.lower(), chain.lower())
         # Solana addresses are case-sensitive (base58), EVM addresses are not
         address_for_url = pool_address if chain.lower() == "solana" else pool_address.lower()
         url = f"{self.BASE_URL}/networks/{network}/pools/{address_for_url}"
         
+        start_time = time.time()
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(url)
+                response_time = time.time() - start_time
                 
                 if response.status_code == 404:
+                    api_metrics.record_call('geckoterminal', '/pools', 'success', response_time)
                     logger.warning(f"Pool not found on GeckoTerminal: {pool_address}")
                     return None
                     
                 if response.status_code != 200:
+                    api_metrics.record_call('geckoterminal', '/pools', 'error', response_time,
+                                           error_message=f"HTTP {response.status_code}", status_code=response.status_code)
                     logger.error(f"GeckoTerminal API error: {response.status_code}")
                     return None
                 
+                api_metrics.record_call('geckoterminal', '/pools', 'success', response_time)
                 data = response.json()
                 pool_data = data.get("data", {})
                 
@@ -68,6 +77,8 @@ class GeckoTerminalClient:
                 return self._normalize_pool_data(pool_data, chain)
                 
         except Exception as e:
+            api_metrics.record_call('geckoterminal', '/pools', 'error', time.time() - start_time,
+                                   error_message=str(e)[:200])
             logger.error(f"GeckoTerminal request failed: {e}")
             return None
     

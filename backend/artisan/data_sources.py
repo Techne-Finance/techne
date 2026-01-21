@@ -324,32 +324,42 @@ async def fetch_defillama_yields(chain: str = "Base") -> List[Dict[str, Any]]:
     
     async def _do_fetch() -> List[Dict[str, Any]]:
         """Actual API fetch - separated for coalescing."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(APIS["defillama"]["yields"])
-            response.raise_for_status()
-            data = response.json()
-            
-            pools = data.get("data", [])
-            
-            # Filter by chain and add source info
-            filtered = []
-            for pool in pools:
-                if pool.get("chain", "").lower() == chain.lower():
-                    # STRICT WHITELIST CHECK
-                    project = (pool.get("project") or "").lower()
-                    if not any(allowed in project for allowed in PROJECT_WHITELIST):
-                        continue
+        import time
+        from infrastructure.api_metrics import api_metrics
+        
+        start_time = time.time()
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(APIS["defillama"]["yields"])
+                response.raise_for_status()
+                api_metrics.record_call('defillama', '/pools', 'success', time.time() - start_time)
+                data = response.json()
+                
+                pools = data.get("data", [])
+                
+                # Filter by chain and add source info
+                filtered = []
+                for pool in pools:
+                    if pool.get("chain", "").lower() == chain.lower():
+                        # STRICT WHITELIST CHECK
+                        project = (pool.get("project") or "").lower()
+                        if not any(allowed in project for allowed in PROJECT_WHITELIST):
+                            continue
 
-                    pool["_source"] = "defillama"
-                    pool["_source_badge"] = APIS["defillama"]["badge"]
-                    pool["_source_color"] = APIS["defillama"]["color"]
-                    filtered.append(pool)
-            
-            # Update basic cache as backup
-            _cache[cache_key]["data"] = filtered
-            _cache[cache_key]["timestamp"] = datetime.now()
-            
-            return filtered
+                        pool["_source"] = "defillama"
+                        pool["_source_badge"] = APIS["defillama"]["badge"]
+                        pool["_source_color"] = APIS["defillama"]["color"]
+                        filtered.append(pool)
+                
+                # Update basic cache as backup
+                _cache[cache_key]["data"] = filtered
+                _cache[cache_key]["timestamp"] = datetime.now()
+                
+                return filtered
+        except Exception as e:
+            api_metrics.record_call('defillama', '/pools', 'error', time.time() - start_time,
+                                   error_message=str(e)[:200])
+            raise
     
     # Use advanced cache if available
     if ADVANCED_CACHE_AVAILABLE:

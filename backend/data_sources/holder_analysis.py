@@ -260,6 +260,9 @@ class HolderAnalysis:
         chain: str
     ) -> Dict[str, Any]:
         """Analyze holders using Moralis API (better than Covalent for free tier)."""
+        import time
+        from infrastructure.api_metrics import api_metrics
+        
         chain_map = {
             "base": "base",
             "ethereum": "eth",
@@ -275,17 +278,23 @@ class HolderAnalysis:
         headers = {"X-API-Key": get_moralis_key()}
         params = {"chain": moralis_chain, "limit": 100}
         
+        start_time = time.time()
         async with httpx.AsyncClient(timeout=5) as client:  # Reduced from 15s for performance
             response = await client.get(url, headers=headers, params=params)
+            response_time = time.time() - start_time
             logger.warning(f"[DEBUG] Moralis response for {token_address[:10]}...: status={response.status_code}")
             
             if response.status_code == 200:
+                api_metrics.record_call('moralis', '/erc20/owners', 'success', response_time)
                 data = response.json()
                 holders = data.get("result", [])
                 logger.warning(f"[DEBUG] Moralis returned {len(holders)} holders for {token_address[:10]}...")
                 
                 if holders:
                     return self._process_moralis_holder_data(holders)
+            else:
+                api_metrics.record_call('moralis', '/erc20/owners', 'error', response_time,
+                                       error_message=f"HTTP {response.status_code}", status_code=response.status_code)
         
         raise Exception(f"Moralis API returned {response.status_code}")
     
