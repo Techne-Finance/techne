@@ -260,6 +260,8 @@ class SecurityChecker:
         return {
             "is_honeypot": False,
             "is_verified": info.get("is_open_source") == "1",
+            "token_name": info.get("token_name"),
+            "token_symbol": info.get("token_symbol"),
             "sell_tax": info.get("sell_tax"),
             "buy_tax": info.get("buy_tax"),
             "risks": risks,
