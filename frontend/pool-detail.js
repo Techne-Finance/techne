@@ -1624,6 +1624,8 @@ const PoolDetailModal = {
         const tokens = security.tokens || {};
         const source = security.source || 'goplus';
 
+        console.log('[PoolDetailModal] Token Security - pool.security_result:', pool.security_result);
+        console.log('[PoolDetailModal] Token Security - pool.security:', pool.security);
         console.log('[PoolDetailModal] Token Security - security:', security);
         console.log('[PoolDetailModal] Token Security - tokens:', tokens);
 
@@ -1633,11 +1635,19 @@ const PoolDetailModal = {
         const token0Addr = pool.token0 || '';
         const token1Addr = pool.token1 || '';
 
+        console.log('[PoolDetailModal] Token matching debug:');
+        console.log('  token0Addr:', token0Addr);
+        console.log('  token1Addr:', token1Addr);
+        console.log('  tokens keys:', Object.keys(tokens));
+        console.log('  tokens[token0Addr]:', tokens[token0Addr]);
+        console.log('  tokens[token0Addr.toLowerCase()]:', tokens[token0Addr.toLowerCase()]);
+
         // Build token list - ensure we always have 2 tokens
         const tokenList = [];
 
         // Token 0
         const token0Data = tokens[token0Addr] || tokens[token0Addr.toLowerCase()] || Object.values(tokens)[0] || {};
+        console.log('  token0Data found:', Object.keys(token0Data).length > 0, token0Data);
         tokenList.push({
             symbol: symbol0,
             address: token0Addr,

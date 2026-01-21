@@ -545,12 +545,22 @@ class SmartRouter:
                     logger.debug(f"Security check failed: {e}")
                     return {"status": "error", "tokens": {}}
             
-            # Run all three in parallel!
-            logger.info(f"⚡ SmartRouter: Running OHLCV + APY + Security in parallel...")
-            ohlcv_data, apy_data, security_result = await asyncio.gather(
+            async def fetch_dexscreener():
+                """Fetch per-token volatility from DexScreener"""
+                try:
+                    from data_sources.dexscreener import dexscreener_client
+                    return await dexscreener_client.get_token_volatility(chain, pool_address)
+                except Exception as e:
+                    logger.debug(f"DexScreener volatility failed: {e}")
+                    return None
+            
+            # Run all FOUR in parallel!
+            logger.info(f"⚡ SmartRouter: Running OHLCV + APY + Security + DexScreener in parallel...")
+            ohlcv_data, apy_data, security_result, dexscreener_data = await asyncio.gather(
                 fetch_ohlcv(),
                 fetch_apy(),
                 fetch_security(),
+                fetch_dexscreener(),
                 return_exceptions=True
             )
             
@@ -561,6 +571,22 @@ class SmartRouter:
                 apy_data = {"apy_status": "error", "reason": str(apy_data)}
             if isinstance(security_result, Exception):
                 security_result = {"status": "error", "tokens": {}}
+            if isinstance(dexscreener_data, Exception):
+                dexscreener_data = None
+            
+            # Process DexScreener per-token volatility
+            if dexscreener_data:
+                pool_data["token0_volatility"] = dexscreener_data.get("token0", {})
+                pool_data["token1_volatility"] = dexscreener_data.get("token1", {})
+                t0 = dexscreener_data.get("token0", {})
+                t1 = dexscreener_data.get("token1", {})
+                pool_data["token0_volatility_1h"] = t0.get("price_change_1h", 0)
+                pool_data["token0_volatility_24h"] = t0.get("price_change_24h", 0)
+                pool_data["token1_volatility_1h"] = t1.get("price_change_1h", 0)
+                pool_data["token1_volatility_24h"] = t1.get("price_change_24h", 0)
+                pool_data["pair_price_change_24h"] = dexscreener_data.get("pair_price_change_24h", 0)
+                pool_data["pair_price_change_1h"] = dexscreener_data.get("pair_price_change_1h", 0)
+                logger.info(f"DexScreener: {t0.get('symbol', 'T0')} 24h={t0.get('price_change_24h', 0):.2f}%, {t1.get('symbol', 'T1')} 24h={t1.get('price_change_24h', 0):.2f}%")
             
             # Process OHLCV results
             if ohlcv_data:
@@ -569,6 +595,12 @@ class SmartRouter:
                 pool_data["volume_avg_7d"] = ohlcv_data.get("volume_avg_7d", 0)
                 pool_data["price_high_7d"] = ohlcv_data.get("price_high_7d", 0)
                 pool_data["price_low_7d"] = ohlcv_data.get("price_low_7d", 0)
+                
+                # IMPORTANT: These fields are used by analyze_volatility in security_module
+                pool_data["price_change_24h"] = ohlcv_data.get("price_change_24h", 0)
+                pool_data["priceChange24h"] = ohlcv_data.get("price_change_24h", 0)
+                pool_data["token_volatility_24h"] = abs(ohlcv_data.get("price_change_24h", 0))
+                pool_data["token_volatility_7d"] = abs(ohlcv_data.get("price_change_7d", 0))
                 
                 change_7d = abs(ohlcv_data.get("price_change_7d", 0))
                 if change_7d < 5:

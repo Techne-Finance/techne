@@ -524,7 +524,9 @@ const VerifyPools = {
             risk_flags: pool.risk_flags || [],
 
             // Security analysis (for Token Security section)
-            security: pool.security || {},
+            // API returns security_result, but keep security for backwards compat
+            security: pool.security || pool.security_result || {},
+            security_result: pool.security_result || pool.security || {},
 
             // Advanced risk analysis (for IL, Volatility, Pool Age sections)
             il_analysis: pool.il_analysis || {},
