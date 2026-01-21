@@ -438,6 +438,24 @@ class MorphoBlueLoopEngine:
             
             self.positions[f"{user}_{market_key}"] = position
             
+            # Persist to Supabase
+            try:
+                from infrastructure.supabase_client import supabase
+                if supabase.is_available:
+                    import asyncio
+                    asyncio.create_task(supabase.save_leverage_position(
+                        user_address=user,
+                        protocol=f"morpho_{market_key}",
+                        initial_deposit=collateral_amount / 1e18,
+                        current_collateral=params['final_collateral'] / 1e18,
+                        current_debt=params['final_debt'] / 1e6,  # USDC decimals
+                        leverage=params['actual_leverage'],
+                        health_factor=1.0 / params['ltv_usage'] if params['ltv_usage'] > 0 else 10.0,
+                        loop_count=params['total_loops']
+                    ))
+            except Exception as e:
+                print(f"[MorphoLoop] Supabase save failed: {e}")
+            
             print(f"[MorphoLoop] ✅ Leverage position created!")
             print(f"[MorphoLoop]   Collateral: {position.current_collateral}")
             print(f"[MorphoLoop]   Debt: {position.current_debt}")

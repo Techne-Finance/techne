@@ -239,6 +239,20 @@ class PoolDataFetcher:
             if data:
                 results[pool_name] = data
                 print(f"[PoolDataFetcher] {pool_name}: TVL=${data.get('tvl', 0)/1e6:.1f}M, APY={data.get('apy', 0):.2f}%")
+                
+                # Cache to Supabase for historical tracking
+                try:
+                    from infrastructure.supabase_client import supabase
+                    if supabase.is_available:
+                        import asyncio
+                        asyncio.create_task(supabase.save_pool_snapshot(
+                            pool_name=pool_name,
+                            protocol=protocol,
+                            apy=data.get('apy', 0),
+                            tvl=data.get('tvl', 0)
+                        ))
+                except Exception as e:
+                    print(f"[PoolDataFetcher] Supabase cache failed: {e}")
         
         return results
     

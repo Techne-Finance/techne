@@ -351,6 +351,24 @@ class SmartLoopEngine:
             
             self.positions[user] = position
             
+            # Persist to Supabase
+            try:
+                from infrastructure.supabase_client import supabase
+                if supabase.is_available:
+                    import asyncio
+                    asyncio.create_task(supabase.save_leverage_position(
+                        user_address=user,
+                        protocol="aave",
+                        initial_deposit=amount / 1e6,
+                        current_collateral=position.current_collateral / 1e6,
+                        current_debt=position.current_debt / 1e6,
+                        leverage=position.actual_leverage,
+                        health_factor=position.health_factor,
+                        loop_count=position.loop_count
+                    ))
+            except Exception as e:
+                print(f"[SmartLoop] Supabase save failed: {e}")
+            
             print(f"[SmartLoop] ✅ Leverage position created!")
             print(f"[SmartLoop]   Collateral: ${position.current_collateral / 1e6:.2f}")
             print(f"[SmartLoop]   Debt: ${position.current_debt / 1e6:.2f}")
