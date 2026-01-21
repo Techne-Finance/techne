@@ -9,6 +9,10 @@ import logging
 import os
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load .env BEFORE accessing env vars
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 

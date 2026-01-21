@@ -22,6 +22,14 @@ logger = logging.getLogger("SmartRouter")
 _apy_cache: Dict[str, Tuple[Dict[str, Any], float]] = {}
 APY_CACHE_TTL = 120  # 2 minutes - APY doesn't change every second
 
+# Security cache (GoPlus) - 5 min TTL, token security changes very slowly
+_security_cache: Dict[str, Tuple[Dict[str, Any], float]] = {}
+SECURITY_CACHE_TTL = 300  # 5 minutes
+
+# DexScreener cache - 2 min TTL for per-token volatility
+_dexscreener_cache: Dict[str, Tuple[Dict[str, Any], float]] = {}
+DEXSCREENER_CACHE_TTL = 120  # 2 minutes
+
 def _get_cached_apy(pool_address: str) -> Optional[Dict[str, Any]]:
     """Get cached APY if still valid"""
     key = pool_address.lower()
@@ -39,6 +47,38 @@ def _set_cached_apy(pool_address: str, apy_data: Dict[str, Any]) -> None:
     key = pool_address.lower()
     _apy_cache[key] = (apy_data, time.time())
     logger.info(f"💾 APY cached for {pool_address[:10]}... (TTL={APY_CACHE_TTL}s)")
+
+def _get_cached_security(tokens_key: str) -> Optional[Dict[str, Any]]:
+    """Get cached Security if still valid"""
+    if tokens_key in _security_cache:
+        data, timestamp = _security_cache[tokens_key]
+        if time.time() - timestamp < SECURITY_CACHE_TTL:
+            logger.info(f"⚡ Security cache hit")
+            return data
+        else:
+            del _security_cache[tokens_key]
+    return None
+
+def _set_cached_security(tokens_key: str, data: Dict[str, Any]) -> None:
+    """Cache Security data"""
+    _security_cache[tokens_key] = (data, time.time())
+
+def _get_cached_dexscreener(pool_address: str) -> Optional[Dict[str, Any]]:
+    """Get cached DexScreener if still valid"""
+    key = pool_address.lower()
+    if key in _dexscreener_cache:
+        data, timestamp = _dexscreener_cache[key]
+        if time.time() - timestamp < DEXSCREENER_CACHE_TTL:
+            logger.info(f"⚡ DexScreener cache hit")
+            return data
+        else:
+            del _dexscreener_cache[key]
+    return None
+
+def _set_cached_dexscreener(pool_address: str, data: Dict[str, Any]) -> None:
+    """Cache DexScreener data"""
+    key = pool_address.lower()
+    _dexscreener_cache[key] = (data, time.time())
 
 # Import security checker (GoPlus RugCheck)
 try:
@@ -539,7 +579,15 @@ class SmartRouter:
                     token1 = pool_data.get("token1")
                     tokens_to_check = [t for t in [token0, token1] if t and t.startswith("0x")]
                     if tokens_to_check:
-                        return await security_checker.check_security(tokens_to_check, chain)
+                        # Check cache first
+                        cache_key = ",".join(sorted([t.lower() for t in tokens_to_check]))
+                        cached = _get_cached_security(cache_key)
+                        if cached:
+                            return cached
+                        # Fetch from GoPlus
+                        result = await security_checker.check_security(tokens_to_check, chain)
+                        _set_cached_security(cache_key, result)
+                        return result
                     return {"status": "no_tokens", "tokens": {}}
                 except Exception as e:
                     logger.debug(f"Security check failed: {e}")
@@ -547,9 +595,16 @@ class SmartRouter:
             
             async def fetch_dexscreener():
                 """Fetch per-token volatility from DexScreener"""
+                # Check cache first
+                cached = _get_cached_dexscreener(pool_address)
+                if cached:
+                    return cached
                 try:
                     from data_sources.dexscreener import dexscreener_client
-                    return await dexscreener_client.get_token_volatility(chain, pool_address)
+                    result = await dexscreener_client.get_token_volatility(chain, pool_address)
+                    if result:
+                        _set_cached_dexscreener(pool_address, result)
+                    return result
                 except Exception as e:
                     logger.debug(f"DexScreener volatility failed: {e}")
                     return None
@@ -688,83 +743,69 @@ class SmartRouter:
             # =================================================================
             if SECURITY_CHECKER_AVAILABLE:
                 try:
-                    # Get peg status for stablecoins
-                    peg_status = await security_checker.check_stablecoin_peg(pool_data, chain)
-                    pool_data["peg_status"] = peg_status
+                    # =========================================================
+                    # PARALLEL: Peg + LP Lock + Whale Analysis 
+                    # All in parallel for ~5s savings vs sequential
+                    # =========================================================
+                    async def fetch_peg():
+                        return await security_checker.check_stablecoin_peg(pool_data, chain)
                     
-                    # Determine audit status from protocol
+                    async def fetch_lp_lock():
+                        if LIQUIDITY_LOCK_AVAILABLE:
+                            try:
+                                return await liquidity_lock_checker.check_lp_lock(pool_address, chain)
+                            except:
+                                pass
+                        return {"has_lock": False, "source": "not_checked"}
+                    
+                    async def fetch_whale():
+                        if not HOLDER_ANALYSIS_AVAILABLE:
+                            return {"source": "not_available"}
+                        try:
+                            lp_analysis = await holder_analyzer.get_holder_analysis(pool_address, chain)
+                            if lp_analysis.get("top_10_percent") is not None:
+                                return {"lp_token": lp_analysis, "source": lp_analysis.get("source", "moralis")}
+                            # Fallback to underlying token
+                            WHITELISTED_TOKENS = {
+                                "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                                "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",
+                                "0x4200000000000000000000000000000000000006",
+                            }
+                            token0 = pool_data.get("token0", "").lower()
+                            token1 = pool_data.get("token1", "").lower()
+                            target = token0 if token0 and token0 not in WHITELISTED_TOKENS else (
+                                token1 if token1 and token1 not in WHITELISTED_TOKENS else None)
+                            if target:
+                                ta = await holder_analyzer.get_holder_analysis(target, chain)
+                                if ta.get("top_10_percent") is not None:
+                                    return {"token": ta, "lp_token": lp_analysis, "source": ta.get("source", "moralis")}
+                            return {"lp_token": lp_analysis, "source": "whitelisted_tokens"}
+                        except:
+                            pass
+                        return {"source": "not_available"}
+                    
+                    # Run all 3 in parallel!
+                    logger.info("⚡ SmartRouter: Running Peg + LP Lock + Whale in parallel...")
+                    peg_status, liquidity_lock, whale_analysis = await asyncio.gather(
+                        fetch_peg(), fetch_lp_lock(), fetch_whale(),
+                        return_exceptions=True
+                    )
+                    
+                    # Handle exceptions
+                    if isinstance(peg_status, Exception):
+                        peg_status = {}
+                    if isinstance(liquidity_lock, Exception):
+                        liquidity_lock = {"has_lock": False, "source": "error"}
+                    if isinstance(whale_analysis, Exception):
+                        whale_analysis = {"source": "error"}
+                    
+                    pool_data["peg_status"] = peg_status
+                    pool_data["liquidity_lock"] = liquidity_lock
+                    pool_data["whale_analysis"] = whale_analysis
+                    
+                    # Determine audit status from protocol (sync - fast)
                     audit_status = self._get_audit_status(pool_data, protocol)
                     pool_data["audit_status"] = audit_status
-                    
-                    # =========================================================
-                    # LIQUIDITY LOCK CHECK (Team Finance / Unicrypt)
-                    # =========================================================
-                    liquidity_lock = {"has_lock": False, "source": "not_checked"}
-                    if LIQUIDITY_LOCK_AVAILABLE:
-                        try:
-                            liquidity_lock = await liquidity_lock_checker.check_lp_lock(pool_address, chain)
-                            logger.info(f"LP Lock: {liquidity_lock.get('has_lock')} ({liquidity_lock.get('source')})")
-                        except Exception as e:
-                            logger.debug(f"LP lock check failed: {e}")
-                    pool_data["liquidity_lock"] = liquidity_lock
-                    
-                    # =========================================================
-                    # WHALE CONCENTRATION ANALYSIS (Moralis API)
-                    # =========================================================
-                    whale_analysis = {"source": "not_available"}
-                    logger.info(f"🐋 HOLDER_ANALYSIS_AVAILABLE = {HOLDER_ANALYSIS_AVAILABLE}")
-                    if HOLDER_ANALYSIS_AVAILABLE:
-                        try:
-                            # First: Analyze LP token holders (the pool address IS the LP token for V2)
-                            lp_analysis = await holder_analyzer.get_holder_analysis(pool_address, chain)
-                            
-                            # For CL/Slipstream pools, LP is NFT - try token0/token1 instead
-                            lp_has_data = lp_analysis.get("top_10_percent") is not None
-                            
-                            if lp_has_data:
-                                whale_analysis = {
-                                    "lp_token": lp_analysis,
-                                    "source": lp_analysis.get("source", "moralis")
-                                }
-                                logger.info(f"LP Whale analysis: top10={lp_analysis.get('top_10_percent', 'N/A')}%")
-                            else:
-                                # Fallback: Analyze underlying tokens (skip whitelisted stables)
-                                WHITELISTED_TOKENS = {
-                                    "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",  # USDC
-                                    "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",  # USDbC
-                                    "0x4200000000000000000000000000000000000006",  # WETH
-                                }
-                                
-                                token0 = pool_data.get("token0", "").lower()
-                                token1 = pool_data.get("token1", "").lower()
-                                
-                                # Analyze non-whitelisted token (likely newer/riskier)
-                                target_token = None
-                                if token0 and token0 not in WHITELISTED_TOKENS:
-                                    target_token = token0
-                                elif token1 and token1 not in WHITELISTED_TOKENS:
-                                    target_token = token1
-                                
-                                if target_token:
-                                    token_analysis = await holder_analyzer.get_holder_analysis(target_token, chain)
-                                    if token_analysis.get("top_10_percent") is not None:
-                                        whale_analysis = {
-                                            "token0" if target_token == token0 else "token1": token_analysis,
-                                            "lp_token": lp_analysis,  # Keep LP info even if empty
-                                            "source": token_analysis.get("source", "moralis")
-                                        }
-                                        logger.info(f"Token Whale analysis: top10={token_analysis.get('top_10_percent', 'N/A')}%")
-                                else:
-                                    # Both tokens whitelisted - low risk
-                                    whale_analysis = {
-                                        "lp_token": lp_analysis,
-                                        "source": "whitelisted_tokens",
-                                        "note": "Both tokens are established (USDC, WETH, etc.)"
-                                    }
-                                    
-                        except Exception as e:
-                            logger.debug(f"Whale analysis failed: {e}")
-                    pool_data["whale_analysis"] = whale_analysis
                     
                     # Calculate full risk score (includes IL, volatility, age, audit, whale)
                     risk_analysis = security_checker.calculate_risk_score(

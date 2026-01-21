@@ -362,7 +362,12 @@ const PoolDetailModal = {
      */
     renderDepositButton(pool, security) {
         const project = (pool.project || '').toUpperCase();
-        const poolUrl = pool.pool_link || (window.getPoolUrl ? getPoolUrl(pool) : '#');
+        // Build proper Aerodrome pool URL
+        const poolAddress = pool.pool_address || pool.address || '';
+        const poolUrl = pool.pool_link ||
+            (poolAddress && project.includes('AERODROME') ?
+                `https://aerodrome.finance/deposit?token0=${pool.token0}&token1=${pool.token1}&type=${pool.pool_type === 'cl' ? '-1' : '0'}` :
+                (window.getPoolUrl ? getPoolUrl(pool) : '#'));
 
         if (security.isCritical) {
             // BLOCKED: Critical risk
@@ -375,14 +380,14 @@ const PoolDetailModal = {
             // WARNING: Show caution but allow
             return `
                 <a href="${poolUrl}" target="_blank" class="pd-btn-warning" onclick="return confirm('⚠️ Warning:\\n${security.warnings.join('\\n')}\\n\\nDo you want to proceed?');">
-                    ⚠️ DEPOSIT ON ${project} (CAUTION)
+                    DEPOSIT ON ${project} (CAUTION)
                 </a>
             `;
         } else {
             // SAFE: Normal deposit
             return `
                 <a href="${poolUrl}" target="_blank" class="pd-btn-primary" onclick="event.stopPropagation();">
-                    💰 DEPOSIT ON ${project}
+                    DEPOSIT ON ${project}
                 </a>
             `;
         }
@@ -405,10 +410,10 @@ const PoolDetailModal = {
         // Determine source label and explanation
         let sourceLabel, sourceIcon, explanation, confidence;
 
-        if (apySource.includes('gauge') || apySource.includes('v2_onchain')) {
-            sourceLabel = 'Gauge Emissions';
+        if (apySource.includes('aerodrome') || apySource.includes('gauge') || apySource.includes('v2_onchain')) {
+            sourceLabel = 'On-Chain Verified';
             sourceIcon = '🎯';
-            explanation = 'APY from AERO token rewards distributed to stakers';
+            explanation = 'APY calculated from on-chain gauge emissions data';
             confidence = 'high';
         } else if (apySource.includes('cl_calculated')) {
             sourceLabel = 'Gauge + Total TVL';
