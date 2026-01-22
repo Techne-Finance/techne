@@ -681,19 +681,18 @@ class AerodromeOnChain:
             elif v2_reward_rate > 0 and cl_liquidity > 0:
                 pool_type = "cl"
                 reward_rate = v2_reward_rate  # CL gauges also have rewardRate
-                # For CL pools: use stakedLiquidity/liquidity ratio
-                # stakedLiquidity() = liquidity staked in gauge
-                # liquidity() = total active liquidity in current tick
-                # This gives accurate staked ratio for CL pools
-                if cl_staked > 0 and cl_liquidity > 0:
-                    staked_ratio = cl_staked / cl_liquidity
-                    # Cap at 1.0 in case of rounding
-                    staked_ratio = min(staked_ratio, 1.0)
-                    logger.info(f"CL detected: staked_ratio={staked_ratio:.4f} ({staked_ratio*100:.1f}%) from on-chain")
-                else:
-                    # Fallback if stakedLiquidity not available
-                    staked_ratio = 0.50  # Conservative 50% estimate
-                    logger.info(f"CL detected: using fallback staked_ratio=0.50")
+                # CRITICAL: For CL pools, stakedLiquidity/liquidity ratio is MISLEADING!
+                # It measures ratio within current tick, NOT overall staked TVL.
+                # This gives ~99% even when actual staked TVL is tiny fraction of pool.
+                # 
+                # Aerodrome calculates APR based on actual positions - varies by user's range.
+                # We cannot calculate position-specific APR without knowing user's range.
+                # 
+                # SOLUTION: Use staked_ratio = 1.0 to show "pool-wide estimated APR"
+                # and flag that actual APR varies by position.
+                staked_ratio = 1.0  # Show pool-wide APR, not misleading staker APR
+                response["cl_apy_variable"] = True  # Flag that APR varies by position
+                logger.info(f"CL detected: using staked_ratio=1.0 (APR varies by position)")
             elif v2_reward_rate > 0:
                 # Has reward but can't determine type - use V2 as fallback
                 pool_type = "v2"
