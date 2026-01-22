@@ -28,8 +28,16 @@ class GeckoTerminalClient:
     BASE_URL = "https://api.geckoterminal.com/api/v2"
     
     def __init__(self):
-        self.timeout = 15.0
+        self.timeout = 5.0  # Reduced from 15s for faster failure
+        # Shared client for connection pooling (reuse TCP connections)
+        self._client = None
         logger.info("🦎 GeckoTerminal client initialized")
+    
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create shared httpx client"""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=self.timeout)
+        return self._client
     
     async def get_pool_by_address(self, chain: str, pool_address: str) -> Optional[Dict[str, Any]]:
         """
@@ -52,30 +60,30 @@ class GeckoTerminalClient:
         
         start_time = time.time()
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(url)
-                response_time = time.time() - start_time
-                
-                if response.status_code == 404:
-                    api_metrics.record_call('geckoterminal', '/pools', 'success', response_time)
-                    logger.warning(f"Pool not found on GeckoTerminal: {pool_address}")
-                    return None
-                    
-                if response.status_code != 200:
-                    api_metrics.record_call('geckoterminal', '/pools', 'error', response_time,
-                                           error_message=f"HTTP {response.status_code}", status_code=response.status_code)
-                    logger.error(f"GeckoTerminal API error: {response.status_code}")
-                    return None
-                
+            client = await self._get_client()
+            response = await client.get(url)
+            response_time = time.time() - start_time
+            
+            if response.status_code == 404:
                 api_metrics.record_call('geckoterminal', '/pools', 'success', response_time)
-                data = response.json()
-                pool_data = data.get("data", {})
+                logger.warning(f"Pool not found on GeckoTerminal: {pool_address}")
+                return None
                 
-                if not pool_data:
-                    return None
-                
-                return self._normalize_pool_data(pool_data, chain)
-                
+            if response.status_code != 200:
+                api_metrics.record_call('geckoterminal', '/pools', 'error', response_time,
+                                       error_message=f"HTTP {response.status_code}", status_code=response.status_code)
+                logger.error(f"GeckoTerminal API error: {response.status_code}")
+                return None
+            
+            api_metrics.record_call('geckoterminal', '/pools', 'success', response_time)
+            data = response.json()
+            pool_data = data.get("data", {})
+            
+            if not pool_data:
+                return None
+            
+            return self._normalize_pool_data(pool_data, chain)
+            
         except Exception as e:
             api_metrics.record_call('geckoterminal', '/pools', 'error', time.time() - start_time,
                                    error_message=str(e)[:200])
@@ -101,50 +109,50 @@ class GeckoTerminalClient:
         url = f"{self.BASE_URL}/networks/{network}/pools/{address_for_url}/ohlcv/{timeframe}"
         
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(url, params={"limit": limit})
-                
-                if response.status_code != 200:
-                    logger.debug(f"OHLCV fetch failed: {response.status_code}")
-                    return None
-                
-                data = response.json()
-                ohlcv_list = data.get("data", {}).get("attributes", {}).get("ohlcv_list", [])
-                
-                if not ohlcv_list or len(ohlcv_list) < 2:
-                    return None
-                
-                # OHLCV format: [timestamp, open, high, low, close, volume]
-                # Calculate price changes
-                latest = ohlcv_list[0]  # Most recent
-                day_ago = ohlcv_list[1] if len(ohlcv_list) > 1 else latest
-                week_ago = ohlcv_list[-1] if len(ohlcv_list) >= 7 else ohlcv_list[-1]
-                
-                price_now = float(latest[4]) if latest[4] else 0  # close price
-                price_24h = float(day_ago[4]) if day_ago[4] else 0
-                price_7d = float(week_ago[4]) if week_ago[4] else 0
-                
-                # Calculate changes
-                price_change_24h = ((price_now - price_24h) / price_24h * 100) if price_24h > 0 else 0
-                price_change_7d = ((price_now - price_7d) / price_7d * 100) if price_7d > 0 else 0
-                
-                # Volume analysis
-                volumes = [float(o[5]) for o in ohlcv_list if o[5]]
-                avg_volume = sum(volumes) / len(volumes) if volumes else 0
-                volume_now = volumes[0] if volumes else 0
-                
-                logger.info(f"OHLCV for {pool_address[:10]}: price_change_24h={price_change_24h:.2f}%, 7d={price_change_7d:.2f}%")
-                
-                return {
-                    "price_change_24h": round(price_change_24h, 2),
-                    "price_change_7d": round(price_change_7d, 2),
-                    "volume_avg_7d": avg_volume,
-                    "volume_24h": volume_now,
-                    "price_high_7d": max([float(o[2]) for o in ohlcv_list if o[2]], default=0),
-                    "price_low_7d": min([float(o[3]) for o in ohlcv_list if o[3]], default=0),
-                    "data_points": len(ohlcv_list)
-                }
-                
+            client = await self._get_client()
+            response = await client.get(url, params={"limit": limit})
+            
+            if response.status_code != 200:
+                logger.debug(f"OHLCV fetch failed: {response.status_code}")
+                return None
+            
+            data = response.json()
+            ohlcv_list = data.get("data", {}).get("attributes", {}).get("ohlcv_list", [])
+            
+            if not ohlcv_list or len(ohlcv_list) < 2:
+                return None
+            
+            # OHLCV format: [timestamp, open, high, low, close, volume]
+            # Calculate price changes
+            latest = ohlcv_list[0]  # Most recent
+            day_ago = ohlcv_list[1] if len(ohlcv_list) > 1 else latest
+            week_ago = ohlcv_list[-1] if len(ohlcv_list) >= 7 else ohlcv_list[-1]
+            
+            price_now = float(latest[4]) if latest[4] else 0  # close price
+            price_24h = float(day_ago[4]) if day_ago[4] else 0
+            price_7d = float(week_ago[4]) if week_ago[4] else 0
+            
+            # Calculate changes
+            price_change_24h = ((price_now - price_24h) / price_24h * 100) if price_24h > 0 else 0
+            price_change_7d = ((price_now - price_7d) / price_7d * 100) if price_7d > 0 else 0
+            
+            # Volume analysis
+            volumes = [float(o[5]) for o in ohlcv_list if o[5]]
+            avg_volume = sum(volumes) / len(volumes) if volumes else 0
+            volume_now = volumes[0] if volumes else 0
+            
+            logger.info(f"OHLCV for {pool_address[:10]}: price_change_24h={price_change_24h:.2f}%, 7d={price_change_7d:.2f}%")
+            
+            return {
+                "price_change_24h": round(price_change_24h, 2),
+                "price_change_7d": round(price_change_7d, 2),
+                "volume_avg_7d": avg_volume,
+                "volume_24h": volume_now,
+                "price_high_7d": max([float(o[2]) for o in ohlcv_list if o[2]], default=0),
+                "price_low_7d": min([float(o[3]) for o in ohlcv_list if o[3]], default=0),
+                "data_points": len(ohlcv_list)
+            }
+            
         except Exception as e:
             logger.debug(f"OHLCV request failed: {e}")
             return None
