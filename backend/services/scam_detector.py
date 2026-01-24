@@ -260,6 +260,22 @@ class ScamDetector:
             result["risk_level"] = "CRITICAL"
             result["recommendation"] = "SCAM"
         
+        # ==========================================
+        # AI ENHANCEMENT (Cheap LLM - Groq/Gemini/GPT-4o-mini)
+        # Only for ambiguous cases (30-70 score) to save costs
+        # ==========================================
+        if source and 30 <= result["risk_score"] <= 70:
+            try:
+                from .cheap_llm import enhance_scam_detection
+                result = await enhance_scam_detection(address, source, result)
+                print(f"[ScamDetector] AI enhanced: {result.get('ai_provider', 'N/A')}")
+            except Exception as e:
+                print(f"[ScamDetector] AI enhancement failed: {e}")
+                result["ai_enhanced"] = False
+        else:
+            result["ai_enhanced"] = False
+            result["ai_reason"] = "Score clear - AI skipped (cost optimization)"
+        
         # Cache result
         self.cache[address] = result
         
