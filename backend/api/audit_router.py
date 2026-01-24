@@ -182,50 +182,52 @@ async def get_reasoning_logs(
     Get Agent reasoning logs for display in Reasoning Terminal.
     Returns user-friendly formatted decision logs.
     """
-    # First try Supabase
+    # First try Supabase via REST API (no pip dependency)
     try:
-        from supabase import create_client
+        import requests
         url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_ANON_KEY")
+        key = os.getenv("SUPABASE_KEY")
         
         if url and key:
-            supabase = create_client(url, key)
+            headers = {
+                'apikey': key,
+                'Authorization': f'Bearer {key}'
+            }
             
-            query = supabase.table("audit_trail").select("*").order(
-                "created_at", desc=True
-            ).limit(limit)
-            
+            api_url = f"{url}/rest/v1/audit_trail?order=created_at.desc&limit={limit}"
             if user_address:
-                query = query.eq("user_address", user_address)
+                api_url += f"&user_address=eq.{user_address}"
             
-            result = query.execute()
+            response = requests.get(api_url, headers=headers, timeout=10)
             
-            if result.data:
-                # Map Supabase entries to friendly format
-                formatted = []
-                for entry in result.data:
-                    mapped = {
-                        "id": entry.get("id"),
-                        "timestamp": entry.get("created_at"),
-                        "action": entry.get("action", entry.get("event_type", "UNKNOWN")),
-                        "details": {
-                            "gas_cost": entry.get("gas_cost", 0),
-                            "risk_score": entry.get("risk_score", 0),
-                            "reason": entry.get("reason", ""),
-                            "amount": entry.get("amount_usd", 0),
-                            "protocol": entry.get("protocol", ""),
-                            "profit": entry.get("profit_usd", 0),
-                            "apy": entry.get("apy", 0),
-                            **entry.get("metadata", {})
-                        }
-                    }
-                    formatted.append(map_technical_to_friendly(mapped))
+            if response.status_code == 200:
+                data = response.json()
                 
-                return {
-                    "logs": formatted,
-                    "source": "supabase",
-                    "count": len(formatted)
-                }
+                if data:
+                    # Map Supabase entries to friendly format
+                    formatted = []
+                    for entry in data:
+                        mapped = {
+                            "id": entry.get("id"),
+                            "timestamp": entry.get("created_at"),
+                            "action": entry.get("action", entry.get("event_type", "UNKNOWN")),
+                            "details": {
+                                "gas_cost": entry.get("gas_cost", 0) or 0,
+                                "risk_score": entry.get("risk_score", 0) or 0,
+                                "reason": entry.get("reason", ""),
+                                "amount": entry.get("amount_usd", 0) or 0,
+                                "protocol": entry.get("protocol", ""),
+                                "profit": entry.get("profit_usd", 0) or 0,
+                                "apy": entry.get("apy", 0) or 0,
+                            }
+                        }
+                        formatted.append(map_technical_to_friendly(mapped))
+                    
+                    return {
+                        "logs": formatted,
+                        "source": "supabase",
+                        "count": len(formatted)
+                    }
     except Exception as e:
         print(f"Supabase not available: {e}")
     
