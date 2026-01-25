@@ -812,6 +812,18 @@ What would you like to configure?`;
                 // Continue anyway - agent will work locally, just not synced with backend
             }
 
+            // Get agent address - try Smart Account first, fallback to user wallet
+            let address = window.connectedWallet;
+            try {
+                const saResult = await window.NetworkUtils?.getSmartAccount(window.connectedWallet);
+                if (saResult?.success && saResult?.smartAccount) {
+                    address = saResult.smartAccount;
+                    console.log('[AgentBuilder] Using Smart Account:', address);
+                }
+            } catch (e) {
+                console.warn('[AgentBuilder] Smart Account lookup failed, using wallet:', e);
+            }
+
             document.getElementById('agentAddress').textContent =
                 address.slice(0, 6) + '...' + address.slice(-4);
             document.getElementById('agentBalance').textContent = '0 ETH';
