@@ -1096,22 +1096,42 @@ const AgentWalletUI = {
 
                 console.log('[AgentWallet] ETH sent to:', gasRecipient);
             } else {
-                // For ERC20 tokens - approve first
+                // For ERC20 tokens (WETH, etc.) - transfer directly to user's Smart Account
+                // V4.3.3 doesn't have depositToken, so we use direct transfer
                 btn.innerHTML = '<span>⏳</span> Approving...';
                 const tokenContract = new ethers.Contract(token.address, this.ERC20_ABI, signer);
-                const approveTx = await tokenContract.approve(this.contractAddress, amountWei);
-                await approveTx.wait();
 
-                btn.innerHTML = '<span>⏳</span> Depositing...';
-
-                // Deposit - use depositToken for non-USDC, deposit for USDC
-                const wallet = new ethers.Contract(this.contractAddress, this.WALLET_ABI, signer);
+                // Get user's Smart Account address for receiving tokens
+                let recipient;
+                try {
+                    const saResult = await NetworkUtils.getSmartAccount(userAddress);
+                    if (saResult.success && saResult.smartAccount) {
+                        recipient = saResult.smartAccount;
+                        console.log('[AgentWallet] Sending token to Smart Account:', recipient);
+                    } else {
+                        // Fallback to V4 contract if no Smart Account
+                        recipient = this.contractAddress;
+                        console.log('[AgentWallet] No Smart Account, using V4 contract');
+                    }
+                } catch (e) {
+                    recipient = this.contractAddress;
+                    console.warn('[AgentWallet] Smart Account check failed, using V4 contract:', e);
+                }
 
                 if (this.selectedToken === 'USDC') {
+                    // USDC deposits to V4 contract require approve + deposit
+                    const approveTx = await tokenContract.approve(this.contractAddress, amountWei);
+                    await approveTx.wait();
+
+                    btn.innerHTML = '<span>⏳</span> Depositing...';
+                    const wallet = new ethers.Contract(this.contractAddress, this.WALLET_ABI, signer);
                     depositTx = await wallet.deposit(amountWei);
                 } else {
-                    // For WETH and other tokens, use depositToken
-                    depositTx = await wallet.depositToken(token.address, amountWei);
+                    // For WETH and other tokens, direct transfer to Smart Account
+                    btn.innerHTML = '<span>⏳</span> Transferring...';
+                    const TRANSFER_ABI = ['function transfer(address to, uint256 amount) returns (bool)'];
+                    const tokenWithTransfer = new ethers.Contract(token.address, TRANSFER_ABI, signer);
+                    depositTx = await tokenWithTransfer.transfer(recipient, amountWei);
                 }
             }
             await depositTx.wait();
