@@ -18,6 +18,13 @@ from eth_account import Account
 from eth_account.messages import encode_defunct
 import logging
 
+# Gas Manager for auto-refill
+try:
+    from services.gas_manager import get_gas_manager, GasManager
+    HAS_GAS_MANAGER = True
+except ImportError:
+    HAS_GAS_MANAGER = False
+
 # Load .env file
 from dotenv import load_dotenv
 load_dotenv()
@@ -427,6 +434,11 @@ class ContractMonitor:
             pk = self.agent_key if self.agent_key.startswith('0x') else f'0x{self.agent_key}'
             self.agent_account = Account.from_key(pk)
             logger.info(f"[ContractMonitor] Agent signer: {self.agent_account.address}")
+        
+        # Gas Manager for auto-refill
+        self.gas_manager = get_gas_manager() if HAS_GAS_MANAGER else None
+        if self.gas_manager:
+            logger.info("[ContractMonitor] Gas Manager initialized")
     
     def _get_web3(self) -> Web3:
         if not self.w3:
@@ -546,6 +558,9 @@ class ContractMonitor:
                 self.rebalance_check_counter += 1
                 if self.rebalance_check_counter >= self.rebalance_check_interval:
                     self.rebalance_check_counter = 0
+                    
+                    # Check gas levels for all tracked users
+                    await self._check_gas_levels()
                     await self.check_rebalance_and_drawdown()
                     
             except Exception as e:
@@ -557,6 +572,45 @@ class ContractMonitor:
     def stop(self):
         self.running = False
         print("[ContractMonitor] Stopped")
+    
+    async def _check_gas_levels(self):
+        """Check gas levels for all tracked users and auto-refill if needed."""
+        if not self.gas_manager:
+            return
+        
+        # Get all tracked user addresses
+        tracked_users = list(self.user_positions.keys())
+        if not tracked_users:
+            return
+        
+        for user_address in tracked_users:
+            try:
+                result = await self.gas_manager.check_and_refill(user_address)
+                
+                if result.get("refilled"):
+                    print(f"[ContractMonitor] ⛽ Gas refilled for {user_address[:10]}...")
+                    print(f"  Swapped ${result['refill_usdc']:.2f} USDC → {result['refill_eth']:.4f} ETH")
+                    
+                    # Log to audit trail
+                    try:
+                        from api.audit_router import log_reasoning_event
+                        await log_reasoning_event(
+                            agent_id=user_address,
+                            action="GAS_REFILLED",
+                            details={
+                                "usdc_amount": result['refill_usdc'],
+                                "eth_amount": result['refill_eth'],
+                                "remaining_tx": result.get('remaining_tx', 0)
+                            }
+                        )
+                    except Exception:
+                        pass  # Don't fail on logging
+                        
+                elif result.get("needs_refill"):
+                    print(f"[ContractMonitor] ⚠️ Low gas for {user_address[:10]}... ({result['remaining_tx']} tx left)")
+                    
+            except Exception as e:
+                logger.error(f"[ContractMonitor] Gas check error for {user_address}: {e}")
     
     async def check_for_deposits(self):
         """Check for new Deposited events"""

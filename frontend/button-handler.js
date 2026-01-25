@@ -319,24 +319,65 @@ const ButtonHandler = {
      */
     showNetworkSelector() {
         const networks = [
-            { id: 'base', name: 'Base', icon: 'https://icons.llama.fi/chains/rsz_base.jpg' },
-            { id: 'ethereum', name: 'Ethereum', icon: 'https://icons.llama.fi/chains/rsz_ethereum.jpg' },
-            { id: 'arbitrum', name: 'Arbitrum', icon: 'https://icons.llama.fi/chains/rsz_arbitrum.jpg' },
-            { id: 'optimism', name: 'Optimism', icon: 'https://icons.llama.fi/chains/rsz_optimism.jpg' },
-            { id: 'polygon', name: 'Polygon', icon: 'https://icons.llama.fi/chains/rsz_polygon.jpg' },
+            { id: 'base', name: 'Base', icon: '/icons/base.png', active: true },
+            { id: 'ethereum', name: 'Ethereum', icon: '/icons/ethereum.png', active: false },
+            { id: 'arbitrum', name: 'Arbitrum', icon: '/icons/arbitrum.png', active: false },
+            { id: 'optimism', name: 'Optimism', icon: '/icons/optimism.png', active: false },
+            { id: 'polygon', name: 'Polygon', icon: '/icons/polygon.png', active: false },
+            { id: 'solana', name: 'Solana', icon: '/icons/solana.png', soon: true },
         ];
 
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
         modal.innerHTML = `
-            <div class="modal network-modal">
-                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-                <h2>Select Network</h2>
-                <div class="network-list">
+            <div class="modal network-modal" style="
+                background: linear-gradient(145deg, rgba(20,20,25,0.98), rgba(10,10,15,0.98));
+                border: 1px solid rgba(212,168,83,0.2);
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 420px;
+                width: 90%;
+            ">
+                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="
+                    position: absolute; right: 16px; top: 16px;
+                    background: none; border: none; color: #9ca3af;
+                    font-size: 24px; cursor: pointer;
+                ">&times;</button>
+                <h2 style="margin: 0 0 20px 0; color: #fff; font-size: 18px;">Select Network</h2>
+                <div class="network-grid" style="
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 12px;
+                ">
                     ${networks.map(n => `
-                        <button class="network-option" data-network="${n.id}" onclick="ButtonHandler.switchNetwork('${n.id}', this)">
-                            <img src="${n.icon}" alt="${n.name}" onerror="this.style.display='none'">
-                            <span>${n.name}</span>
+                        <button class="network-option ${n.active ? 'active' : ''} ${n.soon ? 'soon' : ''}" 
+                            data-network="${n.id}" 
+                            ${n.soon ? 'disabled' : `onclick="ButtonHandler.switchNetwork('${n.id}', this)"`}
+                            style="
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                gap: 8px;
+                                padding: 16px 12px;
+                                background: ${n.active ? 'rgba(212,168,83,0.15)' : 'rgba(255,255,255,0.03)'};
+                                border: 1px solid ${n.active ? 'rgba(212,168,83,0.5)' : 'rgba(255,255,255,0.08)'};
+                                border-radius: 12px;
+                                cursor: ${n.soon ? 'not-allowed' : 'pointer'};
+                                opacity: ${n.soon ? '0.5' : '1'};
+                                transition: all 0.2s ease;
+                                position: relative;
+                            "
+                            ${!n.soon ? `onmouseenter="this.style.background='rgba(212,168,83,0.1)';this.style.borderColor='rgba(212,168,83,0.3)'"
+                            onmouseleave="this.style.background='${n.active ? 'rgba(212,168,83,0.15)' : 'rgba(255,255,255,0.03)'}';this.style.borderColor='${n.active ? 'rgba(212,168,83,0.5)' : 'rgba(255,255,255,0.08)'}'"` : ''}
+                        >
+                            <img src="${n.icon}" alt="${n.name}" style="
+                                width: 32px; height: 32px; border-radius: 50%;
+                                object-fit: cover;
+                            " onerror="this.style.display='none'">
+                            <span style="color: #fff; font-size: 12px; font-weight: 500;">${n.name}</span>
+                            ${n.soon ? '<span style="position:absolute;top:4px;right:4px;background:#d4a853;color:#000;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:600;">SOON</span>' : ''}
+                            ${n.active ? '<span style="position:absolute;top:4px;left:4px;width:6px;height:6px;background:#22c55e;border-radius:50%;"></span>' : ''}
                         </button>
                     `).join('')}
                 </div>

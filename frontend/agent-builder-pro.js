@@ -174,6 +174,105 @@ class AgentBuilderPro {
     }
 
     // ==========================================
+    // 🔥 DEGEN MODE SETTINGS
+    // ==========================================
+
+    /**
+     * Get all Degen mode configuration from DOM
+     * @returns {Object|null} Degen config or null if no degen settings enabled
+     */
+    getDegenConfig() {
+        const config = {
+            // Flash Leverage Engine
+            flashLoanEnabled: document.getElementById('flashLoanLoops')?.checked || false,
+            maxLeverage: this.getSelectedLeverage(),
+            deleverageThreshold: parseInt(document.getElementById('deleverageThreshold')?.value) || 15,
+
+            // Volatility Hunter
+            chaseVolatility: document.getElementById('chaseVolatility')?.checked || false,
+            minVolatilityThreshold: parseInt(document.getElementById('minVolatility')?.value) || 25,
+            ilFarmingMode: document.getElementById('ilFarmingMode')?.checked || false,
+
+            // Auto-Snipe New Pools
+            snipeNewPools: document.getElementById('snipeNewPools')?.checked || false,
+            snipeMinApy: parseInt(document.getElementById('snipeMinApy')?.value) || 100,
+            snipeMaxPosition: parseInt(document.getElementById('snipeMaxPosition')?.value) || 500,
+            snipeExitHours: parseInt(document.getElementById('snipeExitTime')?.value) || 24,
+
+            // Delta Neutral
+            autoHedge: document.getElementById('autoHedge')?.checked || false,
+            hedgeProtocol: document.getElementById('hedgeProtocol')?.value || 'synthetix',
+            deltaThreshold: parseInt(document.getElementById('deltaThreshold')?.value) || 5,
+            fundingFarming: document.getElementById('fundingFarming')?.checked ?? true
+        };
+
+        // Check if any degen mode is active
+        const hasDegenEnabled = config.flashLoanEnabled ||
+            config.chaseVolatility ||
+            config.snipeNewPools ||
+            config.autoHedge;
+
+        if (hasDegenEnabled) {
+            console.log('[AgentBuilderPro] Degen modes enabled:', {
+                flash: config.flashLoanEnabled ? `${config.maxLeverage}x` : false,
+                volatility: config.chaseVolatility ? `${config.minVolatilityThreshold}%` : false,
+                snipe: config.snipeNewPools ? `${config.snipeMinApy}% APY` : false,
+                hedge: config.autoHedge ? config.hedgeProtocol : false
+            });
+        }
+
+        return hasDegenEnabled ? config : null;
+    }
+
+    /**
+     * Get selected leverage from leverage buttons
+     */
+    getSelectedLeverage() {
+        const activeBtn = document.querySelector('.lev-btn.active');
+        return activeBtn ? parseInt(activeBtn.dataset.lev) || 3 : 3;
+    }
+
+    /**
+     * Send degen config to backend
+     */
+    async deployDegenConfig(userAddress) {
+        const config = this.getDegenConfig();
+        if (!config) return { success: true, message: 'No degen modes enabled' };
+
+        try {
+            const response = await fetch('/api/agent/degen/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_address: userAddress,
+                    flash_loan_enabled: config.flashLoanEnabled,
+                    max_leverage: config.maxLeverage,
+                    deleverage_threshold: config.deleverageThreshold,
+                    chase_volatility: config.chaseVolatility,
+                    min_volatility_threshold: config.minVolatilityThreshold,
+                    il_farming_mode: config.ilFarmingMode,
+                    snipe_new_pools: config.snipeNewPools,
+                    snipe_min_apy: config.snipeMinApy,
+                    snipe_max_position: config.snipeMaxPosition,
+                    snipe_exit_hours: config.snipeExitHours,
+                    auto_hedge: config.autoHedge,
+                    hedge_protocol: config.hedgeProtocol,
+                    delta_threshold: config.deltaThreshold,
+                    funding_farming: config.fundingFarming
+                })
+            });
+
+            const result = await response.json();
+            console.log('[AgentBuilderPro] Degen config deployed:', result);
+            return result;
+        } catch (error) {
+            console.error('[AgentBuilderPro] Failed to deploy degen config:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+
+    // ==========================================
     // VALIDATION
     // ==========================================
 

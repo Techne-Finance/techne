@@ -906,3 +906,499 @@ async def get_audit_summary(wallet: Optional[str] = None):
             "success": False,
             "error": str(e)
         }
+
+
+# ============================================
+# CONDITIONAL RULES ENGINE
+# Parse natural language instructions → trading rules
+# ============================================
+
+class CustomRulesRequest(BaseModel):
+    user_address: str
+    instructions: str
+
+# In-memory rules storage (TODO: move to Supabase)
+USER_RULES: Dict[str, List[Dict]] = {}
+
+@router.post("/rules/parse")
+async def parse_custom_rules(request: CustomRulesRequest):
+    """
+    Parse natural language instructions into conditional rules.
+    
+    Example: "for pools between 1m-5m TVL for aerodrome dual-sided, hold max 1h"
+    
+    Returns parsed rules that can be stored with /rules/set
+    """
+    try:
+        from services.instruction_parser import get_instruction_parser
+        
+        parser = get_instruction_parser()
+        rules = await parser.parse(request.instructions)
+        
+        if not rules:
+            return {
+                "success": False,
+                "message": "Could not parse instructions. Try being more specific.",
+                "rules": [],
+                "examples": [
+                    "for pools between 1m-5m TVL, hold max 1 hour",
+                    "aerodrome dual-sided: trailing stop at 15%",
+                    "exit USDC positions if APY drops below 5%",
+                    "take profit at 20%, stop loss at 10%"
+                ]
+            }
+        
+        return {
+            "success": True,
+            "rules_count": len(rules),
+            "rules": [r.to_dict() for r in rules],
+            "rules_readable": [str(r) for r in rules],
+            "original_instructions": request.instructions
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "rules": []
+        }
+
+
+@router.post("/rules/set")
+async def set_custom_rules(request: CustomRulesRequest):
+    """
+    Parse and store custom rules for a user.
+    
+    These rules will be evaluated by the RulesEngine for all positions.
+    """
+    try:
+        from services.instruction_parser import get_instruction_parser
+        
+        parser = get_instruction_parser()
+        rules = await parser.parse(request.instructions)
+        
+        if not rules:
+            return {
+                "success": False,
+                "message": "Could not parse instructions",
+                "rules_stored": 0
+            }
+        
+        # Store rules
+        user_addr = request.user_address.lower()
+        USER_RULES[user_addr] = [r.to_dict() for r in rules]
+        
+        # Also try to persist to Supabase
+        try:
+            from infrastructure.supabase_client import supabase
+            if supabase.is_available:
+                await supabase.save_user_rules(
+                    request.user_address,
+                    request.instructions,
+                    [r.to_dict() for r in rules]
+                )
+        except Exception as e:
+            print(f"[Rules] Supabase save failed: {e}")
+        
+        print(f"[Rules] Stored {len(rules)} rules for {user_addr[:10]}...")
+        for r in rules:
+            print(f"  → {r}")
+        
+        return {
+            "success": True,
+            "rules_stored": len(rules),
+            "rules": [r.to_dict() for r in rules],
+            "rules_readable": [str(r) for r in rules]
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "rules_stored": 0
+        }
+
+
+@router.get("/rules/{user_address}")
+async def get_user_rules(user_address: str):
+    """
+    Get stored rules for a user.
+    """
+    try:
+        user_addr = user_address.lower()
+        rules_data = USER_RULES.get(user_addr, [])
+        
+        # Try Supabase if not in memory
+        if not rules_data:
+            try:
+                from infrastructure.supabase_client import supabase
+                if supabase.is_available:
+                    db_rules = await supabase.get_user_rules(user_address)
+                    if db_rules:
+                        rules_data = db_rules.get("parsed_rules", [])
+                        USER_RULES[user_addr] = rules_data
+            except Exception as e:
+                print(f"[Rules] Supabase read failed: {e}")
+        
+        # Convert to readable format
+        from services.conditional_rules import ConditionalRule
+        rules = [ConditionalRule.from_dict(r) for r in rules_data]
+        
+        return {
+            "success": True,
+            "user_address": user_address,
+            "rules_count": len(rules),
+            "rules": rules_data,
+            "rules_readable": [str(r) for r in rules]
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "rules": []
+        }
+
+
+@router.delete("/rules/{user_address}")
+async def clear_user_rules(user_address: str):
+    """
+    Clear all rules for a user.
+    """
+    try:
+        user_addr = user_address.lower()
+        USER_RULES.pop(user_addr, None)
+        
+        # Also clear from Supabase
+        try:
+            from infrastructure.supabase_client import supabase
+            if supabase.is_available:
+                await supabase.delete_user_rules(user_address)
+        except:
+            pass
+        
+        return {
+            "success": True,
+            "message": "Rules cleared"
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+def get_user_rules_for_engine(user_address: str) -> List:
+    """Helper to get rules in format for RulesEngine"""
+    from services.conditional_rules import ConditionalRule
+    
+    user_addr = user_address.lower()
+    rules_data = USER_RULES.get(user_addr, [])
+    
+    return [ConditionalRule.from_dict(r) for r in rules_data]
+
+
+# ============================================
+# DEGEN STRATEGIES API
+# Flash Leverage, Volatility Hunter, Auto-Snipe, Delta Neutral
+# ============================================
+
+class DegenConfigRequest(BaseModel):
+    user_address: str
+    flash_loan_enabled: bool = False
+    max_leverage: float = 3.0
+    deleverage_threshold: float = 15.0
+    chase_volatility: bool = False
+    min_volatility_threshold: float = 25.0
+    il_farming_mode: bool = False
+    snipe_new_pools: bool = False
+    snipe_min_apy: float = 100.0
+    snipe_max_position: float = 500.0
+    snipe_exit_hours: int = 24
+    auto_hedge: bool = False
+    hedge_protocol: str = "synthetix"
+    delta_threshold: float = 5.0
+    funding_farming: bool = True
+
+class FlashLeverageRequest(BaseModel):
+    user_address: str
+    collateral: float
+    leverage: float
+    protocol: str = "aave"
+
+class VolatilityHuntRequest(BaseModel):
+    user_address: str
+    pool_address: str
+    amount: float
+    il_farming: bool = False
+
+class DeltaNeutralRequest(BaseModel):
+    user_address: str
+    lp_amount: float
+    volatile_asset: str = "WETH"
+    volatile_exposure: float = 0.5
+    hedge_protocol: str = "synthetix"
+
+
+# In-memory degen configs
+USER_DEGEN_CONFIGS: Dict[str, Dict] = {}
+
+
+@router.post("/degen/config")
+async def set_degen_config(request: DegenConfigRequest):
+    """Store user's degen strategy configuration"""
+    try:
+        from services.degen_strategies import DegenConfig
+        
+        config = DegenConfig(
+            flash_loan_enabled=request.flash_loan_enabled,
+            max_leverage=request.max_leverage,
+            deleverage_threshold=request.deleverage_threshold,
+            chase_volatility=request.chase_volatility,
+            min_volatility_threshold=request.min_volatility_threshold,
+            il_farming_mode=request.il_farming_mode,
+            snipe_new_pools=request.snipe_new_pools,
+            snipe_min_apy=request.snipe_min_apy,
+            snipe_max_position=request.snipe_max_position,
+            snipe_exit_hours=request.snipe_exit_hours,
+            auto_hedge=request.auto_hedge,
+            hedge_protocol=request.hedge_protocol,
+            delta_threshold=request.delta_threshold,
+            funding_farming=request.funding_farming
+        )
+        
+        USER_DEGEN_CONFIGS[request.user_address.lower()] = {
+            "config": config,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        enabled = []
+        if config.flash_loan_enabled: enabled.append(f"Flash Leverage ({config.max_leverage}x)")
+        if config.chase_volatility: enabled.append(f"Volatility Hunter ({config.min_volatility_threshold}%)")
+        if config.snipe_new_pools: enabled.append(f"Auto-Snipe ({config.snipe_min_apy}% APY)")
+        if config.auto_hedge: enabled.append(f"Delta Neutral ({config.hedge_protocol})")
+        
+        print(f"[Degen] Config saved for {request.user_address[:10]}")
+        print(f"  Enabled: {', '.join(enabled) if enabled else 'None'}")
+        
+        return {
+            "success": True,
+            "enabled_strategies": enabled,
+            "config": request.dict()
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/degen/flash-leverage")
+async def execute_flash_leverage(request: FlashLeverageRequest):
+    """Execute flash loan leverage position"""
+    try:
+        from services.degen_strategies import flash_leverage_engine
+        
+        result = await flash_leverage_engine.create_leveraged_position(
+            request.user_address,
+            request.collateral,
+            request.leverage,
+            request.protocol
+        )
+        
+        return result
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/degen/volatility-hunt")
+async def execute_volatility_hunt(request: VolatilityHuntRequest):
+    """Enter volatility hunting position"""
+    try:
+        from services.degen_strategies import volatility_hunter
+        
+        # Check volatility first
+        vol_data = await volatility_hunter.check_volatility(request.pool_address)
+        
+        result = await volatility_hunter.enter_volatile_pool(
+            request.user_address,
+            request.pool_address,
+            request.amount,
+            request.il_farming
+        )
+        
+        result["volatility_data"] = vol_data
+        return result
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/degen/discover-pools")
+async def discover_new_pools():
+    """Discover new pools for sniping"""
+    try:
+        from services.degen_strategies import auto_sniper
+        
+        pools = await auto_sniper.discover_new_pools()
+        
+        return {
+            "success": True,
+            "pools_found": len(pools),
+            "pools": pools
+        }
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/degen/snipe")
+async def execute_snipe(user_address: str, pool_index: int = 0, amount: float = 500, exit_hours: int = 24):
+    """Execute snipe on discovered pool"""
+    try:
+        from services.degen_strategies import auto_sniper
+        
+        if not auto_sniper.discovered_pools:
+            await auto_sniper.discover_new_pools()
+        
+        if pool_index >= len(auto_sniper.discovered_pools):
+            return {"success": False, "error": "Pool index out of range"}
+        
+        pool = auto_sniper.discovered_pools[pool_index]
+        result = await auto_sniper.snipe_pool(user_address, pool, amount, exit_hours)
+        
+        return result
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/degen/delta-neutral")
+async def execute_delta_neutral(request: DeltaNeutralRequest):
+    """Create delta-neutral hedged position"""
+    try:
+        from services.degen_strategies import delta_neutral_manager
+        
+        result = await delta_neutral_manager.create_hedged_position(
+            request.user_address,
+            request.lp_amount,
+            request.volatile_asset,
+            request.volatile_exposure,
+            request.hedge_protocol
+        )
+        
+        return result
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/degen/positions/{user_address}")
+async def get_degen_positions(user_address: str):
+    """Get all degen positions for a user"""
+    try:
+        from services.degen_strategies import (
+            flash_leverage_engine, 
+            volatility_hunter, 
+            auto_sniper,
+            delta_neutral_manager
+        )
+        
+        positions = {
+            "leveraged": [],
+            "volatility": [],
+            "sniped": [],
+            "hedged": []
+        }
+        
+        user_addr = user_address.lower()
+        
+        # Flash leverage positions
+        for pos_id, pos in flash_leverage_engine.positions.items():
+            if pos.user_address.lower() == user_addr:
+                positions["leveraged"].append({
+                    "position_id": pos.position_id,
+                    "protocol": pos.protocol,
+                    "leverage": pos.leverage,
+                    "collateral": pos.collateral,
+                    "borrowed": pos.borrowed,
+                    "current_value": pos.current_value,
+                    "liquidation_price": pos.liquidation_price
+                })
+        
+        # Volatility positions
+        for pos_id, pos in volatility_hunter.active_positions.items():
+            if pos.get("user_address", "").lower() == user_addr:
+                positions["volatility"].append(pos)
+        
+        # Sniped positions
+        for pos_id, pos in auto_sniper.sniped_positions.items():
+            if pos.get("user_address", "").lower() == user_addr:
+                positions["sniped"].append(pos)
+        
+        # Hedged positions
+        for pos_id, pos in delta_neutral_manager.hedged_positions.items():
+            if pos.user_address.lower() == user_addr:
+                positions["hedged"].append({
+                    "position_id": pos.position_id,
+                    "lp_value": pos.lp_value,
+                    "short_value": pos.short_value,
+                    "hedge_protocol": pos.hedge_protocol,
+                    "delta": pos.delta,
+                    "funding_collected": pos.funding_collected
+                })
+        
+        total_positions = sum(len(v) for v in positions.values())
+        
+        return {
+            "success": True,
+            "user_address": user_address,
+            "total_positions": total_positions,
+            "positions": positions
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/degen/run")
+async def run_degen_strategies(user_address: str):
+    """Execute all enabled degen strategies for user"""
+    try:
+        from services.degen_strategies import run_degen_strategies as run_strategies, DegenConfig
+        
+        user_addr = user_address.lower()
+        user_config = USER_DEGEN_CONFIGS.get(user_addr)
+        
+        if not user_config:
+            return {"success": False, "error": "No degen config set. Use /degen/config first."}
+        
+        config = user_config["config"]
+        results = await run_strategies(user_address, config)
+        
+        return {
+            "success": True,
+            "results": results
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+

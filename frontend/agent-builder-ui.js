@@ -117,18 +117,7 @@ class AgentBuilderUI {
                 document.body.dataset.builderMode = mode;
 
                 console.log('[AgentBuilder] Mode switched to:', mode);
-
-                // Show/hide panels based on mode
-                const instantPanel = document.getElementById('aiInstantPanel');
-                const configPanel = document.getElementById('agentConfigPanel');
-
-                if (mode === 'instant') {
-                    if (instantPanel) instantPanel.style.display = 'block';
-                    if (configPanel) configPanel.style.display = 'none';
-                } else {
-                    if (instantPanel) instantPanel.style.display = 'none';
-                    if (configPanel) configPanel.style.display = 'block';
-                }
+                // Panel visibility is controlled by CSS via [data-builder-mode] attribute
             });
         });
     }

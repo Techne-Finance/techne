@@ -4709,6 +4709,18 @@ body.section-verify .main-content {
     justify-content: start;
 }
 
+@media (max-width: 1200px) {
+    .portfolio-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .portfolio-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .portfolio-stat-card {
     background: linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.8) 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -4718,16 +4730,19 @@ body.section-verify .main-content {
     align-items: center;
     gap: 16px;
     transition: all 0.2s ease;
+    cursor: default;
 }
 
 .portfolio-stat-card:hover {
     border-color: rgba(212, 175, 55, 0.3);
     transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .portfolio-stat-card.primary {
     background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(212, 175, 55, 0.05) 100%);
     border-color: rgba(212, 175, 55, 0.3);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
 }
 
 .portfolio-stat-card .stat-icon {
@@ -4796,17 +4811,19 @@ body.section-verify .main-content {
     gap: 16px;
 }
 
-/* Portfolio Cards */
+/* Portfolio Cards - shadcn style */
 .portfolio-card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 14px;
+    background: rgba(15, 15, 25, 0.8);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
     padding: 20px;
     transition: all 0.2s ease;
 }
 
 .portfolio-card:hover {
     border-color: rgba(212, 168, 83, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .portfolio-card .card-header {
@@ -9947,8 +9964,14 @@ body[data-builder-mode="instant"] .agent-config-panel {
     padding: var(--space-5);
     text-align: center;
     cursor: pointer;
-    transition: all 0.25s ease;
+    transition: all 0.2s ease;
     position: relative;
+}
+
+.strategy-card:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(212, 168, 83, 0.2);
 }
 
 .strategy-card:hover {
@@ -10219,6 +10242,7 @@ body[data-builder-mode="flexible"] .agent-config-panel,
 body[data-builder-mode="advanced"] .agent-config-panel {
     display: block !important;
 }
+
 /* ==========================================
    REASONING TERMINAL (Neural Terminal v2.0)
    Cyberpunk-style decision logs display
@@ -10298,11 +10322,37 @@ body[data-builder-mode="advanced"] .agent-config-panel {
     line-height: 1.4;
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
     animation: fadeIn 0.3s ease-out;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.terminal-log:hover {
+    background: rgba(255, 255, 255, 0.02);
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateX(-10px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+
+    .terminal-log,
+    .loading-cursor {
+        animation: none;
+    }
+
+    .terminal-log {
+        transition: none;
+    }
 }
 
 .log-time {
@@ -10326,13 +10376,33 @@ body[data-builder-mode="advanced"] .agent-config-panel {
 }
 
 /* Color variants */
-.terminal-log.log-green .log-category { color: #22c55e; }
-.terminal-log.log-yellow .log-category { color: #eab308; }
-.terminal-log.log-yellow .log-message { color: #fef3c7; }
-.terminal-log.log-red .log-category { color: #ef4444; }
-.terminal-log.log-red .log-message { color: #fecaca; }
-.terminal-log.log-cyan .log-category { color: #06b6d4; }
-.terminal-log.log-cyan .log-message { color: #cffafe; }
+.terminal-log.log-green .log-category {
+    color: #22c55e;
+}
+
+.terminal-log.log-yellow .log-category {
+    color: #eab308;
+}
+
+.terminal-log.log-yellow .log-message {
+    color: #fef3c7;
+}
+
+.terminal-log.log-red .log-category {
+    color: #ef4444;
+}
+
+.terminal-log.log-red .log-message {
+    color: #fecaca;
+}
+
+.terminal-log.log-cyan .log-category {
+    color: #06b6d4;
+}
+
+.terminal-log.log-cyan .log-message {
+    color: #cffafe;
+}
 
 .terminal-loading,
 .terminal-empty,
@@ -10350,8 +10420,16 @@ body[data-builder-mode="advanced"] .agent-config-panel {
 }
 
 @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
+
+    0%,
+    50% {
+        opacity: 1;
+    }
+
+    51%,
+    100% {
+        opacity: 0;
+    }
 }
 
 .terminal-footer {
@@ -10370,4 +10448,646 @@ body[data-builder-mode="advanced"] .agent-config-panel {
 .sidebar-terminal {
     margin: 16px 0;
     border-radius: 8px;
+}
+
+/* ============================================
+   BUILD SECTION - Mode Toggle Enhancement
+   ============================================ */
+
+/* Mode Toggle Container */
+.mode-toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.mode-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Mode Toggle Pill Group */
+.mode-toggle {
+    display: flex;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+    gap: 4px;
+}
+
+/* Mode Buttons */
+.mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    position: relative;
+}
+
+.mode-btn:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+}
+
+.mode-btn.active {
+    background: var(--gradient-gold);
+    color: #0a0a10;
+    box-shadow: 0 2px 8px rgba(212, 168, 83, 0.3);
+}
+
+.mode-btn.active .mode-icon svg path,
+.mode-btn.active .mode-icon svg rect,
+.mode-btn.active .mode-icon svg circle {
+    stroke: #0a0a10;
+    fill-opacity: 0.4;
+}
+
+.mode-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Flexible mode badge */
+.mode-btn[data-mode="flexible"]::after {
+    content: "PRO";
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    font-size: 8px;
+    font-weight: 700;
+    padding: 2px 4px;
+    background: var(--info);
+    color: #fff;
+    border-radius: 3px;
+    letter-spacing: 0.3px;
+}
+
+/* Advanced mode badge */
+.mode-btn[data-mode="advanced"]::after {
+    content: "MAX";
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    font-size: 8px;
+    font-weight: 700;
+    padding: 2px 4px;
+    background: var(--danger);
+    color: #fff;
+    border-radius: 3px;
+    letter-spacing: 0.3px;
+}
+
+/* Remove PRO/MAX badges - clean minimal buttons */
+.mode-btn[data-mode="flexible"]::after,
+.mode-btn[data-mode="advanced"]::after {
+    display: none;
+}
+
+/* ============================================
+   BUILD SECTION - Panel Visibility
+   ============================================ */
+
+/* Hide flexible/advanced panels by default */
+[data-builder-mode="instant"] #agentConfigPanel {
+    display: none !important;
+}
+
+[data-builder-mode="instant"] #aiInstantPanel {
+    display: block !important;
+}
+
+[data-builder-mode="flexible"] #aiInstantPanel,
+[data-builder-mode="advanced"] #aiInstantPanel {
+    display: none !important;
+}
+
+[data-builder-mode="flexible"] #agentConfigPanel,
+[data-builder-mode="advanced"] #agentConfigPanel {
+    display: block !important;
+}
+
+/* Advanced-only sections */
+.advanced-only {
+    display: none;
+}
+
+[data-builder-mode="advanced"] .advanced-only {
+    display: block;
+}
+
+/* Pro mode sections - visible only in Advanced mode */
+.pro-mode-only {
+    display: none;
+}
+
+[data-builder-mode="advanced"] .pro-mode-only {
+    display: block;
+}
+
+/* ============================================
+   BUILD SECTION - SHADCN-STYLE COMPACT CONFIG
+   Minimal padding, clean borders, inline controls
+   ============================================ */
+
+.agent-config-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.agent-config-panel::-webkit-scrollbar {
+    width: 3px;
+}
+
+.agent-config-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.agent-config-panel::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
+
+/* Compact shadcn-style config cards */
+.agent-config-panel .config-card {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    transition: border-color var(--transition-fast);
+}
+
+.agent-config-panel .config-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.agent-config-panel .config-card h3 {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.agent-config-panel .config-card h3 svg {
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+    opacity: 0.7;
+}
+
+/* Compact Chain Selector - 4 columns */
+.chain-selector-build {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+}
+
+.chain-btn-build {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 4px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+}
+
+.chain-btn-build img {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+}
+
+.chain-btn-build span:last-child {
+    font-size: 9px;
+}
+
+.chain-btn-build:hover:not(.disabled) {
+    border-color: var(--gold-dim);
+}
+
+.chain-btn-build.active {
+    background: var(--gold-subtle);
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.chain-btn-build.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.coming-soon-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 7px;
+    font-weight: 600;
+    padding: 1px 3px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    border-radius: 2px;
+}
+
+/* Compact Pool Type - Horizontal inline buttons */
+.pool-type-selector-build {
+    display: flex;
+    gap: 4px;
+}
+
+.pool-type-btn-build {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 6px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+}
+
+.pool-type-btn-build:hover {
+    border-color: var(--gold-dim);
+}
+
+.pool-type-btn-build.active {
+    background: var(--gold-subtle);
+    border-color: var(--gold);
+}
+
+.pool-type-btn-build .type-icon {
+    display: flex;
+    width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+}
+
+.pool-type-btn-build .type-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.pool-type-btn-build .type-name {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text);
+    display: block;
+}
+
+.pool-type-btn-build .type-desc {
+    display: none;
+    /* Hidden for compact mode */
+}
+
+/* TVL Filter Compact */
+.tvl-range-container {
+    position: relative;
+}
+
+.tvl-range-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.tvl-range-label {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.tvl-range-values {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold);
+}
+
+.tvl-custom-btn {
+    padding: 4px 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.tvl-custom-btn:hover {
+    border-color: var(--gold-dim);
+    color: var(--gold);
+}
+
+/* Dual Range Slider */
+.dual-range-wrapper {
+    position: relative;
+    height: 6px;
+    background: var(--bg-deep);
+    border-radius: 3px;
+    margin: 16px 0;
+}
+
+.dual-range-fill {
+    position: absolute;
+    height: 100%;
+    background: var(--gradient-gold);
+    border-radius: 3px;
+}
+
+.dual-range-slider {
+    position: absolute;
+    width: 100%;
+    height: 6px;
+    background: transparent;
+    pointer-events: none;
+    -webkit-appearance: none;
+}
+
+.dual-range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--gold);
+    border-radius: 50%;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.tvl-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+/* ============================================
+   DEGEN MODE - Advanced Settings for psychopaths
+   ============================================ */
+
+.degen-card {
+    border-color: rgba(239, 68, 68, 0.3) !important;
+    background: rgba(239, 68, 68, 0.03) !important;
+}
+
+.degen-card:hover {
+    border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.degen-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: var(--danger);
+    color: #fff;
+}
+
+.degen-badge.warning {
+    background: var(--warning);
+    color: #000;
+}
+
+.degen-badge.success {
+    background: var(--success);
+    color: #fff;
+}
+
+.degen-badge.info {
+    background: var(--info);
+    color: #fff;
+}
+
+/* Danger toggle slider */
+.toggle-slider.danger {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+input:checked+.toggle-slider.danger {
+    background: var(--danger);
+}
+
+/* Warning toggle slider */
+.toggle-slider.warning {
+    background: rgba(234, 179, 8, 0.2);
+}
+
+input:checked+.toggle-slider.warning {
+    background: var(--warning);
+}
+
+/* Success toggle slider */
+.toggle-slider.success {
+    background: rgba(34, 197, 94, 0.2);
+}
+
+input:checked+.toggle-slider.success {
+    background: var(--success);
+}
+
+/* Info toggle slider */
+.toggle-slider.info {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+input:checked+.toggle-slider.info {
+    background: var(--info);
+}
+
+/* Leverage buttons */
+.leverage-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.lev-btn {
+    flex: 1;
+    padding: 8px 0;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.lev-btn:hover {
+    border-color: var(--gold-dim);
+    color: var(--text);
+}
+
+.lev-btn.active {
+    background: var(--gold-subtle);
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.lev-btn.danger {
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.lev-btn.danger:hover,
+.lev-btn.danger.active {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+/* Hint text */
+.hint-text {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    opacity: 0.8;
+}
+
+/* Danger value */
+.allocation-value.danger {
+    color: var(--danger);
+}
+
+/* Card description */
+.card-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+/* ============================================
+   INFO TOOLTIP ICONS
+   ============================================ */
+
+.info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    margin-left: 6px;
+    background: rgba(212, 168, 83, 0.15);
+    border: 1px solid rgba(212, 168, 83, 0.3);
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--gold);
+    cursor: help;
+    position: relative;
+    vertical-align: middle;
+}
+
+.info-icon:hover {
+    background: rgba(212, 168, 83, 0.25);
+    border-color: var(--gold);
+}
+
+/* Tooltip popup */
+.info-icon::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text);
+    white-space: normal;
+    width: max-content;
+    max-width: 220px;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.15s ease;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+/* Arrow */
+.info-icon::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--border);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.15s ease;
+    z-index: 1001;
+}
+
+.info-icon:hover::after,
+.info-icon:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Red/danger info icon */
+.info-icon.danger {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+}
+
+.info-icon.danger:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: var(--danger);
+}
+
+/* Warning info icon */
+.info-icon.warning {
+    background: rgba(234, 179, 8, 0.15);
+    border-color: rgba(234, 179, 8, 0.3);
+    color: var(--warning);
+}
+
+/* Success info icon */
+.info-icon.success {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: var(--success);
 }

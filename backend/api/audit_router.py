@@ -107,6 +107,23 @@ REASON_MAPPINGS = {
         "category": "GUARD",
         "icon": "🌾",
         "template": "Harvest triggered. Collected ${rewards:.2f} in rewards."
+    },
+    
+    # [GAS] - Gas Management
+    "GAS_LOW": {
+        "category": "GAS",
+        "icon": "⛽",
+        "template": "Low gas detected ({remaining_tx} tx remaining). Preparing refill."
+    },
+    "GAS_REFILLED": {
+        "category": "GAS",
+        "icon": "⛽",
+        "template": "Swapped ${usdc_amount:.2f} USDC → {eth_amount:.4f} ETH for gas."
+    },
+    "GAS_OK": {
+        "category": "GAS",
+        "icon": "✓",
+        "template": "Gas level OK. {remaining_tx} transactions available."
     }
 }
 
