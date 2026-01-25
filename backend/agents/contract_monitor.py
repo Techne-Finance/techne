@@ -189,6 +189,113 @@ PROTOCOLS = {
         "apy": 12.0,
         "tvl": 150000000,  # $150M TVL
         "volatility": 10.0
+    },
+    # ================================================
+    # ADDITIONAL DUAL-SIDED PROTOCOLS ON BASE
+    # ================================================
+    "extra": {
+        "address": "0x2B1D1821B8bf4c2CA36EFd64a4A03deeA2eEeaDB",  # Extra Finance vaults
+        "router": "0x2B1D1821B8bf4c2CA36EFd64a4A03deeA2eEeaDB",
+        "name": "Extra Finance",
+        "asset": "USDC/WETH",
+        "pool_type": "dual",
+        "risk_level": "medium",
+        "is_lending": False,
+        "is_leveraged_farm": True,  # Extra = leveraged yield farming
+        "audited": True,
+        "supply_sig": "deposit(uint256,address)",
+        "apy": 25.0,  # Higher due to leverage
+        "tvl": 35000000,
+        "volatility": 18.0,
+        "max_leverage": 3.0
+    },
+    "merkl": {
+        "address": "0x8BB4C975Ff3c250e0ceEA271728547f3802B36Fd",  # Merkl distributor Base
+        "router": None,  # Merkl is reward distributor, not DEX
+        "name": "Merkl Rewards",
+        "asset": "MULTI",
+        "pool_type": "dual",
+        "risk_level": "low",
+        "is_lending": False,
+        "is_reward_aggregator": True,  # Collects rewards from multiple pools
+        "audited": True,
+        "supply_sig": None,  # No direct supply - incentivizes other protocols
+        "apy": 15.0,  # Variable based on incentives
+        "tvl": 50000000,
+        "volatility": 8.0
+    },
+    "curve": {
+        "address": "0x417Ac0e078398C154EdFadD9Ef675d30Be60Af93",  # Curve 3pool Base
+        "router": "0x417Ac0e078398C154EdFadD9Ef675d30Be60Af93",
+        "name": "Curve 3pool",
+        "asset": "USDC/USDT/DAI",
+        "pool_type": "dual",  # Technically tri-pool but treat as dual
+        "risk_level": "low",
+        "is_lending": False,
+        "is_stableswap": True,  # Optimized for stables
+        "audited": True,
+        "supply_sig": "add_liquidity(uint256[3],uint256)",
+        "apy": 8.5,
+        "tvl": 45000000,
+        "volatility": 2.5,  # Very low for stableswap
+        "slippage": 0.001  # 0.1% typical
+    },
+    "baseswap": {
+        "address": "0x327Df1E6de05895d2ab08513aaDD9313Fe505d86",  # BaseSwap router
+        "router": "0x327Df1E6de05895d2ab08513aaDD9313Fe505d86",
+        "name": "BaseSwap",
+        "asset": "USDC/WETH",
+        "pool_type": "dual",
+        "risk_level": "medium",
+        "is_lending": False,
+        "audited": True,
+        "supply_sig": "addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)",
+        "apy": 22.0,
+        "tvl": 28000000,
+        "volatility": 14.0
+    },
+    "sushiswap": {
+        "address": "0xFbc12984689e5f15626Bad03Ad60160Fe98B303C",  # SushiSwap V3 Base
+        "router": "0xFB7eF66a7e61224DD6FcD0D7d9C3Ae5E8CC2e95d",
+        "name": "SushiSwap V3",
+        "asset": "USDC/WETH",
+        "pool_type": "dual",
+        "risk_level": "low",
+        "is_lending": False,
+        "audited": True,
+        "supply_sig": "mint(address,int24,int24,uint128,bytes)",
+        "apy": 14.0,
+        "tvl": 42000000,
+        "volatility": 11.0
+    },
+    "balancer": {
+        "address": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",  # Balancer Vault
+        "router": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
+        "name": "Balancer V2",
+        "asset": "USDC/WETH/cbBTC",
+        "pool_type": "dual",
+        "risk_level": "low",
+        "is_lending": False,
+        "is_weighted_pool": True,
+        "audited": True,
+        "supply_sig": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+        "apy": 10.5,
+        "tvl": 65000000,
+        "volatility": 9.0
+    },
+    "velodrome_v2": {
+        "address": "0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db",  # Velodrome V2 (Base fork)
+        "router": "0xa062aE8A9c5e11aaA026fc2670B0D65ccc8B2858",
+        "name": "Velodrome V2",
+        "asset": "USDC/WETH",
+        "pool_type": "dual",
+        "risk_level": "medium",
+        "is_lending": False,
+        "audited": True,
+        "supply_sig": "addLiquidity(address,address,bool,uint256,uint256,uint256,uint256,address,uint256)",
+        "apy": 20.0,
+        "tvl": 38000000,
+        "volatility": 13.0
     }
 }
 

@@ -314,6 +314,15 @@ try:
 except ImportError as e:
     print(f"[Metrics] Router not available: {e}")
 
+# Include Protocols API (Protocol list for builder)
+try:
+    from api.protocols_router import router as protocols_router
+    app.include_router(protocols_router)
+    print("[Protocols] Protocol list API loaded - /api/protocols")
+except ImportError as e:
+    print(f"[Protocols] Router not available: {e}")
+
+
 # Security Middleware (Production-grade protection)
 try:
     from security import SecurityMiddleware, RateLimiter, RateLimitConfig
