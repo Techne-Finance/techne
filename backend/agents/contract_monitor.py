@@ -1235,8 +1235,8 @@ class ContractMonitor:
                 print(f"[ContractMonitor] Failed to decrypt agent key: {decrypt_error}", flush=True)
                 return {"success": False, "error": "Key decryption failed"}
             
-            # Use LlamaNodes RPC for allocation 
-            w3 = Web3(Web3.HTTPProvider('https://base.llamarpc.com'))
+            # Use Base mainnet RPC (LlamaNodes was returning wrong balances)
+            w3 = Web3(Web3.HTTPProvider('https://mainnet.base.org'))
             
             # Check if agent has USDC balance
             USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
@@ -1266,9 +1266,9 @@ class ContractMonitor:
                 actual_amount
             ).build_transaction({
                 'from': agent_account.address,
-                'nonce': w3.eth.get_transaction_count(agent_account.address, 'pending'),  # Fresh nonce
+                'nonce': w3.eth.get_transaction_count(agent_account.address, 'latest'),  # Use latest to avoid pending conflicts
                 'gas': 150000,  # Unique gas to avoid duplicate TX hash
-                'gasPrice': int(w3.eth.gas_price * 15),  # Higher multiplier to avoid underpriced error
+                'gasPrice': int(w3.eth.gas_price * 25),  # Very high multiplier for Base
                 'chainId': 8453
             })
             
@@ -1305,9 +1305,9 @@ class ContractMonitor:
                 0  # referralCode
             ).build_transaction({
                 'from': agent_account.address,
-                'nonce': w3.eth.get_transaction_count(agent_account.address, 'pending'),  # Fresh nonce after approve
+                'nonce': w3.eth.get_transaction_count(agent_account.address, 'latest') + 1,  # +1 after approve tx
                 'gas': 350000,  # Unique gas to avoid duplicate TX hash
-                'gasPrice': int(w3.eth.gas_price * 15),  # Higher multiplier to avoid underpriced error
+                'gasPrice': int(w3.eth.gas_price * 25),  # Very high multiplier for Base
                 'chainId': 8453
             })
             
