@@ -749,12 +749,31 @@ class StrategyExecutor:
                         
                         print(f"[StrategyExecutor] Building LP flow for {pair} with ${allocation_per_pool:.2f}")
                         
-                        steps = await builder.build_dual_lp_flow(
+                        # Use CoW Swap for first swap (MEV protection, gasless)
+                        cow_result = await builder.build_dual_lp_flow_cowswap(
                             usdc_amount=usdc_wei,
                             target_pair=pair,
-                            recipient=agent_account.address,
-                            slippage=agent.get("slippage", 0.5)
+                            agent_address=agent_account.address,
+                            agent_private_key=pk,
+                            primary_token="USDC",  # TODO: Get from agent config
+                            slippage=agent.get("slippage", 1.0)
                         )
+                        
+                        if not cow_result.get("success"):
+                            print(f"[StrategyExecutor] CoW Swap failed: {cow_result.get('error')}")
+                            print(f"[StrategyExecutor] Falling back to Aerodrome-only flow...")
+                            
+                            # Fallback to original method (no CoW)
+                            steps = await builder.build_dual_lp_flow(
+                                usdc_amount=usdc_wei,
+                                target_pair=pair,
+                                recipient=agent_account.address,
+                                slippage=agent.get("slippage", 0.5)
+                            )
+                        else:
+                            print(f"[StrategyExecutor] ✅ CoW order filled: {cow_result.get('cow_order_id', '')[:20]}...")
+                            print(f"[StrategyExecutor] WETH received: {cow_result.get('weth_received', 0) / 1e18:.6f}")
+                            steps = cow_result.get("lp_steps", [])
                         
                         print(f"[StrategyExecutor] Got {len(steps)} LP steps, executing...")
                         

@@ -410,6 +410,236 @@ class AerodromeDualLPBuilder:
             print(f"   Calldata: {calldata_hex}...")
         
         print("\n" + "=" * 60)
+    
+    async def build_dual_lp_flow_cowswap(
+        self,
+        usdc_amount: int,
+        target_pair: str,
+        agent_address: str,
+        agent_private_key: str,
+        primary_token: str = "USDC",
+        slippage: float = 1.0
+    ) -> Dict[str, Any]:
+        """
+        Build dual LP flow using CoW Swap for MEV protection.
+        
+        HYBRID APPROACH:
+        1. CoW Swap: primary_token → WETH (MEV protected, gasless)
+        2. Aerodrome: 50% WETH → target token (on-chain for small tokens)
+        3. Aerodrome: addLiquidity(WETH + target)
+        
+        Args:
+            usdc_amount: Amount in primary_token (6 decimals for USDC/USDT)
+            target_pair: LP pair like "WETH/VIRTUALS"
+            agent_address: Agent wallet address
+            agent_private_key: Agent's decrypted private key
+            primary_token: User's primary token (USDC, USDT, etc.)
+            slippage: Max slippage % for CoW Swap (default 1%)
+            
+        Returns:
+            Result dict with {success, cow_order_id, lp_steps, weth_received}
+        """
+        from integrations.cow_swap import cow_client
+        import asyncio
+        
+        result = {
+            "success": False,
+            "cow_order_id": None,
+            "weth_received": 0,
+            "lp_steps": [],
+            "error": None
+        }
+        
+        # Parse target pair
+        tokens = [t.strip().upper() for t in target_pair.replace(" ", "").split("/")]
+        if len(tokens) != 2 or "WETH" not in tokens:
+            result["error"] = f"Invalid pair, need WETH: {target_pair}"
+            return result
+        
+        target_token = tokens[1] if tokens[0] == "WETH" else tokens[0]
+        
+        try:
+            # ==========================================
+            # STEP 1: CoW Swap primary_token → WETH
+            # MEV protected, gasless swap
+            # ==========================================
+            print(f"[DualLP+CoW] Step 1: CoW Swap {primary_token} → WETH", flush=True)
+            print(f"[DualLP+CoW] Amount: {usdc_amount / 1e6:.2f} {primary_token}", flush=True)
+            
+            primary_addr = self._get_token_address(primary_token)
+            weth_addr = self._get_token_address("WETH")
+            
+            # Execute CoW Swap
+            cow_result = await cow_client.swap(
+                sell_token=primary_addr,
+                buy_token=weth_addr,
+                sell_amount=usdc_amount,
+                from_address=agent_address,
+                private_key=agent_private_key,
+                max_slippage_percent=slippage
+            )
+            
+            if not cow_result or not cow_result.get("order_uid"):
+                result["error"] = f"CoW Swap failed: {cow_result}"
+                return result
+            
+            result["cow_order_id"] = cow_result.get("order_uid")
+            print(f"[DualLP+CoW] CoW order created: {result['cow_order_id'][:20]}...", flush=True)
+            
+            # Wait for CoW order to fill (batch auction ~30 secs)
+            print("[DualLP+CoW] Waiting for CoW order fill...", flush=True)
+            max_wait = 120  # 2 minutes max
+            poll_interval = 5
+            waited = 0
+            weth_received = 0
+            
+            while waited < max_wait:
+                status = await cow_client.get_order_status(result["cow_order_id"])
+                if status.get("status") == "fulfilled":
+                    weth_received = int(status.get("executedBuyAmount", 0))
+                    print(f"[DualLP+CoW] ✅ CoW order filled! Received {weth_received / 1e18:.6f} WETH", flush=True)
+                    break
+                elif status.get("status") in ["cancelled", "expired"]:
+                    result["error"] = f"CoW order {status.get('status')}"
+                    return result
+                    
+                await asyncio.sleep(poll_interval)
+                waited += poll_interval
+                print(f"[DualLP+CoW] Waiting... {waited}s", flush=True)
+            
+            if weth_received == 0:
+                result["error"] = "CoW order timeout - not filled in 2 minutes"
+                return result
+            
+            result["weth_received"] = weth_received
+            
+            # ==========================================
+            # STEP 2: CoW Swap 50% WETH → target token
+            # Also via CoW for MEV protection + CoW aggregates Aerodrome
+            # ==========================================
+            weth_to_swap = weth_received // 2
+            weth_to_keep = weth_received - weth_to_swap
+            
+            print(f"[DualLP+CoW] Step 2: CoW Swap {weth_to_swap / 1e18:.6f} WETH → {target_token}", flush=True)
+            
+            target_addr = self._get_token_address(target_token)
+            
+            # Execute second CoW Swap: WETH → target
+            cow_result2 = await cow_client.swap(
+                sell_token=weth_addr,
+                buy_token=target_addr,
+                sell_amount=weth_to_swap,
+                from_address=agent_address,
+                private_key=agent_private_key,
+                max_slippage_percent=slippage
+            )
+            
+            if not cow_result2 or not cow_result2.get("order_uid"):
+                print(f"[DualLP+CoW] Second CoW swap failed, falling back to Aerodrome")
+                # Fallback to Aerodrome on-chain
+                target_quote = self.get_swap_quote("WETH", target_token, weth_to_swap)
+                if target_quote == 0:
+                    result["error"] = f"Failed to get WETH→{target_token} quote"
+                    return result
+                    
+                deadline = int(datetime.utcnow().timestamp()) + 1200
+                slippage_mult = (100 - slippage) / 100
+                target_min = int(target_quote * slippage_mult)
+                
+                lp_steps = []
+                
+                # Approve WETH for swap
+                approve_weth = self.build_approve_calldata("WETH", AERODROME_ROUTER, weth_to_swap)
+                lp_steps.append({
+                    "step": 1,
+                    "protocol": TOKENS["WETH"],
+                    "calldata": approve_weth,
+                    "description": f"Approve {weth_to_swap / 1e18:.6f} WETH for swap"
+                })
+                
+                # Swap WETH → target via Aerodrome (fallback)
+                swap_calldata = self.build_swap_calldata(
+                    "WETH", target_token, weth_to_swap, target_min, agent_address, deadline
+                )
+                lp_steps.append({
+                    "step": 2,
+                    "protocol": AERODROME_ROUTER,
+                    "calldata": swap_calldata,
+                    "description": f"Swap {weth_to_swap / 1e18:.6f} WETH → {target_quote / 1e18:.4f} {target_token}"
+                })
+                target_received = target_quote
+            else:
+                # Wait for second CoW order
+                print(f"[DualLP+CoW] CoW order 2 created: {cow_result2.get('order_uid')[:20]}...", flush=True)
+                waited = 0
+                target_received = 0
+                
+                while waited < max_wait:
+                    status2 = await cow_client.get_order_status(cow_result2.get("order_uid"))
+                    if status2.get("status") == "fulfilled":
+                        target_received = int(status2.get("executedBuyAmount", 0))
+                        print(f"[DualLP+CoW] ✅ CoW order 2 filled! Received {target_received / 1e18:.4f} {target_token}", flush=True)
+                        break
+                    elif status2.get("status") in ["cancelled", "expired"]:
+                        result["error"] = f"CoW order 2 {status2.get('status')}"
+                        return result
+                        
+                    await asyncio.sleep(poll_interval)
+                    waited += poll_interval
+                
+                if target_received == 0:
+                    result["error"] = "CoW order 2 timeout"
+                    return result
+                
+                lp_steps = []
+                deadline = int(datetime.utcnow().timestamp()) + 1200
+            
+            # ==========================================
+            # STEP 3: Add Liquidity
+            # ==========================================
+            print(f"[DualLP+CoW] Step 3: addLiquidity({weth_to_keep / 1e18:.6f} WETH + {target_received / 1e18:.4f} {target_token})", flush=True)
+            
+            # Approve remaining WETH for LP
+            approve_weth_lp = self.build_approve_calldata("WETH", AERODROME_ROUTER, weth_to_keep)
+            lp_steps.append({
+                "step": len(lp_steps) + 1,
+                "protocol": TOKENS["WETH"],
+                "calldata": approve_weth_lp,
+                "description": f"Approve {weth_to_keep / 1e18:.6f} WETH for LP"
+            })
+            
+            # Approve target for LP
+            approve_target = self.build_approve_calldata(target_token, AERODROME_ROUTER, target_received)
+            lp_steps.append({
+                "step": len(lp_steps) + 1,
+                "protocol": target_addr,
+                "calldata": approve_target,
+                "description": f"Approve {target_received / 1e18:.4f} {target_token} for LP"
+            })
+            
+            # Add liquidity
+            add_liq = self.build_add_liquidity_calldata(
+                "WETH", target_token, weth_to_keep, target_received,
+                agent_address, slippage, deadline, stable=False
+            )
+            lp_steps.append({
+                "step": len(lp_steps) + 1,
+                "protocol": AERODROME_ROUTER,
+                "calldata": add_liq,
+                "description": f"addLiquidity({weth_to_keep / 1e18:.6f} WETH + {target_received / 1e18:.4f} {target_token})"
+            })
+            
+            result["lp_steps"] = lp_steps
+            result["success"] = True
+            print(f"[DualLP+CoW] ✅ Generated {len(lp_steps)} LP steps", flush=True)
+            
+            return result
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            result["error"] = str(e)
+            return result
 
 
 # ============================================
