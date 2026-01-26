@@ -741,21 +741,146 @@ class StrategyExecutor:
                         builder = AerodromeDualLPBuilder()
                         usdc_wei = int(allocation_per_pool * 1e6)
                         
-                        # Parse LP pair from symbol (e.g., "WETH/AERO" or "WETH-AERO")
+                        # Parse LP pair from symbol (e.g., "SOL/USDC" or "WETH-AERO")
                         pair = symbol.replace("-", "/").replace(" / ", "/")
-                        if "WETH" not in pair.upper():
-                            # Default to WETH/AERO if no WETH in pair
-                            pair = "WETH/AERO"
+                        tokens = [t.strip().upper() for t in pair.split("/")]
+                        
+                        # Determine which token we need to swap to
+                        if len(tokens) != 2:
+                            print(f"[StrategyExecutor] ⚠️ Invalid pair format: {pair}, skipping")
+                            result = {"success": False, "error": f"Invalid pair format: {pair}"}
+                            results.append({"pool": symbol, "protocol": project, "amount": allocation_per_pool, "result": result})
+                            continue
+                        
+                        # For pairs with USDC: swap 50% USDC to other token
+                        # For pairs without USDC: need to swap to both tokens
+                        if "USDC" in tokens:
+                            # SOL/USDC, WETH/USDC, etc - swap 50% USDC to other token
+                            target_token = tokens[0] if tokens[1] == "USDC" else tokens[1]
+                            base_token = "USDC"
+                            print(f"[StrategyExecutor] USDC pair detected: swap 50% USDC → {target_token}, keep 50% USDC")
+                        elif "WETH" in tokens:
+                            # WETH/AERO - first swap USDC → WETH, then 50% WETH → other
+                            target_token = tokens[0] if tokens[1] == "WETH" else tokens[1]
+                            base_token = "WETH"
+                            print(f"[StrategyExecutor] WETH pair detected: swap USDC → WETH, then 50% WETH → {target_token}")
+                        else:
+                            # Neither USDC nor WETH - complex routing needed
+                            print(f"[StrategyExecutor] ⚠️ Complex pair {pair} - routing USDC → WETH → tokens")
+                            target_token = tokens[0]
+                            base_token = "WETH"
                         
                         print(f"[StrategyExecutor] Building LP flow for {pair} with ${allocation_per_pool:.2f}")
                         
-                        # Use CoW Swap for first swap (MEV protection, gasless)
+                        # USDC PAIR: Direct flow - swap 50% USDC to target, addLiquidity(target, USDC)
+                        if base_token == "USDC":
+                            print(f"[StrategyExecutor] 🔄 USDC pair flow: 50% USDC → {target_token}")
+                            
+                            from integrations.cow_swap import cow_client
+                            import asyncio
+                            
+                            half_usdc = usdc_wei // 2
+                            
+                            # Get target token address
+                            target_addr = builder._get_token_address(target_token)
+                            usdc_addr = builder._get_token_address("USDC")
+                            
+                            # CoW Swap 50% USDC → target token
+                            cow_result = await cow_client.swap(
+                                sell_token=usdc_addr,
+                                buy_token=target_addr,
+                                sell_amount=half_usdc,
+                                from_address=agent_account.address,
+                                private_key=pk,
+                                max_slippage_percent=agent.get("slippage", 1.0)
+                            )
+                            
+                            if not cow_result or not cow_result.get("order_uid"):
+                                print(f"[StrategyExecutor] ❌ CoW Swap failed for {target_token}")
+                                result = {"success": False, "error": f"CoW Swap failed: {cow_result}"}
+                            else:
+                                # Wait for fill
+                                order_uid = cow_result.get("order_uid")
+                                print(f"[StrategyExecutor] CoW order: {order_uid[:20]}...")
+                                
+                                target_received = 0
+                                for i in range(24):  # 2 min timeout
+                                    status = await cow_client.get_order_status(order_uid)
+                                    if status.get("status") == "fulfilled":
+                                        target_received = int(status.get("executedBuyAmount", 0))
+                                        print(f"[StrategyExecutor] ✅ Received {target_received / 1e18:.4f} {target_token}")
+                                        break
+                                    elif status.get("status") in ["cancelled", "expired"]:
+                                        break
+                                    await asyncio.sleep(5)
+                                
+                                if target_received > 0:
+                                    # Build addLiquidity steps
+                                    deadline = int(datetime.utcnow().timestamp()) + 1200
+                                    slippage = agent.get("slippage", 1.0)
+                                    
+                                    steps = []
+                                    AERODROME_ROUTER = "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
+                                    
+                                    # Approve USDC
+                                    approve_usdc = builder.build_approve_calldata("USDC", AERODROME_ROUTER, half_usdc)
+                                    steps.append({"step": 1, "protocol": usdc_addr, "calldata": approve_usdc, "description": f"Approve {half_usdc/1e6:.2f} USDC"})
+                                    
+                                    # Approve target
+                                    approve_target = builder.build_approve_calldata(target_token, AERODROME_ROUTER, target_received)
+                                    steps.append({"step": 2, "protocol": target_addr, "calldata": approve_target, "description": f"Approve {target_received/1e18:.4f} {target_token}"})
+                                    
+                                    # Add liquidity
+                                    add_liq = builder.build_add_liquidity_calldata(
+                                        target_token, "USDC", target_received, half_usdc,
+                                        agent_account.address, slippage, deadline, stable=False
+                                    )
+                                    steps.append({"step": 3, "protocol": AERODROME_ROUTER, "calldata": add_liq, "description": f"addLiquidity({target_token}/{USDC})"})
+                                    
+                                    result = {"success": True, "steps": steps}
+                                else:
+                                    result = {"success": False, "error": "CoW order not filled"}
+                            
+                            if result.get("success"):
+                                # Execute the steps
+                                w3 = Web3(Web3.HTTPProvider(self.rpc_url))
+                                tx_hashes = []
+                                for step in result.get("steps", []):
+                                    target = step.get("protocol")
+                                    calldata = step.get("calldata")
+                                    desc = step.get("description")
+                                    print(f"[StrategyExecutor] Executing: {desc}")
+                                    
+                                    tx = {
+                                        'to': Web3.to_checksum_address(target),
+                                        'data': calldata.hex() if isinstance(calldata, bytes) else calldata,
+                                        'from': agent_account.address,
+                                        'nonce': w3.eth.get_transaction_count(agent_account.address, 'latest'),
+                                        'gas': 300000,
+                                        'gasPrice': int(w3.eth.gas_price * 5),
+                                        'chainId': 8453
+                                    }
+                                    signed_tx = agent_account.sign_transaction(tx)
+                                    tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+                                    print(f"[StrategyExecutor] TX: {tx_hash.hex()}")
+                                    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+                                    if receipt.status != 1:
+                                        result = {"success": False, "error": f"TX failed: {desc}"}
+                                        break
+                                    tx_hashes.append(tx_hash.hex())
+                                else:
+                                    result = {"success": True, "tx_hashes": tx_hashes}
+                            
+                            results.append({"pool": symbol, "protocol": project, "amount": allocation_per_pool, "result": result})
+                            continue
+                        
+                        # WETH PAIR: Use existing dual LP flow with CoW Swap
                         cow_result = await builder.build_dual_lp_flow_cowswap(
                             usdc_amount=usdc_wei,
                             target_pair=pair,
                             agent_address=agent_account.address,
                             agent_private_key=pk,
-                            primary_token="USDC",  # TODO: Get from agent config
+                            primary_token="USDC",
                             slippage=agent.get("slippage", 1.0)
                         )
                         

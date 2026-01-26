@@ -30,6 +30,7 @@ TOKENS = {
     "cbETH": "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
     "DAI": "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
     "VIRTUALS": "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
+    "SOL": "0x1C61629598e4a901136a81BC138E5828dc150d67",  # Wormhole wrapped SOL
 }
 
 # Function selectors (must match setup_smart_account.py)

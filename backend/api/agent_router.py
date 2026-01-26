@@ -258,23 +258,103 @@ async def trigger_agent_allocation(
         print(f"[TriggerAllocation] User {user_address[:10]}... has {amount_usdc:.2f} USDC in V4 contract", flush=True)
         print(f"[TriggerAllocation] Agent: {agent.get('id')}, pool_type={agent.get('pool_type')}, risk={agent.get('risk_level')}", flush=True)
         
-        # Debug: Check if contract_monitor has agent_key
-        has_key = bool(contract_monitor.agent_key)
-        print(f"[TriggerAllocation] contract_monitor.agent_key exists: {has_key}", flush=True)
+        # Check if agent has LP pools in recommended_pools (Aerodrome, Velodrome, etc.)
+        recommended_pools = agent.get("recommended_pools", [])
+        DEX_PROTOCOLS = ["aerodrome", "velodrome", "uniswap", "curve", "camelot"]
         
-        # Trigger allocation using agent's USDC balance
-        print(f"[TriggerAllocation] >>> CALLING allocate_funds...", flush=True)
-        try:
-            result = await contract_monitor.allocate_funds(user_address, balance)
-            print(f"[TriggerAllocation] <<< allocate_funds RETURNED: {result}", flush=True)
-        except Exception as alloc_error:
-            import traceback
-            traceback.print_exc()
-            print(f"[TriggerAllocation] !!! allocate_funds ERROR: {alloc_error}", flush=True)
+        has_lp_pool = any(
+            any(dex in (pool.get("project") or "").lower() for dex in DEX_PROTOCOLS)
+            for pool in recommended_pools
+        )
+        
+        if has_lp_pool:
+            # Route to StrategyExecutor for LP pools (supports CoW Swap + dual LP)
+            print(f"[TriggerAllocation] 🔄 LP Pool detected in recommended_pools - using StrategyExecutor", flush=True)
+            try:
+                from agents.strategy_executor import strategy_executor
+                
+                # Set the recommended pools on agent
+                agent["user_address"] = user_address
+                agent["recommended_pools"] = recommended_pools
+                
+                result = await strategy_executor.execute_allocation(agent, amount_usdc)
+                print(f"[TriggerAllocation] ✅ StrategyExecutor result: {result}", flush=True)
+                
+                if result.get("success"):
+                    return {
+                        "success": True,
+                        "agent_id": agent.get("id"),
+                        "user_address": user_address,
+                        "amount_usdc": amount_usdc,
+                        "pool_type": "dual",
+                        "protocol": recommended_pools[0].get("project") if recommended_pools else "lp",
+                        "message": f"LP Allocation SUCCESS - {amount_usdc:.2f} USDC to {recommended_pools[0].get('symbol') if recommended_pools else 'LP'}",
+                        "tx_hashes": result.get("tx_hashes", [])
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "agent_id": agent.get("id"),
+                        "user_address": user_address,
+                        "error": result.get("error", "LP allocation failed"),
+                        "message": "LP allocation failed"
+                    }
+                    
+            except Exception as lp_error:
+                import traceback
+                traceback.print_exc()
+                print(f"[TriggerAllocation] ❌ LP allocation error: {lp_error}", flush=True)
+                return {
+                    "success": False,
+                    "agent_id": agent.get("id"),
+                    "user_address": user_address,
+                    "error": str(lp_error),
+                    "message": "LP allocation error"
+                }
+        
+        # LENDING ONLY: if idle > 1h AND amount > $5000
+        # Check if this is a large idle balance that should go to lending
+        LENDING_MIN_AMOUNT = 5000 * 1e6  # $5000 in wei
+        LENDING_IDLE_TIME = 3600  # 1 hour in seconds
+        
+        # Get agent's last activity timestamp to check idle time
+        last_activity = agent.get("last_activity_at")
+        idle_seconds = 0
+        if last_activity:
+            try:
+                from datetime import datetime
+                last_dt = datetime.fromisoformat(last_activity.replace("Z", "+00:00"))
+                idle_seconds = (datetime.now(last_dt.tzinfo) - last_dt).total_seconds()
+            except:
+                pass
+        
+        is_idle_long_enough = idle_seconds >= LENDING_IDLE_TIME
+        is_large_amount = balance >= LENDING_MIN_AMOUNT
+        
+        if is_idle_long_enough and is_large_amount:
+            print(f"[TriggerAllocation] 🏦 LENDING MODE: idle {idle_seconds/3600:.1f}h, amount ${balance/1e6:.2f} > $5k", flush=True)
+            print(f"[TriggerAllocation] >>> CALLING allocate_funds (Aave)...", flush=True)
+            try:
+                result = await contract_monitor.allocate_funds(user_address, balance)
+                print(f"[TriggerAllocation] <<< allocate_funds RETURNED: {result}", flush=True)
+            except Exception as alloc_error:
+                import traceback
+                traceback.print_exc()
+                print(f"[TriggerAllocation] !!! allocate_funds ERROR: {alloc_error}", flush=True)
+                return {
+                    "success": False,
+                    "error": str(alloc_error),
+                    "stage": "allocate_funds"
+                }
+        else:
+            # Not enough for lending, no LP pools available - return waiting status
+            print(f"[TriggerAllocation] ⏳ Waiting for LP opportunity (idle: {idle_seconds/3600:.2f}h, amount: ${balance/1e6:.2f})", flush=True)
             return {
                 "success": False,
-                "error": str(alloc_error),
-                "stage": "allocate_funds"
+                "agent_id": agent.get("id"),
+                "user_address": user_address,
+                "amount_usdc": amount_usdc,
+                "message": f"No suitable pools found. Funds waiting for LP opportunity. Lending requires > $5k AND > 1h idle."
             }
         
         # Check if allocation succeeded
