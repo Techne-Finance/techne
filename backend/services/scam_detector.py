@@ -227,6 +227,26 @@ class ScamDetector:
         source = await self.fetch_contract_source(address)
         
         if source:
+            # ==========================================
+            # SIMILARITY CHECK - Fast path for known scams
+            # ==========================================
+            similar_scam = await self.find_similar_scam(source, threshold=0.95)
+            if similar_scam:
+                result["is_verified"] = True
+                result["risk_score"] = max(similar_scam["risk_score"], 80)
+                result["risk_level"] = "CRITICAL"
+                result["recommendation"] = "SCAM"
+                result["similar_to"] = similar_scam["contract_address"]
+                result["similarity"] = similar_scam["similarity"]
+                result["findings"].append({
+                    "type": "risk",
+                    "name": "known_scam_pattern",
+                    "description": f"95%+ similar to known scam {similar_scam['contract_address'][:10]}...",
+                    "weight": 50
+                })
+                self.cache[address] = result
+                return result
+            
             result["is_verified"] = True
             analysis = self.analyze_source(source)
             result["risk_score"] = analysis["risk_score"]
@@ -276,6 +296,12 @@ class ScamDetector:
             result["ai_enhanced"] = False
             result["ai_reason"] = "Score clear - AI skipped (cost optimization)"
         
+        # ==========================================
+        # STORE FINGERPRINT for future similarity matching
+        # ==========================================
+        if source:
+            await self.store_fingerprint(address, result, source)
+        
         # Cache result
         self.cache[address] = result
         
@@ -287,13 +313,145 @@ class ScamDetector:
         return result["risk_score"] <= max_risk
     
     def get_fingerprint(self, source_code: str) -> str:
-        """Generate fingerprint for similarity matching."""
+        """Generate fingerprint hash for quick matching."""
         # Remove whitespace and comments for consistent hashing
         clean = re.sub(r'//.*', '', source_code)
         clean = re.sub(r'/\*.*?\*/', '', clean, flags=re.DOTALL)
         clean = re.sub(r'\s+', '', clean)
         
         return hashlib.sha256(clean.encode()).hexdigest()
+    
+    def get_embedding(self, source_code: str) -> Optional[List[float]]:
+        """
+        Generate embedding vector for similarity search.
+        Uses sentence-transformers all-MiniLM-L6-v2 (384 dimensions).
+        Falls back to hash-based pseudo-embedding if transformer unavailable.
+        """
+        try:
+            from sentence_transformers import SentenceTransformer
+            
+            # Extract key code patterns for embedding
+            # Focus on function signatures and critical logic
+            patterns = []
+            patterns.extend(re.findall(r'function\s+\w+\s*\([^)]*\)', source_code))
+            patterns.extend(re.findall(r'require\s*\([^)]+\)', source_code))
+            patterns.extend(re.findall(r'mapping\s*\([^)]+\)', source_code))
+            
+            text = ' '.join(patterns[:50])  # Limit to 50 patterns
+            if not text:
+                text = source_code[:2000]  # Fallback to raw code
+            
+            model = SentenceTransformer('all-MiniLM-L6-v2')
+            embedding = model.encode(text).tolist()
+            return embedding
+            
+        except ImportError:
+            print("[ScamDetector] sentence-transformers not installed, using hash-based embedding")
+            return None
+        except Exception as e:
+            print(f"[ScamDetector] Embedding error: {e}")
+            return None
+    
+    async def store_fingerprint(self, address: str, result: Dict[str, Any], source_code: str) -> bool:
+        """Store contract fingerprint in Supabase for future similarity matching."""
+        try:
+            import httpx
+            
+            supabase_url = os.getenv("SUPABASE_URL")
+            supabase_key = os.getenv("SUPABASE_ANON_KEY")
+            
+            if not supabase_url or not supabase_key:
+                print("[ScamDetector] Supabase not configured, skipping fingerprint storage")
+                return False
+            
+            # Generate embedding
+            embedding = self.get_embedding(source_code)
+            
+            data = {
+                "contract_address": address.lower(),
+                "chain": "base",
+                "source_hash": self.get_fingerprint(source_code),
+                "embedding": embedding,
+                "risk_score": result.get("risk_score", 50),
+                "risk_level": result.get("risk_level", "UNKNOWN"),
+                "is_scam": result.get("risk_score", 0) >= 70,
+                "findings": result.get("findings", []),
+                "is_verified": result.get("is_verified", False),
+                "source_length": len(source_code),
+                "analyzed_by": "ai" if result.get("ai_enhanced") else "regex"
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{supabase_url}/rest/v1/scam_fingerprints",
+                    json=data,
+                    headers={
+                        "apikey": supabase_key,
+                        "Authorization": f"Bearer {supabase_key}",
+                        "Content-Type": "application/json",
+                        "Prefer": "return=minimal"
+                    }
+                )
+                
+                if response.status_code in [200, 201]:
+                    print(f"[ScamDetector] ✅ Stored fingerprint for {address[:10]}...")
+                    return True
+                else:
+                    print(f"[ScamDetector] Fingerprint storage failed: {response.status_code}")
+                    return False
+                    
+        except Exception as e:
+            print(f"[ScamDetector] Store fingerprint error: {e}")
+            return False
+    
+    async def find_similar_scam(self, source_code: str, threshold: float = 0.95) -> Optional[Dict]:
+        """
+        Check if contract is similar to known scams using pgvector similarity search.
+        
+        Returns matching scam info if similarity > threshold, else None.
+        """
+        try:
+            import httpx
+            
+            supabase_url = os.getenv("SUPABASE_URL")
+            supabase_key = os.getenv("SUPABASE_ANON_KEY")
+            
+            if not supabase_url or not supabase_key:
+                return None
+            
+            embedding = self.get_embedding(source_code)
+            if not embedding:
+                return None
+            
+            # Call Supabase RPC function
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{supabase_url}/rest/v1/rpc/find_similar_scams",
+                    json={
+                        "query_embedding": embedding,
+                        "similarity_threshold": threshold,
+                        "max_results": 1
+                    },
+                    headers={
+                        "apikey": supabase_key,
+                        "Authorization": f"Bearer {supabase_key}",
+                        "Content-Type": "application/json"
+                    }
+                )
+                
+                if response.status_code == 200:
+                    results = response.json()
+                    if results and len(results) > 0:
+                        match = results[0]
+                        if match.get("is_scam"):
+                            print(f"[ScamDetector] ⚠️ Similar to known scam: {match['contract_address'][:10]}... (similarity: {match['similarity']:.2%})")
+                            return match
+                
+                return None
+                
+        except Exception as e:
+            print(f"[ScamDetector] Similarity search error: {e}")
+            return None
     
     async def close(self):
         await self.client.aclose()

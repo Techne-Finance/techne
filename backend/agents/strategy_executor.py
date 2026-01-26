@@ -187,7 +187,7 @@ class StrategyExecutor:
         user_address = agent.get("user_address")
         if user_address and selected_pools:
             try:
-                idle_balance = await self.get_user_idle_balance(user_address)
+                idle_balance = await self.get_user_idle_balance(user_address, agent)
                 
                 if idle_balance > 1:  # Minimum $1 to allocate
                     print(f"[StrategyExecutor] 💰 User has ${idle_balance:.2f} idle - auto-allocating!")
@@ -205,12 +205,33 @@ class StrategyExecutor:
             except Exception as e:
                 print(f"[StrategyExecutor] Balance check error: {e}")
     
-    async def get_user_idle_balance(self, user_address: str) -> float:
-        """Get user's idle USDC balance from V4 contract"""
+    async def get_user_idle_balance(self, user_address: str, agent: dict = None) -> float:
+        """
+        Get user's idle USDC balance.
+        
+        For EOA agents (with encrypted_private_key): check agent wallet USDC balance
+        For V4 contract mode: check contract balances(user)
+        """
         try:
             from web3 import Web3
             
             w3 = Web3(Web3.HTTPProvider(self.rpc_url))
+            
+            # EOA Mode: Check agent's own wallet USDC balance
+            if agent and agent.get("encrypted_private_key") and agent.get("agent_address"):
+                USDC = Web3.to_checksum_address("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
+                agent_address = Web3.to_checksum_address(agent.get("agent_address"))
+                
+                usdc_abi = [{'inputs': [{'name': 'account', 'type': 'address'}], 'name': 'balanceOf', 'outputs': [{'type': 'uint256'}], 'stateMutability': 'view', 'type': 'function'}]
+                usdc = w3.eth.contract(address=USDC, abi=usdc_abi)
+                
+                balance_wei = usdc.functions.balanceOf(agent_address).call()
+                balance = balance_wei / 1e6
+                
+                print(f"[StrategyExecutor] EOA agent {agent_address[:10]}... has {balance:.2f} USDC")
+                return balance
+            
+            # V4 Contract Mode: Check contract balance
             contract = w3.eth.contract(
                 address=Web3.to_checksum_address(self.wallet_contract),
                 abi=self.v4_abi
