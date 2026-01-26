@@ -22,93 +22,33 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("TheGraph")
 
-# Subgraph endpoints (Updated to decentralized network)
-# API Key from: https://thegraph.com/studio/apikeys/
-GRAPH_API_KEY = os.getenv("GRAPH_API_KEY", "")
+# API endpoints - using official REST APIs instead of The Graph
+# Aerodrome: https://api.aerodrome.finance/
+# No API key required!
 
-SUBGRAPHS = {
-    "aerodrome_v2": {
-        # Aerodrome official subgraph
-        "url": "https://api.studio.thegraph.com/query/50806/aerodrome/version/latest",
-        "name": "Aerodrome V2",
-        "factory": "0x420DD381b31aEf6683db6B902084cB0FFECe40Da"
+POOL_APIS = {
+    "aerodrome": {
+        "url": "https://api.aerodrome.finance/pools",
+        "name": "Aerodrome",
+        "chain": "base"
     },
-    "uniswap_v3": {
-        # Uniswap V3 on Base
-        "url": "https://api.studio.thegraph.com/query/48211/uniswap-v3-base/version/latest",
-        "name": "Uniswap V3",
-        "factory": "0x33128a8fC17869897dcE68Ed026d694621f6FDfD"
+    "aerodrome_tokens": {
+        "url": "https://api.aerodrome.finance/tokens", 
+        "name": "Aerodrome Tokens",
+        "chain": "base"
     }
 }
 
-# Aerodrome-specific query (their schema is different)
-AERODROME_POOLS_QUERY = """
-query GetPools($first: Int!, $skip: Int!) {
-    pools(
-        first: $first
-        skip: $skip
-        orderBy: totalValueLockedUSD
-        orderDirection: desc
-        where: { totalValueLockedUSD_gt: "10000" }
-    ) {
-        id
-        symbol
-        name
-        totalValueLockedUSD
-        volumeUSD
-        feesUSD
-        txCount
-        token0 {
-            id
-            symbol
-            name
-        }
-        token1 {
-            id
-            symbol
-            name
-        }
-        isStable
-        gauge {
-            id
-        }
-    }
-}
-"""
 
-# Generic Messari schema query
-POOLS_QUERY = """
-query GetRecentPools($first: Int!, $skip: Int!, $minTVL: BigDecimal!) {
-    liquidityPools(
-        first: $first
-        skip: $skip
-        orderBy: totalValueLockedUSD
-        orderDirection: desc
-        where: { totalValueLockedUSD_gte: $minTVL }
-    ) {
-        id
-        name
-        symbol
-        createdTimestamp
-        totalValueLockedUSD
-        inputTokens {
-            id
-            symbol
-        }
-    }
-}
-"""
-
-
-class TheGraphPoolDiscovery:
+class PoolDiscovery:
     """
-    Real-time pool discovery using The Graph subgraphs.
+    Pool discovery using Aerodrome REST API.
     
     Usage:
-        discovery = TheGraphPoolDiscovery()
+        discovery = PoolDiscovery()
         
         # One-time fetch
-        pools = await discovery.fetch_recent_pools("aerodrome_v2", limit=100)
+        pools = await discovery.fetch_aerodrome_pools(min_tvl=50000)
         
         # Continuous monitoring
         discovery.on_new_pool(callback_function)
@@ -117,120 +57,75 @@ class TheGraphPoolDiscovery:
     
     def __init__(self):
         self.client = httpx.AsyncClient(timeout=30.0)
-        self.last_check: Dict[str, int] = {}  # subgraph -> last timestamp
         self.known_pools: set = set()
         self.callbacks: List[Callable] = []
         self.is_running = False
         
-        logger.info("🔍 TheGraph Pool Discovery initialized")
+        logger.info("🔍 Pool Discovery initialized (Aerodrome REST API)")
     
-    async def fetch_recent_pools(
-        self, 
-        subgraph: str = "aerodrome_v2",
-        limit: int = 100,
-        min_tvl: float = 10000
-    ) -> List[Dict]:
-        """Fetch recent pools from subgraph."""
-        if subgraph not in SUBGRAPHS:
-            logger.error(f"Unknown subgraph: {subgraph}")
-            return []
-        
-        endpoint = SUBGRAPHS[subgraph]["url"]
-        
-        # Use Aerodrome-specific query for aerodrome subgraphs
-        if "aerodrome" in subgraph:
-            query = AERODROME_POOLS_QUERY
-            variables = {"first": limit, "skip": 0}
-        else:
-            query = POOLS_QUERY
-            variables = {"first": limit, "skip": 0, "minTVL": str(min_tvl)}
-        
+    async def fetch_aerodrome_pools(self, min_tvl: float = 10000) -> List[Dict]:
+        """Fetch pools from Aerodrome REST API."""
         try:
-            response = await self.client.post(
-                endpoint,
-                json={"query": query, "variables": variables}
-            )
+            response = await self.client.get(POOL_APIS["aerodrome"]["url"])
             
-            data = response.json()
-            
-            if "errors" in data:
-                logger.error(f"GraphQL error: {data['errors']}")
+            if response.status_code != 200:
+                logger.error(f"Aerodrome API error: {response.status_code}")
                 return []
             
-            # Handle different response schemas
-            if "aerodrome" in subgraph:
-                pools = data.get("data", {}).get("pools", [])
-            else:
-                pools = data.get("data", {}).get("liquidityPools", [])
+            all_pools = response.json()
             
-            # Transform to standard format
+            # Filter and transform
             result = []
-            for pool in pools:
-                if "aerodrome" in subgraph:
-                    # Aerodrome schema
-                    tokens = []
-                    if pool.get("token0"):
-                        tokens.append(pool["token0"]["symbol"])
-                    if pool.get("token1"):
-                        tokens.append(pool["token1"]["symbol"])
-                    
+            for pool in all_pools:
+                tvl = float(pool.get("tvl", 0) or 0)
+                
+                if tvl >= min_tvl:
                     result.append({
-                        "address": pool["id"],
-                        "name": pool.get("name", ""),
+                        "address": pool.get("lp", ""),
+                        "name": pool.get("symbol", ""),
                         "symbol": pool.get("symbol", ""),
-                        "tvl": float(pool.get("totalValueLockedUSD", 0)),
-                        "volume_24h": float(pool.get("volumeUSD", 0)),
-                        "tokens": tokens,
+                        "tvl": tvl,
+                        "apr": float(pool.get("apr", 0) or 0),
+                        "tokens": [
+                            pool.get("token0", {}).get("symbol", ""),
+                            pool.get("token1", {}).get("symbol", "")
+                        ],
+                        "token0_address": pool.get("token0", {}).get("address", ""),
+                        "token1_address": pool.get("token1", {}).get("address", ""),
                         "is_stable": pool.get("isStable", False),
                         "has_gauge": pool.get("gauge") is not None,
-                        "source": subgraph,
-                        "protocol": SUBGRAPHS[subgraph]["name"]
-                    })
-                else:
-                    # Messari schema
-                    result.append({
-                        "address": pool["id"],
-                        "name": pool.get("name", ""),
-                        "symbol": pool.get("symbol", ""),
-                        "tvl": float(pool.get("totalValueLockedUSD", 0)),
-                        "tokens": [t["symbol"] for t in pool.get("inputTokens", [])],
-                        "source": subgraph,
-                        "protocol": SUBGRAPHS[subgraph]["name"]
+                        "gauge_address": pool.get("gauge", {}).get("address") if pool.get("gauge") else None,
+                        "protocol": "Aerodrome",
+                        "chain": "base"
                     })
             
-            logger.info(f"[{subgraph}] Fetched {len(result)} pools (TVL >= ${min_tvl:,.0f})")
+            # Sort by TVL
+            result.sort(key=lambda x: x["tvl"], reverse=True)
+            
+            logger.info(f"[Aerodrome] Fetched {len(result)} pools (TVL >= ${min_tvl:,.0f})")
             return result
             
         except Exception as e:
-            logger.error(f"[{subgraph}] Fetch error: {e}")
+            logger.error(f"[Aerodrome] Fetch error: {e}")
             return []
     
-    async def check_new_pools(
-        self,
-        subgraph: str = "aerodrome_v2",
-        lookback_hours: int = 1,
-        min_tvl: float = 10000
-    ) -> List[Dict]:
+    async def check_new_pools(self, min_tvl: float = 10000) -> List[Dict]:
         """Check for new pools not seen before."""
-        # Fetch current pools
-        all_pools = await self.fetch_recent_pools(subgraph, limit=200, min_tvl=min_tvl)
+        all_pools = await self.fetch_aerodrome_pools(min_tvl=min_tvl)
         
         new_pools = []
         for pool in all_pools:
             pool_id = pool["address"]
             
-            if pool_id not in self.known_pools:
+            if pool_id and pool_id not in self.known_pools:
                 self.known_pools.add(pool_id)
                 pool["is_new"] = True
                 new_pools.append(pool)
         
-        # Update last check time
-        self.last_check[subgraph] = int(datetime.utcnow().timestamp())
-        
         if new_pools:
-            logger.info(f"🆕 [{subgraph}] Found {len(new_pools)} NEW pools!")
-            for pool in new_pools[:3]:  # Log first 3
-                logger.info(f"   → {pool.get('symbol', 'N/A')} | TVL: ${pool['tvl']:,.0f}")
+            logger.info(f"🆕 Found {len(new_pools)} NEW Aerodrome pools!")
+            for pool in new_pools[:3]:
+                logger.info(f"   → {pool['symbol']} | TVL: ${pool['tvl']:,.0f} | APR: {pool['apr']:.1f}%")
         
         return new_pools
     
@@ -261,28 +156,20 @@ class TheGraphPoolDiscovery:
         self.is_running = True
         logger.info(f"🚀 Started pool monitoring (interval: {interval}s, min_tvl: ${min_tvl:,.0f})")
         
-        # Initial pool fetch to populate known pools
-        for subgraph in SUBGRAPHS:
-            pools = await self.fetch_recent_pools(subgraph, limit=200, min_tvl=min_tvl)
-            for pool in pools:
+        # Initial fetch to populate known pools
+        pools = await self.fetch_aerodrome_pools(min_tvl=min_tvl)
+        for pool in pools:
+            if pool["address"]:
                 self.known_pools.add(pool["address"])
         
-        logger.info(f"📊 Tracking {len(self.known_pools)} existing pools")
+        logger.info(f"📊 Tracking {len(self.known_pools)} existing Aerodrome pools")
         
         while self.is_running:
             try:
-                all_new_pools = []
+                new_pools = await self.check_new_pools(min_tvl=min_tvl)
                 
-                for subgraph in SUBGRAPHS:
-                    new_pools = await self.check_new_pools(
-                        subgraph=subgraph,
-                        lookback_hours=1,
-                        min_tvl=min_tvl
-                    )
-                    all_new_pools.extend(new_pools)
-                
-                if all_new_pools:
-                    await self._notify_callbacks(all_new_pools)
+                if new_pools:
+                    await self._notify_callbacks(new_pools)
                 
                 await asyncio.sleep(interval)
                 
@@ -307,34 +194,11 @@ class TheGraphPoolDiscovery:
 # Singleton instance
 _discovery_instance = None
 
-def get_pool_discovery() -> TheGraphPoolDiscovery:
+def get_pool_discovery() -> PoolDiscovery:
     global _discovery_instance
     if _discovery_instance is None:
-        _discovery_instance = TheGraphPoolDiscovery()
+        _discovery_instance = PoolDiscovery()
     return _discovery_instance
-
-
-# ============================================
-# Integration with Strategy Executor
-# ============================================
-
-async def on_new_pool_detected(pools: List[Dict]):
-    """
-    Callback when new pools are detected.
-    Notifies strategy executor to consider these pools.
-    """
-    from datetime import datetime
-    
-    for pool in pools:
-        print(f"[TheGraph] 🆕 NEW POOL: {pool['symbol']}")
-        print(f"   TVL: ${pool['tvl']:,.0f}")
-        print(f"   Protocol: {pool['protocol']}")
-        print(f"   Tokens: {', '.join(pool.get('tokens', []))}")
-        
-        # Could trigger immediate analysis
-        # from services.scam_detector import get_detector
-        # detector = get_detector()
-        # result = await detector.analyze_contract(pool['address'])
 
 
 # ============================================
@@ -344,24 +208,31 @@ async def on_new_pool_detected(pools: List[Dict]):
 if __name__ == "__main__":
     async def test():
         print("=" * 60)
-        print("The Graph Pool Discovery Test")
+        print("Aerodrome Pool Discovery Test")
         print("=" * 60)
         
-        discovery = TheGraphPoolDiscovery()
+        discovery = PoolDiscovery()
         
         # Test fetch
-        print("\n1. Fetching recent Aerodrome pools...")
-        pools = await discovery.fetch_recent_pools("aerodrome_v2", limit=10, min_tvl=50000)
+        print("\n1. Fetching Aerodrome pools...")
+        pools = await discovery.fetch_aerodrome_pools(min_tvl=100000)
         
+        print(f"   Found {len(pools)} pools with TVL >= $100k")
         for pool in pools[:5]:
-            print(f"   {pool['symbol']}: ${pool['tvl']:,.0f} TVL")
+            tokens = '/'.join(pool['tokens'])
+            print(f"   {tokens}: ${pool['tvl']:,.0f} TVL | {pool['apr']:.1f}% APR")
         
         # Test new pool check
-        print("\n2. Checking for new pools (last 24h)...")
-        new_pools = await discovery.check_new_pools("aerodrome_v2", lookback_hours=24, min_tvl=10000)
-        print(f"   Found {len(new_pools)} new pools")
+        print("\n2. Checking for new pools...")
+        new_pools = await discovery.check_new_pools(min_tvl=50000)
+        print(f"   First run: {len(new_pools)} 'new' pools (all are new on first run)")
+        
+        # Second check should find 0
+        new_pools2 = await discovery.check_new_pools(min_tvl=50000)
+        print(f"   Second run: {len(new_pools2)} new pools")
         
         await discovery.close()
         print("\n✅ Test complete!")
     
     asyncio.run(test())
+
