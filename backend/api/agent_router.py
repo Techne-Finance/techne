@@ -258,8 +258,34 @@ async def trigger_agent_allocation(
         print(f"[TriggerAllocation] User {user_address[:10]}... has {amount_usdc:.2f} USDC in V4 contract", flush=True)
         print(f"[TriggerAllocation] Agent: {agent.get('id')}, pool_type={agent.get('pool_type')}, risk={agent.get('risk_level')}", flush=True)
         
-        # Check if agent has LP pools in recommended_pools (Aerodrome, Velodrome, etc.)
+        # FETCH POOLS from scout if not already present
         recommended_pools = agent.get("recommended_pools", [])
+        if not recommended_pools:
+            print(f"[TriggerAllocation] 🔍 Fetching pools from scout...", flush=True)
+            try:
+                from artisan.scout_agent import get_scout_pools
+                # Get agent config for filters
+                min_apy = agent.get("min_apy", 50)  # Default 50% APY
+                min_tvl = agent.get("min_tvl", 500000)  # Default $500k TVL
+                max_positions = agent.get("max_positions", 5)
+                
+                scout_result = await get_scout_pools(chain="base", min_apy=min_apy, min_tvl=min_tvl)
+                # Scout returns {'pools': [...], 'total': ...} - extract pools list
+                all_pools = scout_result.get("pools", []) if isinstance(scout_result, dict) else scout_result
+                # FILTER: Only Aerodrome pools (user requirement)
+                pools = [p for p in all_pools if isinstance(p, dict) and "aerodrome" in (p.get("project") or "").lower()]
+                if pools:
+                    # Sort by APY and take top N
+                    pools.sort(key=lambda x: x.get("apy", 0) if isinstance(x, dict) else 0, reverse=True)
+                    recommended_pools = pools[:max_positions]
+                    agent["recommended_pools"] = recommended_pools
+                    print(f"[TriggerAllocation] ✅ Found {len(recommended_pools)} pools matching criteria", flush=True)
+                    for p in recommended_pools[:3]:
+                        print(f"[TriggerAllocation]   - {p.get('symbol')}: APY {p.get('apy', 0):.1f}%, TVL ${p.get('tvl', 0)/1e6:.2f}M", flush=True)
+            except Exception as scout_err:
+                print(f"[TriggerAllocation] Scout error: {scout_err}", flush=True)
+        
+        # Check if agent has LP pools in recommended_pools (Aerodrome, Velodrome, etc.)
         DEX_PROTOCOLS = ["aerodrome", "velodrome", "uniswap", "curve", "camelot"]
         
         has_lp_pool = any(

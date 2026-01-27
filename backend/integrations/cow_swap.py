@@ -73,8 +73,7 @@ class CowSwapClient:
                 "from": from_address,
                 "kind": kind,
                 "receiver": from_address,
-                "appData": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "appDataHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "appData": "{\"version\":\"1.1.0\",\"metadata\":{}}",  # Valid JSON appData
                 "partiallyFillable": False,
                 "sellTokenBalance": "erc20",
                 "buyTokenBalance": "erc20",
@@ -122,9 +121,9 @@ class CowSwapClient:
                 "buyToken": q["buyToken"],
                 "sellAmount": q["sellAmount"],
                 "buyAmount": q["buyAmount"],
-                "validTo": int((datetime.utcnow() + timedelta(minutes=30)).timestamp()),
+                "validTo": q.get("validTo") or int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
                 "appData": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "feeAmount": q.get("feeAmount", "0"),
+                "feeAmount": "0",  # Must be 0 for CoW gasless orders
                 "kind": q["kind"],
                 "partiallyFillable": False,
                 "receiver": q.get("receiver") or q["from"],
@@ -189,7 +188,7 @@ class CowSwapClient:
             account = Account.from_key(private_key)
             signed = account.sign_typed_data(domain, types, order)
             
-            return signed.signature.hex()
+            return "0x" + signed.signature.hex()
             
         except Exception as e:
             print(f"[CowSwap] Sign error: {e}")
@@ -257,27 +256,84 @@ class CowSwapClient:
         sell_amount_after_fee = int(q.get("sellAmount", sell_amount))
         fee_amount = int(q.get("feeAmount", 0))
         
-        # Calculate effective price impact
-        # For same-decimal stablecoins, we can approximate
-        if sell_amount > 0 and buy_amount > 0:
-            # Approximate price impact (assumes similar decimals for simplicity)
-            expected_ratio = 1.0  # Stablecoin swap should be ~1:1
-            actual_ratio = buy_amount / sell_amount_after_fee if sell_amount_after_fee > 0 else 0
+        # Calculate fee impact (applies to all swaps)
+        fee_impact = (fee_amount / sell_amount * 100) if sell_amount > 0 else 0
+        
+        # For non-stablecoin swaps, only check fee impact (not price ratio)
+        # Stablecoin addresses on Base
+        STABLECOINS = [
+            "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",  # USDC
+            "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",  # USDT
+            "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",  # DAI
+        ]
+        
+        is_stablecoin_swap = sell_token.lower() in [s.lower() for s in STABLECOINS] and \
+                            buy_token.lower() in [s.lower() for s in STABLECOINS]
+        
+        if is_stablecoin_swap and sell_amount > 0 and buy_amount > 0:
+            # For stablecoins, check 1:1 ratio
+            price_impact = (1 - buy_amount / sell_amount_after_fee) * 100 if sell_amount_after_fee > 0 else 0
+            total_impact = abs(price_impact) + fee_impact
+            print(f"[CowSwap] Stablecoin swap - Price impact: {price_impact:.2f}%, Fee: {fee_impact:.2f}%, Total: {total_impact:.2f}%")
             
-            # Price impact = how much worse than expected
-            price_impact = (1 - actual_ratio / expected_ratio) * 100 if expected_ratio > 0 else 0
-            
-            # Include fee impact
-            total_impact = price_impact + (fee_amount / sell_amount * 100) if sell_amount > 0 else 0
-            
-            print(f"[CowSwap] Price impact: {price_impact:.2f}%, Fee: {fee_amount}, Total impact: {total_impact:.2f}%")
-            
-            # Reject if slippage exceeds threshold
             if total_impact > max_slippage_percent:
                 print(f"[CowSwap] ❌ REJECTED: Slippage {total_impact:.2f}% exceeds max {max_slippage_percent}%")
                 return None
+        else:
+            # For non-stablecoins, only check fee is reasonable (< 5%)
+            print(f"[CowSwap] Non-stablecoin swap - Fee impact: {fee_impact:.2f}%")
+            if fee_impact > 5.0:
+                print(f"[CowSwap] ❌ REJECTED: Fee {fee_impact:.2f}% too high")
+                return None
+        
+        print(f"[CowSwap] ✓ Slippage check passed")
+        
+        # Approve VaultRelayer to spend sell token
+        try:
+            from web3 import Web3
+            from eth_account import Account
             
-            print(f"[CowSwap] ✓ Slippage OK: {total_impact:.2f}% ≤ {max_slippage_percent}%")
+            COW_VAULT_RELAYER = "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110"
+            RPC_URL = os.environ.get("BASE_RPC_URL", "https://mainnet.base.org")
+            w3 = Web3(Web3.HTTPProvider(RPC_URL))
+            
+            account = Account.from_key(private_key)
+            
+            # Check current allowance
+            approve_selector = "0x095ea7b3"  # approve(address,uint256)
+            max_uint256 = 2**256 - 1
+            
+            # Build approve calldata
+            spender_padded = COW_VAULT_RELAYER[2:].lower().zfill(64)
+            amount_padded = hex(max_uint256)[2:].zfill(64)
+            approve_data = approve_selector + spender_padded + amount_padded
+            
+            nonce = w3.eth.get_transaction_count(from_address, 'latest')
+            
+            approve_tx = {
+                'to': Web3.to_checksum_address(sell_token),
+                'data': approve_data,
+                'from': from_address,
+                'nonce': nonce,
+                'gas': 60000,
+                'gasPrice': int(w3.eth.gas_price * 1.5),
+                'chainId': 8453
+            }
+            
+            signed_approve = account.sign_transaction(approve_tx)
+            approve_hash = w3.eth.send_raw_transaction(signed_approve.raw_transaction)
+            print(f"[CowSwap] Approve TX sent: {approve_hash.hex()}")
+            
+            # Wait for approval
+            receipt = w3.eth.wait_for_transaction_receipt(approve_hash, timeout=60)
+            if receipt.status != 1:
+                print(f"[CowSwap] ❌ Approve TX failed")
+                return None
+            print(f"[CowSwap] ✅ Approved VaultRelayer to spend tokens")
+            
+        except Exception as approve_err:
+            print(f"[CowSwap] Approve error: {approve_err}")
+            # Continue anyway in case already approved
         
         # Create order
         order_uid = await self.create_order(quote, private_key)

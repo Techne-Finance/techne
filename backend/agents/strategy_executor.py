@@ -795,12 +795,14 @@ class StrategyExecutor:
                                 max_slippage_percent=agent.get("slippage", 1.0)
                             )
                             
-                            if not cow_result or not cow_result.get("order_uid"):
+                            # cow_swap.swap() returns order_uid string directly, not dict
+                            order_uid = cow_result if isinstance(cow_result, str) else cow_result.get("order_uid") if cow_result else None
+                            
+                            if not order_uid:
                                 print(f"[StrategyExecutor] ❌ CoW Swap failed for {target_token}")
                                 result = {"success": False, "error": f"CoW Swap failed: {cow_result}"}
                             else:
                                 # Wait for fill
-                                order_uid = cow_result.get("order_uid")
                                 print(f"[StrategyExecutor] CoW order: {order_uid[:20]}...")
                                 
                                 target_received = 0
@@ -835,7 +837,7 @@ class StrategyExecutor:
                                         target_token, "USDC", target_received, half_usdc,
                                         agent_account.address, slippage, deadline, stable=False
                                     )
-                                    steps.append({"step": 3, "protocol": AERODROME_ROUTER, "calldata": add_liq, "description": f"addLiquidity({target_token}/{USDC})"})
+                                    steps.append({"step": 3, "protocol": AERODROME_ROUTER, "calldata": add_liq, "description": f"addLiquidity({target_token}/USDC)"})
                                     
                                     result = {"success": True, "steps": steps}
                                 else:
