@@ -8,28 +8,36 @@ import asyncio
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 # Aerodrome Base Subgraph endpoints
-AERODROME_SUBGRAPH_URL = "https://api.thegraph.com/subgraphs/name/aerodrome-finance/aerodrome-base"
-# Backup: Gateway API (requires API key)
-GRAPH_GATEWAY_URL = "https://gateway.thegraph.com/api/[api-key]/subgraphs/id/GENunS—1Av1UM"
+# Old hosted service (deprecated): https://api.thegraph.com/subgraphs/name/aerodrome-finance/aerodrome-base
+# New: The Graph Decentralized Network (requires API key)
+# Subgraph ID for Aerodrome on Base - get from https://thegraph.com/studio/
+AERODROME_SUBGRAPH_ID = os.getenv("THEGRAPH_AERODROME_SUBGRAPH_ID", "")
+THEGRAPH_API_KEY = os.getenv("THEGRAPH_API_KEY", "")
+
+# Build URL based on available config
+if THEGRAPH_API_KEY and AERODROME_SUBGRAPH_ID:
+    AERODROME_SUBGRAPH_URL = f"https://gateway.thegraph.com/api/{THEGRAPH_API_KEY}/subgraphs/id/{AERODROME_SUBGRAPH_ID}"
+else:
+    # Fallback to old hosted service (may not work)
+    AERODROME_SUBGRAPH_URL = "https://api.thegraph.com/subgraphs/name/aerodrome-finance/aerodrome-base"
 
 
 class TheGraphClient:
     """
     Client for querying Aerodrome data from The Graph subgraph.
     
-    Provides:
-    - Pool APY data
-    - Historical APY tracking
-    - TVL and volume metrics
-    - Gauge emissions data
+    Priority:
+    1. The Graph Decentralized Network (with API key)
+    2. DeFiLlama API (fallback)
     """
     
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key
+        self.api_key = api_key or THEGRAPH_API_KEY
         self.base_url = AERODROME_SUBGRAPH_URL
         self.timeout = 10.0
         self._client: Optional[httpx.AsyncClient] = None
@@ -97,8 +105,6 @@ class TheGraphClient:
         query GetPool($id: ID!) {
             pool(id: $id) {
                 id
-                name
-                symbol
                 token0 {
                     id
                     symbol
@@ -109,19 +115,18 @@ class TheGraphClient:
                     symbol
                     decimals
                 }
-                reserve0
-                reserve1
+                liquidity
+                sqrtPrice
+                tick
+                feeTier
+                totalValueLockedToken0
+                totalValueLockedToken1
                 totalValueLockedUSD
+                volumeToken0
+                volumeToken1
                 volumeUSD
                 feesUSD
-                token0Price
-                token1Price
-                stable
-                gauge {
-                    id
-                    totalSupply
-                    rewardRate
-                }
+                txCount
             }
         }
         """
@@ -140,15 +145,70 @@ class TheGraphClient:
         """
         Get current APY for a pool.
         
-        Combines:
-        - Fee APR (from 24h volume)
-        - Emissions APR (from gauge rewards)
+        Sources (in order):
+        1. The Graph subgraph (primary)
+        2. DeFiLlama API (fallback when Graph unavailable)
         """
+        # Try The Graph first
         pool = await self.get_pool_by_address(pool_address)
-        if not pool:
-            return None
+        if pool and pool.get("apr", 0) > 0:
+            return pool.get("apr", 0)
         
-        return pool.get("apr", 0)
+        # Fallback to DeFiLlama
+        try:
+            apy = await self._get_apy_from_defillama(pool_address)
+            if apy is not None:
+                logger.info(f"[TheGraph] Got APY from DeFiLlama fallback: {apy}")
+                return apy
+        except Exception as e:
+            logger.warning(f"[TheGraph] DeFiLlama fallback failed: {e}")
+        
+        return None
+    
+    async def _get_apy_from_defillama(self, pool_address: str) -> Optional[float]:
+        """
+        Fetch pool APY from DeFiLlama.
+        Searches for Aerodrome pools on Base by address or symbol.
+        """
+        try:
+            client = await self._get_client()
+            response = await client.get(
+                "https://yields.llama.fi/pools",
+                timeout=15.0
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            pool_lower = pool_address.lower()
+            
+            for pool in data.get("data", []):
+                # Match Aerodrome pools on Base
+                if pool.get("chain", "").lower() != "base":
+                    continue
+                project = pool.get("project", "").lower()
+                if "aerodrome" not in project:
+                    continue
+                    
+                pool_id = pool.get("pool", "").lower()
+                symbol = pool.get("symbol", "").lower()
+                
+                # Match by address in pool ID
+                if pool_lower in pool_id:
+                    apy = pool.get("apy") or pool.get("apyBase") or 0
+                    logger.info(f"[DeFiLlama] Found by address: {symbol} APY={apy:.2f}%")
+                    return round(apy, 2)
+                
+                # Match cbBTC/USDC specifically (our main pool)
+                if "cbbtc" in symbol and "usdc" in symbol:
+                    apy = pool.get("apy") or pool.get("apyBase") or 0
+                    logger.info(f"[DeFiLlama] Found cbBTC/USDC: APY={apy:.2f}%")
+                    return round(apy, 2)
+            
+            logger.warning(f"[DeFiLlama] No matching pool found for {pool_address}")
+            return None
+        except Exception as e:
+            logger.warning(f"[TheGraph] DeFiLlama fetch failed: {e}")
+            return None
     
     async def get_pool_daily_snapshots(
         self, 

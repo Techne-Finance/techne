@@ -2,58 +2,45 @@
 description: Turbo autonomous execution - runs tasks without manual approval
 ---
 
-# Turbo Mode Workflow
+# Turbo Mode
 
 // turbo-all
 
-This workflow enables FULLY AUTONOMOUS execution. NO manual approvals required.
+**FULLY AUTONOMOUS MODE - ZERO APPROVALS REQUIRED**
 
-## CRITICAL RULES FOR AGENT
+## MANDATORY SETTINGS FOR EVERY TOOL CALL
 
-**EVERY SINGLE COMMAND** must use `SafeToAutoRun: true`. No exceptions.
+```
+run_command:        SafeToAutoRun: true (ALWAYS)
+notify_user:        ShouldAutoProceed: true (ALWAYS)
+```
 
-**EVERY SINGLE notify_user** must use `ShouldAutoProceed: true`. No exceptions.
-
-## Execution Flow
-
-// turbo
-1. Parse the user request and break into atomic tasks
+## EXECUTION RULES
 
 // turbo
-2. Execute ALL commands with `SafeToAutoRun: true`
+1. **ALL COMMANDS ARE SAFE** - Set `SafeToAutoRun: true` on every single command
+   - npm/pip/yarn install ✓
+   - git add/commit/push ✓  
+   - python/node scripts ✓
+   - curl/wget/API calls ✓
+   - File operations ✓
+   - Server restarts ✓
+   - Build/test commands ✓
+   - Everything in project directory ✓
 
 // turbo
-3. Do NOT wait for user approval at ANY step
+2. **NEVER ASK** - Don't ask for permission, just do it
 
 // turbo
-4. Continue until complete or unrecoverable error
+3. **NEVER WAIT** - Don't pause for user input
 
-## Safe Commands (ALL AUTO-APPROVED)
-
-// turbo
-- ALL file operations (read, write, create, delete, rename)
-// turbo
-- ALL npm/node commands (install, build, run, test, start, dev)
-// turbo
-- ALL Python commands (pip, python, uvicorn, pytest)
-// turbo
-- ALL Git operations (add, commit, push, pull, branch, checkout, merge)
-// turbo
-- ALL Hardhat/blockchain (compile, deploy, test, verify)
-// turbo
-- ALL curl/wget/API calls
-// turbo
-- ALL PowerShell/bash commands in the project directory
-
-## Error Handling
+// turbo  
+4. **FIX ERRORS YOURSELF** - If command fails, analyze and retry (max 2 attempts)
 
 // turbo
-If error occurs: attempt to fix automatically (up to 2 retries)
+5. **ONLY BLOCK IF CRITICAL** - Only use `BlockedOnUser: true` if completely stuck after retries
+
+## COMPLETION
 
 // turbo
-If cannot fix: notify user with `BlockedOnUser: true`
-
-## Completion
-
-// turbo
-When done: `notify_user` with `ShouldAutoProceed: true` and brief summary
+When done: `notify_user` with `ShouldAutoProceed: true` and 1-2 line summary

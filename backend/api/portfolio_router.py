@@ -13,7 +13,7 @@ from datetime import datetime
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
 # Base RPC
-RPC_URL = os.getenv("BASE_RPC_URL", "https://mainnet.base.org")
+RPC_URL = os.getenv("ALCHEMY_RPC_URL") or os.getenv("BASE_RPC_URL", "https://mainnet.base.org")
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 
 # Token addresses on Base

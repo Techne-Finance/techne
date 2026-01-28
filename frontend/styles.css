@@ -4736,7 +4736,7 @@ body.section-verify .main-content {
 /* Portfolio section - FIXED WIDTH to prevent expansion */
 #section-portfolio {
     position: relative;
-    padding: 0 24px;
+    padding: 20px 24px 0 24px;
     max-width: 1400px;
     width: 100%;
     margin: 0 auto;
@@ -9209,7 +9209,7 @@ body.builder-pro .basic-mode-only {
 #section-portfolio {
     max-width: 1400px;
     width: 100%;
-    padding: var(--space-4);
+    padding: 20px var(--space-4) var(--space-4) var(--space-4);
     box-sizing: border-box;
 }
 
@@ -9330,7 +9330,7 @@ body.builder-pro .basic-mode-only {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    overflow: hidden;
+    /* Removed overflow:hidden to prevent clipping card-badge */
 }
 
 .portfolio-card .card-header {
@@ -9582,6 +9582,8 @@ body.builder-pro .basic-mode-only {
     overflow: hidden;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
     font-size: 0.85rem;
+    margin-top: 8px;
+    /* Prevent overlap with card-header */
 }
 
 .positions-header {
@@ -11446,10 +11448,14 @@ input:checked+.toggle-slider.info {
 .col-apy .apy-value {
     display: inline-block;
     padding: 6px 12px;
-    background: transparent;
-    border: 1px solid #22c55e;
+    background: transparent !important;
+    border: 1px solid #22c55e !important;
     border-radius: 6px;
-    color: #22c55e;
+    color: #22c55e !important;
+    -webkit-text-fill-color: #22c55e !important;
+    /* Override transparent text */
+    -webkit-background-clip: unset !important;
+    background-clip: unset !important;
     font-weight: 600;
     font-size: 0.85rem;
 }

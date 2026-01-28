@@ -545,7 +545,7 @@ async def get_agent_lp_positions(user_address: str):
             {"name": "AERO/USDC", "address": "0x6cDcb1C4A4D1C3C6d054b27AC5B77e89eAFb971d", "protocol": "Aerodrome"},
         ]
         
-        RPC_URL = "https://mainnet.base.org"
+        RPC_URL = os.getenv("ALCHEMY_RPC_URL") or "https://mainnet.base.org"
         w3 = Web3(Web3.HTTPProvider(RPC_URL))
         
         positions = []
@@ -596,7 +596,8 @@ async def get_agent_lp_positions(user_address: str):
                         "lp_address": lp["address"],
                         "lp_tokens": lp_tokens,
                         "value_usd": estimated_value,
-                        "protocol": lp["protocol"]
+                        "protocol": lp["protocol"],
+                        "apy": None  # Will be fetched below
                     })
                     
                     print(f"[LPPositions] Found {lp['name']}: {lp_tokens:.18f} LP tokens (~${estimated_value:.4f})")
@@ -605,11 +606,27 @@ async def get_agent_lp_positions(user_address: str):
                 # Skip if balance check fails
                 pass
         
+        # Fetch real APY from The Graph for each position
+        if positions:
+            try:
+                from data_sources.thegraph import graph_client
+                for pos in positions:
+                    try:
+                        pool_apy = await graph_client.get_pool_apy(pos["lp_address"])
+                        pos["apy"] = round(pool_apy, 2) if pool_apy else 0
+                        print(f"[LPPositions] Fetched APY for {pos['pool_name']}: {pos['apy']}%")
+                    except Exception as apy_err:
+                        print(f"[LPPositions] APY fetch failed for {pos['pool_name']}: {apy_err}")
+                        pos["apy"] = 0
+            except ImportError:
+                print("[LPPositions] The Graph client not available")
+        
         return {
             "success": True,
             "positions": positions,
             "agent_address": agent_address,
-            "count": len(positions)
+            "count": len(positions),
+            "apy_source": "thegraph" if positions else None
         }
         
     except Exception as e:
@@ -756,7 +773,7 @@ async def close_position(request: ClosePositionRequest):
                     agent_account = Account.from_key(pk)
                     
                     # Use public RPC
-                    w3 = Web3(Web3.HTTPProvider('https://mainnet.base.org'))
+                    w3 = Web3(Web3.HTTPProvider(os.getenv("ALCHEMY_RPC_URL") or 'https://mainnet.base.org'))
                     
                     USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
                     aUSDC = "0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB"

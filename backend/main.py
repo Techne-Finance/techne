@@ -153,6 +153,15 @@ except ImportError as e:
     print(f"[Warning] Portfolio router not available: {e}")
     PORTFOLIO_ROUTER_AVAILABLE = False
 
+# Import portfolio data router (Unified endpoint - Supabase + On-chain + Audit)
+try:
+    from api.portfolio_data_router import router as portfolio_data_router
+    PORTFOLIO_DATA_ROUTER_AVAILABLE = True
+except ImportError as e:
+    print(f"[Warning] Portfolio data router not available: {e}")
+    PORTFOLIO_DATA_ROUTER_AVAILABLE = False
+
+
 app = FastAPI(
     title="Techne.finance API",
     description="AI-powered yield optimizer - Production Grade | Security + AI + Revenue",
@@ -286,6 +295,12 @@ if WEBSOCKET_AVAILABLE:
 if PORTFOLIO_ROUTER_AVAILABLE:
     app.include_router(portfolio_router)
     print("[Portfolio] Aggregated portfolio API loaded")
+
+# Include Portfolio Data routes (Unified: Supabase + On-chain + Audit)
+if PORTFOLIO_DATA_ROUTER_AVAILABLE:
+    app.include_router(portfolio_data_router)
+    print("[PortfolioData] Unified portfolio data API loaded - /api/portfolio-data")
+
 
 # Include Telegram bot API routes
 try:

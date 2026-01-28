@@ -829,11 +829,13 @@ class PortfolioDashboard {
 
         if (!container) return;
 
-        // Clear ALL existing position elements (cards AND tables) to prevent duplicates
-        container.querySelectorAll('.position-card, .positions-table').forEach(el => el.remove());
+        // DON'T clear content until we have new data - prevents flickering
+        // container.querySelectorAll('.position-card, .positions-table').forEach(el => el.remove());
 
         const walletAddress = window.connectedWallet;
         if (!walletAddress) {
+            // Only show empty when definitely no wallet
+            container.querySelectorAll('.position-card, .positions-table').forEach(el => el.remove());
             if (emptyEl) emptyEl.style.display = 'block';
             if (countEl) countEl.textContent = '0 Active';
             return;
@@ -902,7 +904,7 @@ class PortfolioDashboard {
                 current: lp.value_usd,
                 pnl: 0, // TODO: track LP P&L
                 asset: 'LP',
-                apy: lp.apy || 25, // Default 25% APY for Aerodrome LP
+                apy: lp.apy || 0, // Real APY from The Graph (no fake defaults)
                 isLP: true,
                 lpTokens: lp.lp_tokens
             }));
@@ -921,10 +923,13 @@ class PortfolioDashboard {
                 : 0;
             this.renderPositions();
 
-            console.log('[Portfolio] Positions:', allPositions.length, '(including LP)');
+            console.log('[Portfolio] LP Positions:', allPositions.length);
         } else {
+            // No LP positions - show empty state (holdings are shown in Asset Holdings section)
             if (emptyEl) emptyEl.style.display = 'block';
             if (countEl) countEl.textContent = '0 Active';
+            this.portfolio.positions = [];
+            console.log('[Portfolio] No LP positions');
         }
     }
 
@@ -1263,7 +1268,8 @@ class PortfolioDashboard {
         changeEl.textContent = `+${this.portfolio.pnlPercent}%`;
         changeEl.className = `stat-change ${this.portfolio.pnlPercent >= 0 ? 'positive' : 'negative'}`;
 
-        // Count only positions with REAL funds (deposited > 0)
+        // Count only LP positions with REAL funds (deposited > 0)
+        // Holdings are shown separately in Asset Holdings section
         const activePositions = this.portfolio.positions.filter(p => (p.deposited || 0) > 0);
         const activeCount = activePositions.length;
 
