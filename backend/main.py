@@ -161,6 +161,14 @@ except ImportError as e:
     print(f"[Warning] Portfolio data router not available: {e}")
     PORTFOLIO_DATA_ROUTER_AVAILABLE = False
 
+# Import agent service router (Scalable Agent Management - Supabase)
+try:
+    from api.agent_service_router import router as agent_service_router
+    AGENT_SERVICE_AVAILABLE = True
+except ImportError as e:
+    print(f"[Warning] Agent service router not available: {e}")
+    AGENT_SERVICE_AVAILABLE = False
+
 
 app = FastAPI(
     title="Techne.finance API",
@@ -300,6 +308,11 @@ if PORTFOLIO_ROUTER_AVAILABLE:
 if PORTFOLIO_DATA_ROUTER_AVAILABLE:
     app.include_router(portfolio_data_router)
     print("[PortfolioData] Unified portfolio data API loaded - /api/portfolio-data")
+
+# Include Agent Service routes (Scalable Agent Management - Supabase)
+if AGENT_SERVICE_AVAILABLE:
+    app.include_router(agent_service_router)
+    print("[AgentService] Scalable agent management API loaded - /api/agents")
 
 
 # Include Telegram bot API routes
