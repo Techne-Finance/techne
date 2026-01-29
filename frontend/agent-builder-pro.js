@@ -44,7 +44,9 @@ class AgentBuilderPro {
 
             // Exit Targets
             takeProfitEnabled: this.isTakeProfitEnabled(),
-            takeProfitAmount: this.getTakeProfitAmount(),
+            takeProfitAmount: this.getTakeProfitAmount(),  // Legacy $ value
+            takeProfitPercent: this.getTakeProfitPercent(),  // % profit target
+            takeProfitUsd: this.getTakeProfitUsd(),  // $ profit target
             stopLossEnabled: this.isStopLossEnabled(),
             stopLossPercent: this.getStopLossPercent(),
             apyTargetEnabled: this.isApyTargetEnabled(),
@@ -121,8 +123,19 @@ class AgentBuilderPro {
     }
 
     getTakeProfitAmount() {
+        // For backwards compatibility - returns USD value
         const input = document.getElementById('takeProfitAmount');
         return input ? parseFloat(input.value) || 500 : 500;
+    }
+
+    getTakeProfitPercent() {
+        const input = document.getElementById('takeProfitPercent');
+        return input ? parseFloat(input.value) || 0 : 0;
+    }
+
+    getTakeProfitUsd() {
+        const input = document.getElementById('takeProfitUsd');
+        return input ? parseFloat(input.value) || 0 : 0;
     }
 
     isStopLossEnabled() {

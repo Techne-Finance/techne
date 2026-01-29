@@ -176,6 +176,15 @@ class PositionMonitor:
                 "trigger": "stop_loss"
             }
         
+        # 4. Check Take-Profit
+        take_profit_check = await self.check_take_profit(agent, position)
+        if take_profit_check.get("triggered"):
+            return {
+                "should_exit": True,
+                "reason": take_profit_check.get("reason"),
+                "trigger": "take_profit"
+            }
+        
         return {"should_exit": False}
     
     async def check_duration_expiry(self, agent: Dict, position: Dict) -> Dict:
@@ -285,6 +294,51 @@ class PositionMonitor:
             }
         
         return {"triggered": False, "loss_percent": loss_percent}
+    
+    async def check_take_profit(self, agent: Dict, position: Dict) -> Dict:
+        """
+        Check if position has hit take-profit threshold.
+        
+        Supports two modes:
+        - Percentage-based: takeProfitPercent (e.g., 20 = take profit at +20%)
+        - Dollar-based: takeProfitUsd (e.g., 100 = take profit when profit >= $100)
+        """
+        pro_config = agent.get("pro_config") or {}
+        take_profit_enabled = pro_config.get("takeProfitEnabled", False)  # Default disabled
+        take_profit_percent = pro_config.get("takeProfitPercent", 0)  # % profit target
+        take_profit_usd = pro_config.get("takeProfitUsd", 0)  # $ profit target
+        
+        if not take_profit_enabled:
+            return {"triggered": False, "reason": "Take-profit disabled"}
+        
+        entry_value = position.get("entry_value", 0)
+        current_value = position.get("current_value", entry_value)
+        
+        if entry_value <= 0:
+            return {"triggered": False, "reason": "No entry value"}
+        
+        profit_usd = current_value - entry_value
+        profit_percent = (profit_usd / entry_value) * 100
+        
+        # Check percentage-based take profit
+        if take_profit_percent > 0 and profit_percent >= take_profit_percent:
+            return {
+                "triggered": True,
+                "reason": f"Take-profit triggered: +{profit_percent:.1f}% profit (target: +{take_profit_percent}%)",
+                "profit_percent": profit_percent,
+                "profit_usd": profit_usd
+            }
+        
+        # Check dollar-based take profit
+        if take_profit_usd > 0 and profit_usd >= take_profit_usd:
+            return {
+                "triggered": True,
+                "reason": f"Take-profit triggered: +${profit_usd:.2f} profit (target: +${take_profit_usd})",
+                "profit_percent": profit_percent,
+                "profit_usd": profit_usd
+            }
+        
+        return {"triggered": False, "profit_percent": profit_percent, "profit_usd": profit_usd}
     
     async def execute_exit_and_reinvest(self, agent: Dict, position: Dict, reason: str):
         """

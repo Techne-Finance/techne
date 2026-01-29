@@ -11,6 +11,9 @@ Features:
 """
 
 import os
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file for ALCHEMY_RPC_URL
+
 import json
 import hashlib
 import logging
@@ -287,15 +290,29 @@ class AgentWalletManager:
         User has 24/7 access to their funds
         """
         wallet = self.wallets.get(user_address.lower())
-        if not wallet:
-            return {"success": False, "error": "Wallet not found"}
         
-        current_balance = wallet.balances.get(token, 0.0)
-        if amount > current_balance:
-            return {
-                "success": False,
-                "error": f"Insufficient balance. Have: {current_balance}, Requested: {amount}"
-            }
+        # Fallback: Check DEPLOYED_AGENTS if wallet not in local storage
+        agent_address = None
+        if not wallet:
+            try:
+                from api.agent_config_router import DEPLOYED_AGENTS
+                user_agents = DEPLOYED_AGENTS.get(user_address.lower(), [])
+                if user_agents:
+                    agent_address = user_agents[0].get("agent_address")
+                    logger.info(f"[AgentWallet] Using DEPLOYED_AGENTS for {user_address[:10]}...")
+                else:
+                    return {"success": False, "error": "No agent found for user"}
+            except Exception as e:
+                return {"success": False, "error": f"Wallet lookup failed: {e}"}
+        
+        # Skip balance check for DEPLOYED_AGENTS fallback (on-chain balance is source of truth)
+        if wallet:
+            current_balance = wallet.balances.get(token, 0.0)
+            if amount > current_balance:
+                return {
+                    "success": False,
+                    "error": f"Insufficient balance. Have: {current_balance}, Requested: {amount}"
+                }
         
         tx_hash = None
         dest_address = destination or user_address
@@ -317,38 +334,81 @@ class AgentWalletManager:
             
             agent_account = Account.from_key(agent_key)
             
-            # Token addresses on Base
-            TOKEN_ADDRESSES = {
-                "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                "WETH": "0x4200000000000000000000000000000000000006",
-                "ETH": None  # Native ETH
+            # Token addresses on Base (address, decimals)
+            TOKEN_CONFIGS = {
+                "USDC": ("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 6),
+                "WETH": ("0x4200000000000000000000000000000000000006", 18),
+                "CBBTC": ("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", 8),
+                "AERO": ("0x940181a94A35A4569E4529A3CDfB74e38FD98631", 18),
+                "VIRTUAL": ("0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b", 18),
+                "DEGEN": ("0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed", 18),
+                "BRETT": ("0x532f27101965dd16442E59d40670FaF5eBB142E4", 18),
+                "HIGHER": ("0x0578d8A44db98B23BF096A382e016e29a5Ce0ffe", 18),
+                "ETH": (None, 18)  # Native ETH
             }
             
             token_upper = token.upper()
-            token_address = TOKEN_ADDRESSES.get(token_upper)
+            token_config = TOKEN_CONFIGS.get(token_upper)
+            
+            if not token_config:
+                return {"success": False, "error": f"Unknown token: {token}"}
+            
+            token_address, decimals = token_config
             
             if token_upper == "ETH":
                 # Native ETH transfer
+                # Use higher gas limit (50k) to handle smart contract wallets
+                # (Safe, Argent, Coinbase Wallet, etc.) that need more gas for receive()
+                gas_price = w3.eth.gas_price
+                gas_limit = 50000  # 21000 is not enough for smart contract wallets
+                gas_cost_wei = gas_price * gas_limit
+                
+                # Check agent's ETH balance
+                agent_eth_balance = w3.eth.get_balance(agent_account.address)
                 amount_wei = int(amount * 1e18)
+                
+                logger.info(f"[AgentWallet] Agent address: {agent_account.address}")
+                logger.info(f"[AgentWallet] Requested: {amount:.6f} ETH ({amount_wei} wei)")
+                logger.info(f"[AgentWallet] Agent ETH balance: {agent_eth_balance / 1e18:.6f} ETH")
+                logger.info(f"[AgentWallet] Gas cost: {gas_cost_wei / 1e18:.6f} ETH ({gas_price / 1e9:.1f} Gwei)")
+                
+                # Ensure we have enough for transfer + gas
+                total_needed = amount_wei + gas_cost_wei
+                if agent_eth_balance < total_needed:
+                    # Reduce amount by gas cost
+                    amount_wei = agent_eth_balance - gas_cost_wei
+                    if amount_wei <= 0:
+                        return {"success": False, "error": f"Insufficient ETH for gas. Need at least {gas_cost_wei / 1e18:.6f} ETH for fee"}
+                    logger.info(f"[AgentWallet] Adjusted ETH amount to {amount_wei / 1e18:.6f} (reserved gas)")
+                
                 tx = {
                     'to': Web3.to_checksum_address(dest_address),
                     'value': amount_wei,
-                    'gas': 21000,
-                    'gasPrice': w3.eth.gas_price,
+                    'gas': gas_limit,
+                    'gasPrice': gas_price,
                     'nonce': w3.eth.get_transaction_count(agent_account.address),
                     'chainId': 8453  # Base
                 }
                 
+                logger.info(f"[AgentWallet] ETH transfer: {amount_wei / 1e18:.6f} ETH to {dest_address[:10]}...")
+                logger.info(f"[AgentWallet] Agent balance: {agent_eth_balance / 1e18:.6f} ETH, gas price: {gas_price / 1e9:.2f} Gwei")
+                
                 signed = agent_account.sign_transaction(tx)
                 tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+                logger.info(f"[AgentWallet] TX sent: {tx_hash.hex()}")
                 receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
                 
-                if receipt.status != 1:
-                    return {"success": False, "error": "ETH transfer failed on-chain"}
+                # Log status for debugging - Base L2 may return different formats
+                logger.info(f"[AgentWallet] Receipt status: {receipt.status} (type: {type(receipt.status).__name__})")
+                
+                # Check status - handle int, bool, or hex formats
+                status_ok = receipt.status in (1, True, '0x1') or int(receipt.status) == 1
+                if not status_ok:
+                    logger.error(f"[AgentWallet] TX failed! Hash: {tx_hash.hex()}, Gas used: {receipt.gasUsed}, Status: {receipt.status}")
+                    return {"success": False, "error": f"ETH transfer failed on-chain. TX: {tx_hash.hex()}"}
                     
             elif token_address:
-                # ERC20 transfer
-                decimals = 6 if token_upper == "USDC" else 18
+                # ERC20 transfer - use correct decimals from config
                 amount_units = int(amount * (10 ** decimals))
                 
                 erc20_abi = [{
@@ -394,40 +454,67 @@ class AgentWalletManager:
             logger.error(f"On-chain transfer failed: {e}")
             return {"success": False, "error": f"On-chain transfer failed: {str(e)}"}
         
-        # Deduct from balance AFTER successful on-chain transfer
-        wallet.balances[token] -= amount
-        
-        # Record transaction
-        tx_record = {
-            "type": TransactionType.WITHDRAW.value,
-            "token": token,
-            "amount": amount,
-            "destination": dest_address,
-            "timestamp": datetime.now().isoformat(),
-            "status": "completed",
-            "tx_hash": tx_hash
-        }
-        wallet.transactions.append(tx_record)
-        
-        self._save_wallet(wallet)
+        # Deduct from balance AFTER successful on-chain transfer (only if wallet exists)
+        if wallet:
+            wallet.balances[token] -= amount
+            
+            # Record transaction
+            tx_record = {
+                "type": TransactionType.WITHDRAW.value,
+                "token": token,
+                "amount": amount,
+                "destination": dest_address,
+                "timestamp": datetime.now().isoformat(),
+                "status": "completed",
+                "tx_hash": tx_hash
+            }
+            wallet.transactions.append(tx_record)
+            
+            self._save_wallet(wallet)
         
         logger.info(f"📤 Withdrawal completed: {amount} {token} for {user_address[:10]}...")
         
+        # Build return data
+        withdrawal_record = {
+            "type": "withdraw",
+            "token": token,
+            "amount": amount,
+            "destination": dest_address,
+            "tx_hash": tx_hash
+        }
+        
         return {
             "success": True,
-            "withdrawal": tx_record,
-            "remaining_balance": wallet.balances[token],
+            "withdrawal": withdrawal_record,
+            "remaining_balance": wallet.balances.get(token, 0) if wallet else "check on-chain",
             "tx_hash": tx_hash
         }
     
     def _get_agent_private_key(self, user_address: str) -> Optional[str]:
         """Get agent's private key for transaction signing"""
-        # Try to get from environment (for hot wallet)
+        # PRIORITY 1: Try to get agent-specific key from DEPLOYED_AGENTS
+        try:
+            from api.agent_config_router import DEPLOYED_AGENTS
+            from services.agent_keys import decrypt_private_key
+            
+            user_agents = DEPLOYED_AGENTS.get(user_address.lower(), [])
+            if user_agents:
+                encrypted_pk = user_agents[0].get("encrypted_private_key")
+                if encrypted_pk:
+                    pk = decrypt_private_key(encrypted_pk)
+                    if pk:
+                        logger.info(f"[AgentWallet] Using agent-specific key for {user_address[:10]}...")
+                        return pk
+        except Exception as e:
+            logger.warning(f"[AgentWallet] Could not get key from DEPLOYED_AGENTS: {e}")
+        
+        # PRIORITY 2: Fallback to environment variable (global hot wallet)
         agent_key = os.environ.get("AGENT_PRIVATE_KEY") or os.environ.get("PRIVATE_KEY")
         if agent_key:
+            logger.info(f"[AgentWallet] Using env var AGENT_PRIVATE_KEY (fallback)")
             return agent_key
         
-        # Fallback: Try to decrypt from wallet data
+        # PRIORITY 3: Try to decrypt from wallet data
         wallet = self.wallets.get(user_address.lower())
         if wallet and wallet.encrypted_private_key:
             # Note: This requires the encryption key which user provides
@@ -442,20 +529,72 @@ class AgentWalletManager:
         Always available 24/7
         """
         wallet = self.wallets.get(user_address.lower())
-        if not wallet:
-            return {"success": False, "error": "Wallet not found"}
         
-        if not wallet.settings.get("emergency_withdraw_enabled", True):
-            return {"success": False, "error": "Emergency withdraw disabled"}
+        # Allow emergency drain even if wallet not in local storage
+        # Get on-chain balances as source of truth
+        agent_address = None
+        on_chain_balances = {}
         
-        # Set wallet to draining mode
-        wallet.status = WalletStatus.DRAINING
+        try:
+            from api.agent_config_router import DEPLOYED_AGENTS
+            from web3 import Web3
+            
+            user_agents = DEPLOYED_AGENTS.get(user_address.lower(), [])
+            if user_agents:
+                agent_address = user_agents[0].get("agent_address")
+                logger.info(f"[EmergencyDrain] Agent address: {agent_address}")
+                
+                # Fetch on-chain balances
+                w3 = Web3(Web3.HTTPProvider('https://mainnet.base.org'))
+                
+                # Token configs: address, decimals, min_usd_value
+                # Only withdraw if value > $0.10 (saves gas)
+                MIN_USD = 0.10
+                TOKENS = {
+                    "USDC": ("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 6, 1.0),  # price
+                    "WETH": ("0x4200000000000000000000000000000000000006", 18, 3300),
+                    "cbBTC": ("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", 8, 100000),
+                    "AERO": ("0x940181a94A35A4569E4529A3CDfB74e38FD98631", 18, 1.5),
+                    "VIRTUAL": ("0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b", 18, 2.5),
+                    "DEGEN": ("0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed", 18, 0.02),
+                    "BRETT": ("0x532f27101965dd16442E59d40670FaF5eBB142E4", 18, 0.15),
+                    "HIGHER": ("0x0578d8A44db98B23BF096A382e016e29a5Ce0ffe", 18, 0.05),
+                }
+                
+                # Check each ERC20 token
+                for token_name, (token_addr, decimals, price) in TOKENS.items():
+                    try:
+                        balance_call = w3.eth.call({
+                            'to': Web3.to_checksum_address(token_addr),
+                            'data': '0x70a08231000000000000000000000000' + agent_address[2:].lower()
+                        })
+                        balance = int(balance_call.hex(), 16) / (10 ** decimals)
+                        value_usd = balance * price
+                        if value_usd >= MIN_USD:  # Only withdraw if worth >= $0.10
+                            on_chain_balances[token_name] = balance
+                            logger.info(f"[EmergencyDrain] Found {balance:.6f} {token_name} (${value_usd:.2f})")
+                    except Exception as e:
+                        logger.warning(f"[EmergencyDrain] Error checking {token_name}: {e}")
+                
+                # ETH balance (keep gas buffer)
+                eth_balance = w3.eth.get_balance(Web3.to_checksum_address(agent_address)) / 1e18
+                if eth_balance > 0.001:
+                    on_chain_balances["ETH"] = eth_balance - 0.0005  # Keep gas buffer
+            else:
+                return {"success": False, "error": "No agent found for user"}
+        except Exception as e:
+            logger.error(f"[EmergencyDrain] Balance fetch error: {e}")
+            if not wallet:
+                return {"success": False, "error": f"Cannot fetch balances: {e}"}
+        
+        # Use on-chain balances if wallet not in local storage
+        balances_to_withdraw = on_chain_balances if not wallet else wallet.balances
         
         # Execute real withdrawals for each token
         withdrawals = []
         tx_hashes = []
         
-        for token, balance in list(wallet.balances.items()):
+        for token, balance in list(balances_to_withdraw.items()):
             if balance > 0:
                 # Use request_withdrawal which now does real on-chain transfer
                 result = self.request_withdrawal(
@@ -476,17 +615,17 @@ class AgentWalletManager:
                 else:
                     logger.error(f"Emergency drain failed for {token}: {result.get('error')}")
         
-        # Record emergency drain
-        wallet.transactions.append({
-            "type": "emergency_drain",
-            "withdrawals": withdrawals,
-            "timestamp": datetime.now().isoformat(),
-            "tx_hashes": tx_hashes
-        })
-        
-        # Reset wallet status
-        wallet.status = WalletStatus.ACTIVE
-        self._save_wallet(wallet)
+        # Record emergency drain (only if wallet exists in local storage)
+        if wallet:
+            wallet.transactions.append({
+                "type": "emergency_drain",
+                "withdrawals": withdrawals,
+                "timestamp": datetime.now().isoformat(),
+                "tx_hashes": tx_hashes
+            })
+            
+            wallet.status = WalletStatus.ACTIVE
+            self._save_wallet(wallet)
         
         logger.warning(f"🚨 Emergency drain completed for {user_address[:10]}... {len(withdrawals)} tokens transferred")
         

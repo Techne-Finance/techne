@@ -240,7 +240,8 @@ class StrategyExecutor:
             try:
                 idle_balance = await self.get_user_idle_balance(user_address, agent)
                 
-                if idle_balance > 1:  # Minimum $1 to allocate
+                # MINIMUM $20 USDC to execute any moves (prevent dust trades)
+                if idle_balance >= 20:
                     print(f"[StrategyExecutor] User has ${idle_balance:.2f} idle - auto-allocating!")
                     
                     # Log: Starting allocation
@@ -274,12 +275,12 @@ class StrategyExecutor:
                                 details={"error": str(result.get('error', 'Unknown'))}
                             )
                 else:
-                    print(f"[StrategyExecutor] User has no idle balance to allocate")
+                    print(f"[StrategyExecutor] Balance ${idle_balance:.2f} below $20 minimum - skipping execution")
                     if log_audit_entry:
                         log_audit_entry(
                             action="IDLE_CAPITAL",
                             wallet=user_address,
-                            details={"balance": idle_balance, "reason": "Waiting for deposit"}
+                            details={"balance": idle_balance, "minimum": 20, "reason": "Balance below $20 minimum"}
                         )
                     
             except Exception as e:

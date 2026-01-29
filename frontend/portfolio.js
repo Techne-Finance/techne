@@ -310,6 +310,10 @@ class PortfolioDashboard {
     }
 
     async loadPortfolioData() {
+        // Prevent overlapping requests (VPS optimization)
+        if (this.isRefreshing) return;
+        this.isRefreshing = true;
+
         // Show loading state
         this.showLoadingState();
 
@@ -336,6 +340,9 @@ class PortfolioDashboard {
             this.updateUI();
         } catch (error) {
             console.error('[Portfolio] Failed to load data:', error);
+        } finally {
+            // Reset refresh flag (VPS optimization - prevent overlapping requests)
+            this.isRefreshing = false;
         }
     }
 
@@ -379,6 +386,9 @@ class PortfolioDashboard {
             }
 
             console.log(`[Portfolio] ⚡ Fast load in ${loadTime.toFixed(0)}ms (API: ${data.load_time_ms}ms)`);
+
+            // Store raw API data globally for withdraw modal access
+            window.lastPortfolioData = data;
 
             // Update holdings from fast API
             this.portfolio.holdings = [];
@@ -498,22 +508,9 @@ class PortfolioDashboard {
                 console.warn('[Portfolio] Agent balance check failed:', e.message, e);
             }
 
-            // Step 3: Also check V4 contract balance (for Fund Agent awareness)
-            try {
-                const CONTRACT_ADDRESS = '0xC83E01e39A56Ec8C56Dd45236E58eE7a139cCDD4';
-                const ABI = ['function balances(address user) view returns (uint256)'];
-                const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-                const v4Raw = await contract.balances(window.connectedWallet);
-                v4Balance = Number(v4Raw) / 1e6;
-
-                if (v4Balance > 0) {
-                    console.log('[Portfolio] V4 contract has $' + v4Balance.toFixed(2) + ' - needs transfer to agent!');
-                    // Store for Fund Agent button to show
-                    this.v4ContractBalance = v4Balance;
-                }
-            } catch (e) {
-                console.warn('[Portfolio] V4 contract read failed:', e.message);
-            }
+            // NOTE: V4 contract balance check REMOVED
+            // All funds are in agent EOA wallet, not V4 contract
+            // If user has V4 funds, they need to withdraw from V4 contract manually
 
             // Get invested amount from BACKEND (Supabase) instead of contract
             let investedUSDC = 0;
@@ -578,38 +575,20 @@ class PortfolioDashboard {
 
             // Only show ETH/WETH for agent if user has a deployed agent
             const deployedAgent = this.getDeployedAgent();
-            const hasAgent = deployedAgent && deployedAgent.address && (deployedAgent.isActive || deployedAgent.is_active);
+            // Support both 'address' and 'agent_address' fields
+            const agentAddr = deployedAgent?.address || deployedAgent?.agent_address;
+            const hasAgent = agentAddr && (deployedAgent.isActive || deployedAgent.is_active);
             console.log('[Portfolio] deployedAgent:', deployedAgent, 'hasAgent:', hasAgent);
 
             const ethPrice = 3000; // Approximate ETH price
 
-            // Show user's Smart Account ETH balance (ERC-4337)
-            // This is the user's own funds they can control
-            if (window.connectedWallet) {
-                try {
-                    const saResult = await NetworkUtils.getSmartAccount(window.connectedWallet);
-                    if (saResult.success && saResult.smartAccount) {
-                        const smartAccountEth = await provider.getBalance(saResult.smartAccount);
-                        const saEthFormatted = Number(smartAccountEth) / 1e18;
-
-                        if (saEthFormatted > 0.0001) {
-                            this.portfolio.holdings.push({
-                                asset: 'ETH (Smart Account)',
-                                balance: saEthFormatted.toFixed(4),
-                                value: (saEthFormatted * ethPrice).toFixed(2),
-                                change: 0,
-                                label: 'Your agent gas funds'
-                            });
-                        }
-                    }
-                } catch (e) {
-                    console.warn('[Portfolio] Smart Account ETH fetch failed:', e.message);
-                }
-            }
+            // NOTE: Smart Account ETH check REMOVED
+            // All agent funds are in agent EOA wallet
+            // Smart Account (ERC-4337) is not used - agent has simple EOA
 
             if (hasAgent) {
-                // Fetch agent's ETH balance (same as Smart Account when unified)
-                const AGENT_ADDRESS = deployedAgent.address;
+                // Fetch agent's ETH balance from EOA
+                const AGENT_ADDRESS = agentAddr;
                 const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
 
                 try {
@@ -1374,28 +1353,47 @@ class PortfolioDashboard {
         `;
 
         this.portfolio.positions.forEach(pos => {
-            const pnl = pos.pnl || 0;
-            const pnlPercent = pos.deposited > 0 ? ((pnl / pos.deposited) * 100) : 0;
+            // Use backend fields: value_usd, deposited/entry_value, pnl
+            const currentValue = pos.value_usd || pos.current || 0;
+            const entryValue = pos.entry_value || pos.deposited || currentValue;
+            const pnl = pos.pnl || (currentValue - entryValue);
+            const pnlPercent = entryValue > 0 ? ((pnl / entryValue) * 100) : 0;
             const pnlClass = pnl >= 0 ? 'profit' : 'loss';
             const pnlSign = pnl >= 0 ? '+' : '';
+
+            // For LP (dual) positions, show both tokens
+            const isDual = pos.token0_symbol && pos.token1_symbol;
+            let sizeDisplay;
+            if (isDual) {
+                sizeDisplay = `
+                    <span class="dual-token">
+                        <span class="token-line">${pos.token0_amount?.toFixed(6) || '0'} ${pos.token0_symbol}</span>
+                        <span class="token-line">${pos.token1_amount?.toFixed(2) || '0'} ${pos.token1_symbol}</span>
+                    </span>
+                `;
+            } else {
+                sizeDisplay = `
+                    <span class="size-value">${pos.deposited?.toFixed(2) || '0.00'}</span>
+                    <span class="size-unit">USDC</span>
+                `;
+            }
 
             const row = document.createElement('div');
             row.className = 'position-row-bybit';
             row.dataset.positionId = pos.id;
             row.innerHTML = `
                 <div class="col-symbol">
-                    <span class="symbol-name">${pos.vaultName || pos.protocol}</span>
-                    <span class="symbol-asset">${pos.asset || 'USDC'}</span>
+                    <span class="symbol-name">${pos.pool_name || pos.vaultName || pos.protocol}</span>
+                    <span class="symbol-asset">${isDual ? 'LP' : (pos.asset || 'USDC')}</span>
                 </div>
                 <div class="col-size">
-                    <span class="size-value">${pos.deposited?.toFixed(2) || '0.00'}</span>
-                    <span class="size-unit">USDC</span>
+                    ${sizeDisplay}
                 </div>
                 <div class="col-entry">
-                    <span class="price-value">$${pos.deposited?.toFixed(2) || '0.00'}</span>
+                    <span class="price-value">$${entryValue.toFixed(2)}</span>
                 </div>
                 <div class="col-mark">
-                    <span class="price-value">$${pos.current?.toFixed(2) || '0.00'}</span>
+                    <span class="price-value">$${currentValue.toFixed(2)}</span>
                 </div>
                 <div class="col-pnl ${pnlClass}">
                     <span class="pnl-value">${pnlSign}$${Math.abs(pnl).toFixed(2)}</span>
@@ -1405,9 +1403,9 @@ class PortfolioDashboard {
                     <span class="apy-value">${pos.apy?.toFixed(1) || '0.0'}%</span>
                 </div>
                 <div class="col-actions">
-                    <button class="btn-close-25" onclick="PortfolioDash.closePosition(${pos.id}, 25)" title="Close 25%">25%</button>
-                    <button class="btn-close-50" onclick="PortfolioDash.closePosition(${pos.id}, 50)" title="Close 50%">50%</button>
-                    <button class="btn-close-100" onclick="PortfolioDash.closePosition(${pos.id}, 100)" title="Close All">100%</button>
+                    <button class="btn-close-25" onclick="PortfolioDash.closePosition('${pos.id}', 25)" title="Close 25%">25%</button>
+                    <button class="btn-close-50" onclick="PortfolioDash.closePosition('${pos.id}', 50)" title="Close 50%">50%</button>
+                    <button class="btn-close-100" onclick="PortfolioDash.closePosition('${pos.id}', 100)" title="Close All">100%</button>
                 </div>
             `;
             table.appendChild(row);
@@ -1443,7 +1441,7 @@ class PortfolioDashboard {
             const wallet = window.connectedWallet;
 
             // Call backend to withdraw
-            const response = await fetch(`${API_BASE}/api/position/close`, {
+            const response = await fetch(`${API_BASE}/api/portfolio/position/close`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1888,35 +1886,64 @@ class PortfolioDashboard {
         console.log('[Portfolio] Emergency pause executed');
     }
 
-    toggleAgentActive(isActive) {
+    async toggleAgentActive(isActive) {
         const agent = this.agents.find(a => a.id === this.selectedAgentId);
         if (!agent) return;
 
-        agent.isActive = isActive;
-        if (!isActive) {
-            agent.pausedAt = new Date().toISOString();
-        } else {
-            delete agent.pausedAt;
+        const API_BASE = window.API_BASE || '';
+        const userAddress = window.connectedWallet?.toLowerCase() || '';
+        const agentId = agent.id;
+
+        try {
+            // Call backend to pause/resume agent
+            const endpoint = isActive ? 'resume' : 'stop';
+            const response = await fetch(`${API_BASE}/api/agent/${endpoint}/${userAddress}/${agentId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Update local state
+                agent.isActive = isActive;
+                agent.is_active = isActive;
+                if (!isActive) {
+                    agent.pausedAt = new Date().toISOString();
+                } else {
+                    delete agent.pausedAt;
+                }
+
+                localStorage.setItem('techne_deployed_agents', JSON.stringify(this.agents));
+
+                // Update UI
+                const badge = document.getElementById('agentStatusBadge');
+                if (badge) {
+                    badge.textContent = isActive ? 'Active' : 'Paused';
+                    badge.className = `status-badge ${isActive ? 'active' : 'inactive'}`;
+                }
+
+                // Update toggle slider color
+                const slider = document.querySelector('.toggle-slider');
+                if (slider) {
+                    slider.style.background = isActive ? '#22c55e' : '#374151';
+                }
+
+                this.showToast(isActive ? 'Agent resumed - will scan for pools' : 'Agent paused - no actions until resumed', 'success');
+                console.log(`[Portfolio] Agent ${agent.id} ${isActive ? 'RESUMED' : 'PAUSED'} via API`);
+            } else {
+                // Revert toggle
+                const toggle = document.getElementById('agentActiveToggle');
+                if (toggle) toggle.checked = !isActive;
+                this.showToast(result.message || 'Failed to update agent status', 'error');
+            }
+        } catch (error) {
+            console.error('[Portfolio] Toggle agent error:', error);
+            // Revert toggle on error
+            const toggle = document.getElementById('agentActiveToggle');
+            if (toggle) toggle.checked = !isActive;
+            this.showToast('Network error - check connection', 'error');
         }
-
-        localStorage.setItem('techne_deployed_agents', JSON.stringify(this.agents));
-
-        // Update UI
-        const badge = document.getElementById('agentStatusBadge');
-        if (badge) {
-            badge.textContent = isActive ? 'Active' : 'Paused';
-            badge.className = `status-badge ${isActive ? 'active' : 'inactive'}`;
-        }
-
-        // Update toggle slider color
-        const slider = document.querySelector('.toggle-slider');
-        if (slider) {
-            slider.style.background = isActive ? '#22c55e' : '#374151';
-        }
-
-        this.showToast(isActive ? 'Agent resumed' : 'Agent paused', 'info');
-
-        console.log(`[Portfolio] Agent ${agent.id} ${isActive ? 'resumed' : 'paused'}`);
     }
 
     async exportAuditCSV() {
@@ -1977,17 +2004,23 @@ class PortfolioDashboard {
     }
 
     startAutoRefresh() {
-        // Auto-refresh every 30 seconds
+        // Auto-refresh every 120 seconds (2 min) - optimized for 2GB VPS
+        // Previous: 30000ms was too aggressive, causing overlapping requests
         this.refreshInterval = setInterval(() => {
+            // Skip if a refresh is already in progress
+            if (this.isRefreshing) {
+                console.log('[Portfolio] Skipping refresh - already in progress');
+                return;
+            }
             console.log('[Portfolio] Auto-refresh triggered');
             this.loadPortfolioData();
             this.loadAuditLog();
-        }, 30000);
+        }, 120000);  // 2 minutes
 
         // Initial load
         this.loadAuditLog();
 
-        console.log('[Portfolio] Auto-refresh started (30s interval)');
+        console.log('[Portfolio] Auto-refresh started (120s interval - VPS optimized)');
     }
 
     async loadAuditLog() {

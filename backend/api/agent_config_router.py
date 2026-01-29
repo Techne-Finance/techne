@@ -278,21 +278,50 @@ async def get_agent_status(user_address: str, agent_id: Optional[str] = None):
 @router.post("/stop/{user_address}/{agent_id}")
 async def stop_agent(user_address: str, agent_id: str):
     """
-    Stop a specific agent
+    Stop a specific agent (pause it)
     """
-    user_agents = DEPLOYED_AGENTS.get(user_address, [])
+    user_agents = DEPLOYED_AGENTS.get(user_address.lower(), [])
     agent = next((a for a in user_agents if a.get("id") == agent_id), None)
     
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     
     agent["is_active"] = False
-    agent["stopped_at"] = datetime.utcnow().isoformat()
+    agent["paused_at"] = datetime.utcnow().isoformat()
     _save_agents(DEPLOYED_AGENTS)  # Persist to file
+    
+    print(f"[AgentConfig] Agent {agent_id} PAUSED for {user_address}")
     
     return {
         "success": True,
-        "message": f"Agent {agent_id} stopped"
+        "message": f"Agent {agent_id} paused",
+        "is_active": False
+    }
+
+
+@router.post("/resume/{user_address}/{agent_id}")
+async def resume_agent(user_address: str, agent_id: str):
+    """
+    Resume a paused agent
+    """
+    user_agents = DEPLOYED_AGENTS.get(user_address.lower(), [])
+    agent = next((a for a in user_agents if a.get("id") == agent_id), None)
+    
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    agent["is_active"] = True
+    agent["resumed_at"] = datetime.utcnow().isoformat()
+    if "paused_at" in agent:
+        del agent["paused_at"]
+    _save_agents(DEPLOYED_AGENTS)  # Persist to file
+    
+    print(f"[AgentConfig] Agent {agent_id} RESUMED for {user_address}")
+    
+    return {
+        "success": True,
+        "message": f"Agent {agent_id} resumed",
+        "is_active": True
     }
 
 

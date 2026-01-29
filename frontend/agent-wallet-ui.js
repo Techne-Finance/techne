@@ -678,18 +678,75 @@ const AgentWalletUI = {
      * @param {string} asset - Token symbol (USDC, ETH, WETH)
      */
     async showWithdrawModal(asset = 'USDC') {
-        // CRITICAL: Refresh stats from contract BEFORE showing modal
-        // This ensures userValue is populated with actual vault balance
-        try {
-            await this.refreshStats();
-            console.log('[AgentWallet] Withdraw modal - userValue:', this.userValue);
-        } catch (e) {
-            console.warn('[AgentWallet] Failed to refresh stats before withdraw:', e);
-            // Continue anyway - show modal with whatever data we have
+        // Get agent address and balance from CACHED portfolio data (instant!)
+        let agentAddress = null;
+        let assetBalance = 0;
+        let assetValueUsd = 0;
+
+        // Get agent address from localStorage
+        const agents = JSON.parse(localStorage.getItem('techne_deployed_agents') || '[]');
+        if (agents.length > 0) {
+            agentAddress = agents[0].address || agents[0].agent_address || agents[0].smartAccount;
         }
 
-        // Store which token we're withdrawing
+        // Use CACHED portfolio holdings (already loaded on page) - INSTANT!
+        let cachedHoldings = window.portfolioDashboard?.portfolio?.holdings || [];
+        console.log('[AgentWallet] Cached holdings:', cachedHoldings);
+
+        // Try lastPortfolioData global variable (set by tryFastPortfolioLoad)
+        if (cachedHoldings.length === 0 && window.lastPortfolioData?.holdings) {
+            cachedHoldings = window.lastPortfolioData.holdings;
+            console.log('[AgentWallet] Using lastPortfolioData:', cachedHoldings);
+        }
+
+        if (cachedHoldings.length > 0) {
+            const holding = cachedHoldings.find(h => {
+                const hAsset = (h.asset || '').toUpperCase();
+                const searchAsset = asset.toUpperCase();
+                // Match: ETH, ETH (Gas), ETH(Gas)
+                return hAsset === searchAsset ||
+                    hAsset.startsWith(searchAsset + ' ') ||
+                    hAsset.startsWith(searchAsset + '(') ||
+                    hAsset.includes(searchAsset);
+            });
+
+            if (holding) {
+                assetBalance = parseFloat(holding.balance) || 0;
+                assetValueUsd = parseFloat(holding.value) || parseFloat(holding.value_usd) || 0;
+                console.log(`[AgentWallet] Found ${asset} in cache:`, holding);
+            } else {
+                console.log(`[AgentWallet] ${asset} NOT found in cached holdings`);
+            }
+        } else {
+            // FALLBACK: Fetch from API (slower but reliable)
+            console.log('[AgentWallet] Cache empty, fetching from API...');
+            try {
+                const API_BASE = window.API_BASE || '';
+                const userWallet = window.connectedWallet || '';
+                const resp = await fetch(`${API_BASE}/api/portfolio/${userWallet}`);
+                const data = await resp.json();
+
+                const holding = (data.holdings || []).find(h => {
+                    const hAsset = (h.asset || '').toUpperCase();
+                    return hAsset.includes(asset.toUpperCase());
+                });
+
+                if (holding) {
+                    assetBalance = parseFloat(holding.balance) || 0;
+                    assetValueUsd = parseFloat(holding.value_usd) || 0;
+                    console.log(`[AgentWallet] Found ${asset} from API:`, holding);
+                }
+            } catch (e) {
+                console.warn('[AgentWallet] API fetch failed:', e);
+            }
+        }
+
+        // Store for withdrawal
         this.withdrawToken = asset;
+        this.withdrawAgentAddress = agentAddress;
+        this.withdrawBalance = assetBalance;
+        this.withdrawValueUsd = assetValueUsd;
+
         document.getElementById('vaultModal')?.remove();
 
         const modal = document.createElement('div');
@@ -706,6 +763,7 @@ const AgentWalletUI = {
             z-index: 10000;
             animation: fadeIn 0.2s ease;
         `;
+
 
         modal.innerHTML = `
             <div class="vault-modal-premium" style="
@@ -778,7 +836,7 @@ const AgentWalletUI = {
                             text-align: center;
                         ">
                             <div style="font-size: 0.7rem; color: rgba(255,255,255,0.5); text-transform: uppercase; margin-bottom: 6px;">Your Position</div>
-                            <div style="font-size: 1.3rem; color: #22c55e; font-weight: 600;" id="withdrawPositionValue">$${(Number(this.userValue) / 1e6).toFixed(2)}</div>
+                            <div style="font-size: 1.3rem; color: #22c55e; font-weight: 600;" id="withdrawPositionValue">$${assetValueUsd.toFixed(2)}</div>
                         </div>
                         <div style="
                             background: rgba(255,255,255,0.03);
@@ -788,11 +846,11 @@ const AgentWalletUI = {
                             text-align: center;
                         ">
                             <div style="font-size: 0.7rem; color: rgba(255,255,255,0.5); text-transform: uppercase; margin-bottom: 6px;">Available</div>
-                            <div style="font-size: 1.3rem; color: #fff; font-weight: 600;">${(Number(this.userValue) / 1e6).toFixed(2)} ${asset}</div>
+                            <div style="font-size: 1.3rem; color: #fff; font-weight: 600;">${assetBalance.toFixed(asset === 'USDC' ? 2 : 6)} ${asset}</div>
                         </div>
                     </div>
 
-                    <!-- Shares Input -->
+                    <!-- Amount Input -->
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">${asset} Amount to Withdraw</label>
                         <div style="
@@ -802,7 +860,7 @@ const AgentWalletUI = {
                             border-radius: 12px;
                             overflow: hidden;
                         ">
-                            <input type="number" id="withdrawShares" placeholder="0" min="1" max="${this.userShares}" style="
+                            <input type="number" id="withdrawShares" placeholder="0" min="0" max="${assetBalance}" step="any" style="
                                 flex: 1;
                                 background: transparent;
                                 border: none;
@@ -824,7 +882,7 @@ const AgentWalletUI = {
                             ">MAX</button>
                         </div>
                         <div style="margin-top: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.4);">
-                            Available: ${(Number(this.userValue) / 1e6).toFixed(2)} ${asset}
+                            Available: ${assetBalance.toFixed(asset === 'USDC' ? 2 : 6)} ${asset}
                         </div>
                     </div>
 
@@ -978,29 +1036,38 @@ const AgentWalletUI = {
     },
 
     /**
-     * Set max withdraw - V4.3.2 uses USDC amount!
+     * Set max withdraw - uses agent's on-chain balance
      */
     setMaxWithdraw() {
-        // userValue is in raw USDC units, convert to display
-        const maxUsdc = (Number(this.userValue) / 1e6).toFixed(2);
-        document.getElementById('withdrawShares').value = maxUsdc;
-        this.updateWithdrawEstimate(maxUsdc);
+        // Use balance fetched from portfolio API
+        const maxAmount = this.withdrawBalance || 0;
+        const decimals = this.withdrawToken === 'USDC' ? 2 : 6;
+        document.getElementById('withdrawShares').value = maxAmount.toFixed(decimals);
+        this.updateWithdrawEstimate(maxAmount);
     },
 
     /**
-     * Update withdraw estimate
+     * Update withdraw estimate based on amount
      */
-    updateWithdrawEstimate(shares) {
-        if (!shares || this.totalVaultValue === 0) {
+    updateWithdrawEstimate(amount) {
+        const numAmount = parseFloat(amount) || 0;
+        if (numAmount <= 0) {
             document.getElementById('withdrawEstimate').textContent = '$0.00';
             return;
         }
 
-        // Estimate: (shares / totalShares) * totalValue
-        // Simplified - in reality would call contract
-        const estimate = (shares / Math.max(1, Number(this.userShares))) * Number(this.userValue);
-        document.getElementById('withdrawEstimate').textContent =
-            '$' + (estimate / 1e6).toFixed(2);
+        // Calculate USD value based on token price
+        let price = 1; // Default for USDC
+        if (this.withdrawToken === 'ETH' || this.withdrawToken === 'WETH') {
+            price = 3300; // ETH price estimate
+        } else if (this.withdrawToken === 'cbBTC') {
+            price = 100000;
+        } else if (this.withdrawToken === 'AERO') {
+            price = 1.5;
+        }
+
+        const estimate = numAmount * price;
+        document.getElementById('withdrawEstimate').textContent = '$' + estimate.toFixed(2);
     },
 
     /**
@@ -1224,14 +1291,15 @@ const AgentWalletUI = {
                 agentId = agentSelector.value;
             }
 
-            // Call backend EOA withdraw endpoint
-            const resp = await fetch(`${window.API_BASE || 'http://localhost:8000'}/api/agent/eoa-withdraw`, {
+            // Call backend wallet withdraw endpoint  
+            const resp = await fetch(`${window.API_BASE || 'http://localhost:8000'}/api/agent-wallet/withdraw`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_address: window.connectedWallet,
-                    amount_usdc: parseFloat(amountInput),
-                    agent_id: agentId
+                    token: this.withdrawToken || 'USDC',  // ETH, USDC, WETH, etc.
+                    amount: parseFloat(amountInput),
+                    destination: window.connectedWallet  // Withdraw to user's wallet
                 })
             });
 
@@ -1241,10 +1309,17 @@ const AgentWalletUI = {
                 btn.innerHTML = '<span class="techne-icon">' + TechneIcons.success + '</span> Withdrawn!';
                 btn.style.background = 'var(--success)';
 
-                Toast?.show(`Successfully withdrawn $${amountInput} USDC!`, 'success');
-                console.log('[AgentWallet] Withdraw TX:', result.tx_hash);
+                Toast?.show(`Successfully withdrawn ${amountInput} ${this.withdrawToken || 'USDC'}!`, 'success');
+                console.log('[AgentWallet] Withdraw TX:', result.withdrawal?.tx_hash);
 
                 await this.refreshStats();
+
+                // Auto-refresh portfolio to show updated balance
+                if (window.portfolioDashboard?.loadPortfolioData) {
+                    console.log('[AgentWallet] Triggering portfolio refresh after withdraw...');
+                    window.portfolioDashboard.isRefreshing = false;  // Reset flag to allow immediate refresh
+                    window.portfolioDashboard.loadPortfolioData();
+                }
 
                 setTimeout(() => {
                     document.getElementById('vaultModal')?.remove();
