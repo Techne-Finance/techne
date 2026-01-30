@@ -280,6 +280,7 @@ PROTOCOLS = {
         "risk_level": "low",  # Uniswap is battle-tested
         "is_lending": False,
         "audited": True,
+        "implemented": False,  # Coming soon - no Smart Account integration yet
         "supply_sig": "mint(address,int24,int24,uint128,bytes)",  # Uniswap V3 mint
         "apy": 12.0,
         "tvl": 150000000,  # $150M TVL
@@ -298,6 +299,7 @@ PROTOCOLS = {
         "is_lending": False,
         "is_leveraged_farm": True,  # Extra = leveraged yield farming
         "audited": True,
+        "implemented": False,  # Coming soon - no Smart Account integration yet
         "supply_sig": "deposit(uint256,address)",
         "apy": 25.0,  # Higher due to leverage
         "tvl": 35000000,
@@ -329,6 +331,7 @@ PROTOCOLS = {
         "is_lending": False,
         "is_stableswap": True,  # Optimized for stables
         "audited": True,
+        "implemented": False,  # Coming soon - no Smart Account integration yet
         "supply_sig": "add_liquidity(uint256[3],uint256)",
         "apy": 8.5,
         "tvl": 45000000,
