@@ -102,9 +102,50 @@ class AgentBuilderUI {
         this.bindChatEvents();
         this.bindCollapsibleEvents();
 
+        // Fetch protocol implemented status and disable coming soon protocols
+        this.applyProtocolImplementedStatus();
+
         // Set initial mode
         document.body.dataset.builderMode = 'instant';
         console.log('[AgentBuilder] Extended UI initialized with AI-Instant mode');
+    }
+
+    /**
+     * Fetch protocol list from API and disable unimplemented protocols
+     * @returns {Promise<void>}
+     */
+    async applyProtocolImplementedStatus() {
+        try {
+            const response = await fetch('/api/protocols?pool_type=all');
+            const data = await response.json();
+
+            if (data.success && data.protocols) {
+                // Build map of protocol ID -> implemented status
+                const implementedMap = {};
+                data.protocols.forEach(p => {
+                    implementedMap[p.id] = p.implemented !== false;  // Default to true
+                });
+
+                // Apply disabled class to unimplemented protocol chips
+                document.querySelectorAll('.protocol-chip').forEach(chip => {
+                    const protocolId = chip.dataset.protocol;
+                    const isImplemented = implementedMap[protocolId];
+
+                    if (isImplemented === false) {
+                        chip.classList.add('disabled');
+                        chip.classList.remove('active');  // Remove active if disabled
+                        console.log(`[AgentBuilder] Protocol ${protocolId} disabled (Coming Soon)`);
+                    }
+                });
+
+                // Also remove disabled protocols from default config
+                this.config.protocols = this.config.protocols.filter(p => implementedMap[p] !== false);
+
+                console.log('[AgentBuilder] Protocol implemented status applied');
+            }
+        } catch (error) {
+            console.error('[AgentBuilder] Failed to fetch protocol status:', error);
+        }
     }
 
     // NEW: 3-Tier Mode Toggle (AI-Instant / Flexible / Advanced)
@@ -393,6 +434,12 @@ class AgentBuilderUI {
         // Protocol chips
         document.querySelectorAll('.protocol-chip').forEach(btn => {
             btn.addEventListener('click', () => {
+                // Block clicks on disabled (Coming Soon) protocols
+                if (btn.classList.contains('disabled')) {
+                    console.log('[AgentBuilder] Protocol not yet implemented:', btn.dataset.protocol);
+                    return;
+                }
+
                 btn.classList.toggle('active');
                 const protocol = btn.dataset.protocol;
                 if (btn.classList.contains('active')) {

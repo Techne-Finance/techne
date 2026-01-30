@@ -4584,6 +4584,34 @@ body.section-verify .main-content {
     color: var(--gold);
 }
 
+/* Disabled protocol chips - Coming Soon */
+.protocol-chip.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.protocol-chip.disabled:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.protocol-chip.disabled span {
+    color: #555;
+}
+
+.protocol-chip .coming-soon-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 6px;
+    padding: 1px 3px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #666;
+    border-radius: 2px;
+    text-transform: uppercase;
+}
+
 /* Asset Categories */
 .asset-category {
     margin-bottom: 14px;
