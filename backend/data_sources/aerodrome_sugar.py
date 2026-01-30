@@ -1,33 +1,33 @@
 """
-Aerodrome Sugar Contract Client
-Uses LpSugar.byAddress() for fast single-call pool data including emissions.
-Replaces 10+ slow RPC calls with 1 fast call.
+Aerodrome Sugar v3 Contract Integration
+Direct on-chain data fetching for Aerodrome pools on Base.
 
-Sugar Address (Base): 0x68c19e13618C41158fE4bAba1B8fb3A9c74bDb0A
+Sugar v3 Contract: 0x68c19e13618C41158fE4bAba1B8fb3A9c74bDb0A
 """
 
-import logging
-from typing import Dict, Any, Optional
+import asyncio
+import os
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
 from web3 import Web3
 
-logger = logging.getLogger("AerodromeSugar")
+# Sugar v3 contract address on Base
+SUGAR_ADDRESS = "0x68c19e13618C41158fE4bAba1B8fb3A9c74bDb0A"
 
-# Sugar contract addresses by chain
-SUGAR_ADDRESSES = {
-    "base": "0x68c19e13618C41158fE4bAba1B8fb3A9c74bDb0A",
-    "optimism": "0x28DcC3d6Fe59F0f8678f0e5EE3288D4d1D5c5102",  # Velodrome Sugar
-}
-
-# AERO token for price lookup
-AERO_TOKEN = "0x940181a94A35A4569E4529A3CDfB74e38FD98631"
-
-# LpSugar ABI - only byAddress function we need
-LP_SUGAR_ABI = [
+# LP Sugar v3 ABI - `all` function takes 2 params (no account), returns 26 fields
+SUGAR_ABI = [
     {
-        "inputs": [{"name": "_pool", "type": "address"}],
-        "name": "byAddress",
+        "name": "all",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [
+            {"name": "_limit", "type": "uint256"},
+            {"name": "_offset", "type": "uint256"}
+        ],
         "outputs": [
             {
+                "name": "",
+                "type": "tuple[]",
                 "components": [
                     {"name": "lp", "type": "address"},
                     {"name": "symbol", "type": "string"},
@@ -50,246 +50,183 @@ LP_SUGAR_ABI = [
                     {"name": "factory", "type": "address"},
                     {"name": "emissions", "type": "uint256"},
                     {"name": "emissions_token", "type": "address"},
-                    {"name": "emissions_cap", "type": "uint256"},
                     {"name": "pool_fee", "type": "uint256"},
                     {"name": "unstaked_fee", "type": "uint256"},
                     {"name": "token0_fees", "type": "uint256"},
                     {"name": "token1_fees", "type": "uint256"},
-                    {"name": "locked", "type": "uint256"},
-                    {"name": "emerging", "type": "bool"},
-                    {"name": "created_at", "type": "uint256"},
-                    {"name": "nfpm", "type": "address"},
-                    {"name": "alm", "type": "address"},
-                    {"name": "root", "type": "address"},
-                ],
-                "name": "",
-                "type": "tuple"
+                    {"name": "nfpm", "type": "address"}
+                ]
             }
-        ],
-        "stateMutability": "view",
-        "type": "function"
+        ]
     }
 ]
 
-# RPC endpoints
-RPC_ENDPOINTS = {
-    "base": "https://mainnet.base.org",
-    "optimism": "https://mainnet.optimism.io",
-}
+# AERO token price (simplified - in production use oracle)
+AERO_PRICE_USD = 1.50
 
 
 class AerodromeSugar:
     """
-    Fast APY data using Aerodrome Sugar contract.
-    ONE RPC call instead of 10+.
+    Fetches Aerodrome pool data directly from Sugar v3 contracts on Base.
+    
+    Benefits over The Graph:
+    - Zero API cost (only RPC calls)
+    - Live on-chain data (block-level accuracy)
+    - No rate limits beyond RPC
     """
     
-    def __init__(self):
-        self._web3_cache: Dict[str, Web3] = {}
-        self._aero_price_cache: Optional[float] = None
-        self._aero_price_timestamp: float = 0
-        logger.info("🍬 Aerodrome Sugar client initialized")
-    
-    def _get_web3(self, chain: str) -> Optional[Web3]:
-        """Get cached Web3 instance"""
-        if chain in self._web3_cache:
-            return self._web3_cache[chain]
+    def __init__(self, rpc_url: str = None):
+        self.rpc_url = rpc_url or os.getenv("ALCHEMY_RPC_URL", "https://mainnet.base.org")
+        self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
+        self.sugar = self.w3.eth.contract(
+            address=Web3.to_checksum_address(SUGAR_ADDRESS),
+            abi=SUGAR_ABI
+        )
         
-        rpc = RPC_ENDPOINTS.get(chain.lower())
-        if not rpc:
-            return None
-            
+        # Cache with 5 min TTL
+        self.cache: Dict[str, Any] = {}
+        self.cache_time: Dict[str, datetime] = {}
+        self.cache_ttl = 300  # 5 minutes
+        
+    def _is_cache_valid(self, key: str) -> bool:
+        if key not in self.cache_time:
+            return False
+        return datetime.now() - self.cache_time[key] < timedelta(seconds=self.cache_ttl)
+    
+    def _parse_pool(self, raw_pool: tuple) -> Dict:
+        """Parse raw tuple from Sugar v3 contract into dict (26 fields)"""
+        return {
+            "lp": raw_pool[0],
+            "symbol": raw_pool[1],
+            "decimals": raw_pool[2],
+            "liquidity": raw_pool[3],
+            "type": raw_pool[4],           # Pool type (CL tick spacing or 0 for stable/volatile)
+            "tick": raw_pool[5],
+            "sqrt_ratio": raw_pool[6],
+            "token0": raw_pool[7],
+            "reserve0": raw_pool[8],
+            "staked0": raw_pool[9],
+            "token1": raw_pool[10],
+            "reserve1": raw_pool[11],
+            "staked1": raw_pool[12],
+            "gauge": raw_pool[13],
+            "gauge_liquidity": raw_pool[14],
+            "gauge_alive": raw_pool[15],
+            "fee": raw_pool[16],
+            "bribe": raw_pool[17],
+            "factory": raw_pool[18],
+            "emissions": raw_pool[19],
+            "emissions_token": raw_pool[20],
+            "pool_fee": raw_pool[21],
+            "unstaked_fee": raw_pool[22],
+            "token0_fees": raw_pool[23],
+            "token1_fees": raw_pool[24],
+            "nfpm": raw_pool[25],
+        }
+    
+    def _calculate_tvl(self, pool: Dict) -> float:
+        """Estimate TVL in USD (simplified - use oracle in production)"""
+        reserve0 = pool["reserve0"] / 1e18
+        reserve1 = pool["reserve1"] / 1e18
+        
+        symbol = pool["symbol"].upper()
+        
+        # Simple heuristic for stablecoin pools
+        if "USDC" in symbol or "USDT" in symbol or "DAI" in symbol:
+            return (reserve0 + reserve1) * 1.0  # Assume ~$1
+        
+        # For other pools, rough estimate
+        return (reserve0 + reserve1) * 0.5
+    
+    def _calculate_apr(self, pool: Dict) -> float:
+        """Calculate APR from emissions"""
+        emissions_per_sec = pool["emissions"] / 1e18
+        emissions_per_year = emissions_per_sec * 365 * 24 * 60 * 60
+        
+        tvl = self._calculate_tvl(pool)
+        if tvl <= 0:
+            return 0
+        
+        apr = (emissions_per_year * AERO_PRICE_USD) / tvl * 100
+        return min(apr, 10000)  # Cap at 10000%
+    
+    async def get_all_pools(self, limit: int = 300, offset: int = 0) -> List[Dict]:
+        """Fetch all Aerodrome pools from Sugar v3 contract."""
+        cache_key = f"all_pools_{limit}_{offset}"
+        
+        if self._is_cache_valid(cache_key):
+            return self.cache[cache_key]
+        
         try:
-            w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={'timeout': 10}))
-            if w3.is_connected():
-                self._web3_cache[chain] = w3
-                return w3
+            # Sugar v3: all(limit, offset) - NO account parameter
+            raw_pools = self.sugar.functions.all(limit, offset).call()
+            
+            pools = []
+            for raw in raw_pools:
+                pool = self._parse_pool(raw)
+                pool["tvlUsd"] = self._calculate_tvl(pool)
+                pool["apy"] = self._calculate_apr(pool)
+                pool["project"] = "aerodrome"
+                pool["chain"] = "Base"
+                pool["source"] = "sugar_v3"
+                pools.append(pool)
+            
+            self.cache[cache_key] = pools
+            self.cache_time[cache_key] = datetime.now()
+            
+            return pools
+            
         except Exception as e:
-            logger.warning(f"RPC connection failed: {e}")
+            print(f"[AerodromeSugar] Error fetching pools: {e}")
+            return self.cache.get(cache_key, [])
+    
+    async def get_pool_by_address(self, pool_address: str) -> Optional[Dict]:
+        """Get specific pool data by address."""
+        all_pools = await self.get_all_pools()
+        
+        pool_address = pool_address.lower()
+        for pool in all_pools:
+            if pool["lp"].lower() == pool_address:
+                return pool
         
         return None
     
-    async def get_pool_data_fast(self, pool_address: str, chain: str = "base") -> Optional[Dict[str, Any]]:
-        """
-        Get pool data via Sugar in ONE RPC call.
-        Returns emissions, gauge info, staked amounts - everything needed for APY.
-        """
-        sugar_address = SUGAR_ADDRESSES.get(chain.lower())
-        if not sugar_address:
-            logger.warning(f"No Sugar contract for chain: {chain}")
-            return None
+    async def get_pools_for_tracking(self, min_tvl: float = 100000, min_apr: float = 5) -> List[Dict]:
+        """Get pools suitable for tracking/investment."""
+        all_pools = await self.get_all_pools()
         
-        w3 = self._get_web3(chain)
-        if not w3:
-            return None
-        
-        try:
-            pool_address = Web3.to_checksum_address(pool_address)
-            sugar = w3.eth.contract(
-                address=Web3.to_checksum_address(sugar_address),
-                abi=LP_SUGAR_ABI
-            )
-            
-            # ONE CALL for all data!
-            lp_data = sugar.functions.byAddress(pool_address).call()
-            
-            # Parse tuple into dict
-            result = {
-                "lp": lp_data[0],
-                "symbol": lp_data[1],
-                "decimals": lp_data[2],
-                "liquidity": lp_data[3],
-                "pool_type": lp_data[4],  # tick spacing for CL, 0/-1 for V2
-                "tick": lp_data[5],
-                "token0": lp_data[7],
-                "reserve0": lp_data[8],
-                "staked0": lp_data[9],
-                "token1": lp_data[10],
-                "reserve1": lp_data[11],
-                "staked1": lp_data[12],
-                "gauge": lp_data[13],
-                "gauge_liquidity": lp_data[14],
-                "gauge_alive": lp_data[15],
-                "factory": lp_data[18],
-                "emissions": lp_data[19],  # Per second!
-                "emissions_token": lp_data[20],
-                "pool_fee": lp_data[22],
-                "created_at": lp_data[28],
-            }
-            
-            # Check if gauge exists and is alive
-            has_gauge = result["gauge"] != "0x0000000000000000000000000000000000000000" and result["gauge_alive"]
-            result["has_gauge"] = has_gauge
-            
-            # Determine pool type
-            if result["pool_type"] >= 1:
-                result["pool_type_name"] = "cl"  # Concentrated Liquidity
-            elif result["pool_type"] == 0:
-                result["pool_type_name"] = "stable"
-            else:
-                result["pool_type_name"] = "volatile"
-            
-            logger.info(f"🍬 Sugar data: {result['symbol']}, emissions={result['emissions']}/s, gauge_alive={has_gauge}")
-            
-            return result
-            
-        except Exception as e:
-            logger.warning(f"Sugar call failed: {e}")
-            return None
-    
-    async def calculate_apy_from_sugar(
-        self, 
-        pool_address: str, 
-        chain: str = "base",
-        tvl_usd: Optional[float] = None
-    ) -> Dict[str, Any]:
-        """
-        Calculate APY using Sugar data.
-        
-        Args:
-            pool_address: Pool contract address
-            chain: Chain name
-            tvl_usd: Optional TVL from GeckoTerminal (more accurate)
-        
-        Returns:
-            APY data with emissions info
-        """
-        sugar_data = await self.get_pool_data_fast(pool_address, chain)
-        
-        if not sugar_data:
-            return {"apy_status": "error", "reason": "SUGAR_CALL_FAILED"}
-        
-        if not sugar_data["has_gauge"]:
-            return {
-                "apy_status": "unsupported",
-                "reason": "NO_ACTIVE_GAUGE",
-                "pool_type": sugar_data.get("pool_type_name"),
-                "symbol": sugar_data.get("symbol"),
-            }
-        
-        emissions_per_second = sugar_data["emissions"]
-        if emissions_per_second == 0:
-            return {
-                "apy_status": "unavailable",
-                "reason": "ZERO_EMISSIONS",
-                "pool_type": sugar_data.get("pool_type_name"),
-                "has_gauge": True,
-            }
-        
-        # Get AERO price for APY calculation
-        aero_price = await self._get_aero_price()
-        if not aero_price:
-            return {
-                "apy_status": "requires_external_tvl",
-                "reason": "AERO_PRICE_UNAVAILABLE",
-                "emissions_per_second": emissions_per_second,
-                "pool_type": sugar_data.get("pool_type_name"),
-                "has_gauge": True,
-            }
-        
-        # Calculate yearly emissions USD
-        yearly_emissions = emissions_per_second * 86400 * 365 / 1e18  # AERO has 18 decimals
-        yearly_rewards_usd = yearly_emissions * aero_price
-        
-        # Use provided TVL or need external source
-        if not tvl_usd or tvl_usd <= 0:
-            return {
-                "apy_status": "requires_external_tvl",
-                "reason": "NEED_TVL_FROM_GECKO",
-                "yearly_rewards_usd": yearly_rewards_usd,
-                "emissions_per_second": emissions_per_second,
-                "aero_price": aero_price,
-                "pool_type": sugar_data.get("pool_type_name"),
-                "has_gauge": True,
-                "gauge_address": sugar_data.get("gauge"),
-            }
-        
-        # Calculate APY
-        apy = (yearly_rewards_usd / tvl_usd) * 100 if tvl_usd > 0 else 0
-        
-        return {
-            "apy_status": "ok",
-            "apy": apy,
-            "apy_reward": apy,
-            "yearly_rewards_usd": yearly_rewards_usd,
-            "tvl_usd": tvl_usd,
-            "emissions_per_second": emissions_per_second,
-            "aero_price": aero_price,
-            "pool_type": sugar_data.get("pool_type_name"),
-            "has_gauge": True,
-            "gauge_address": sugar_data.get("gauge"),
-            "symbol": sugar_data.get("symbol"),
-            "source": "aerodrome_sugar",
-        }
-    
-    async def _get_aero_price(self) -> Optional[float]:
-        """Get AERO token price (cached 60s)"""
-        import time
-        
-        # Check cache
-        if self._aero_price_cache and (time.time() - self._aero_price_timestamp) < 60:
-            return self._aero_price_cache
-        
-        try:
-            import httpx
-            async with httpx.AsyncClient(timeout=5) as client:
-                # Use GeckoTerminal for AERO price
-                r = await client.get(
-                    f"https://api.geckoterminal.com/api/v2/simple/networks/base/token_price/{AERO_TOKEN}"
-                )
-                if r.status_code == 200:
-                    data = r.json()
-                    price = float(data.get("data", {}).get("attributes", {}).get("token_prices", {}).get(AERO_TOKEN.lower(), 0))
-                    if price > 0:
-                        self._aero_price_cache = price
-                        self._aero_price_timestamp = time.time()
-                        logger.info(f"AERO price: ${price:.4f}")
-                        return price
-        except Exception as e:
-            logger.debug(f"AERO price fetch failed: {e}")
-        
-        return self._aero_price_cache  # Return stale cache if available
+        return [
+            p for p in all_pools 
+            if p["tvlUsd"] >= min_tvl 
+            and p["apy"] >= min_apr
+            and p["gauge_alive"]
+        ]
 
 
-# Global instance
-sugar_client = AerodromeSugar()
+# Singleton instance
+aerodrome_sugar = AerodromeSugar()
+
+
+async def get_aerodrome_pools_from_sugar(min_tvl: float = 100000) -> List[Dict]:
+    """Convenience function for fetching Aerodrome pools via Sugar"""
+    pools = await aerodrome_sugar.get_all_pools()
+    return [p for p in pools if p["tvlUsd"] >= min_tvl]
+
+
+if __name__ == "__main__":
+    async def test():
+        print("Testing Aerodrome Sugar v3...")
+        sugar = AerodromeSugar()
+        print(f"RPC: {sugar.rpc_url[:40]}...")
+        print(f"Sugar: {sugar.sugar.address}")
+        
+        pools = await sugar.get_all_pools(limit=20)
+        print(f"\n✅ Fetched {len(pools)} pools")
+        
+        if pools:
+            print("\nTop 5 by emissions:")
+            sorted_pools = sorted(pools, key=lambda p: p.get("emissions", 0), reverse=True)
+            for p in sorted_pools[:5]:
+                print(f"  {p['symbol'][:35]:<35} APR: {p['apy']:.1f}%  Emissions: {p['emissions']/1e18:.2f}/s")
+    
+    asyncio.run(test())

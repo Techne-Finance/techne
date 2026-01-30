@@ -12,6 +12,12 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# Import Sugar for Aerodrome on-chain data (preferred source)
+try:
+    from data_sources.aerodrome_sugar import aerodrome_sugar
+except ImportError:
+    aerodrome_sugar = None
+
 # Aerodrome Base Subgraph endpoints
 # Old hosted service (deprecated): https://api.thegraph.com/subgraphs/name/aerodrome-finance/aerodrome-base
 # New: The Graph Decentralized Network (requires API key)
@@ -146,22 +152,34 @@ class TheGraphClient:
         Get current APY for a pool.
         
         Sources (in order):
-        1. The Graph subgraph (primary)
-        2. DeFiLlama API (fallback when Graph unavailable)
+        1. Sugar contracts (on-chain, preferred for Aerodrome)
+        2. The Graph subgraph
+        3. DeFiLlama API (last resort fallback)
         """
-        # Try The Graph first
+        # Try Sugar first for Aerodrome (zero API cost, on-chain data)
+        if aerodrome_sugar:
+            try:
+                pool = await aerodrome_sugar.get_pool_by_address(pool_address)
+                if pool and pool.get("apy", 0) > 0:
+                    apy = pool.get("apy", 0)
+                    logger.info(f"[Sugar] Got APY for {pool_address[:10]}: {apy:.2f}%")
+                    return apy
+            except Exception as e:
+                logger.debug(f"[Sugar] Failed for {pool_address[:10]}: {e}")
+        
+        # Try The Graph second
         pool = await self.get_pool_by_address(pool_address)
         if pool and pool.get("apr", 0) > 0:
             return pool.get("apr", 0)
         
-        # Fallback to DeFiLlama
+        # Last resort: DeFiLlama (legacy fallback)
         try:
             apy = await self._get_apy_from_defillama(pool_address)
             if apy is not None:
-                logger.info(f"[TheGraph] Got APY from DeFiLlama fallback: {apy}")
+                logger.info(f"[DeFiLlama] Got APY from fallback: {apy}")
                 return apy
         except Exception as e:
-            logger.warning(f"[TheGraph] DeFiLlama fallback failed: {e}")
+            logger.warning(f"[DeFiLlama] Fallback failed: {e}")
         
         return None
     

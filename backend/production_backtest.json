@@ -1,0 +1,108 @@
+{
+  "config": {
+    "initial_capital": 10000,
+    "min_apy": 100,
+    "min_tvl": 500000,
+    "allocation_percent": 10,
+    "max_positions": 10,
+    "simulation_days": 4,
+    "protocol": "aerodrome",
+    "chain": "Base",
+    "pool_type": "dual",
+    "preferred_assets": [
+      "USDC",
+      "WETH"
+    ]
+  },
+  "invested": 10000.0,
+  "positions": 10,
+  "eligible_pools": 16,
+  "gross_yield": 30992.29465808219,
+  "il_loss": 100.00000000000001,
+  "gas_costs": 0.6000000000000001,
+  "net_yield": 30891.694658082193,
+  "roi_percent": 308.9169465808219,
+  "annualized_apy": 28188.6713755,
+  "daily_log": [
+    {
+      "day": 1,
+      "gross_yield": 1104.2113019178087,
+      "il_loss": 25.000000000000004,
+      "gas": 0,
+      "net": 1079.2113019178087
+    },
+    {
+      "day": 2,
+      "gross_yield": 14296.6027969863,
+      "il_loss": 25.000000000000004,
+      "gas": 0.2,
+      "net": 14271.4027969863
+    },
+    {
+      "day": 3,
+      "gross_yield": 12293.761114520548,
+      "il_loss": 25.000000000000004,
+      "gas": 0.2,
+      "net": 12268.561114520548
+    },
+    {
+      "day": 4,
+      "gross_yield": 3297.719444657534,
+      "il_loss": 25.000000000000004,
+      "gas": 0.2,
+      "net": 3272.519444657534
+    }
+  ],
+  "selected_pools": [
+    {
+      "symbol": "WETH-USDC",
+      "apy": 93677.2608,
+      "il_est": 1.0666666666666667
+    },
+    {
+      "symbol": "USDC-VFY",
+      "apy": 10045.13881,
+      "il_est": 1.0666666666666667
+    },
+    {
+      "symbol": "WETH-CBBTC",
+      "apy": 8266.37426,
+      "il_est": 0.4
+    },
+    {
+      "symbol": "AVNT-USDC",
+      "apy": 5007.63043,
+      "il_est": 1.0666666666666667
+    },
+    {
+      "symbol": "USDC-TITN",
+      "apy": 1253.30057,
+      "il_est": 1.0666666666666667
+    },
+    {
+      "symbol": "USDC-CBBTC",
+      "apy": 1004.32895,
+      "il_est": 1.0666666666666667
+    },
+    {
+      "symbol": "USDC-LMTS",
+      "apy": 400.92003,
+      "il_est": 1.0666666666666667
+    },
+    {
+      "symbol": "WETH-REI",
+      "apy": 310.98714,
+      "il_est": 1.0666666666666667
+    },
+    {
+      "symbol": "WETH-VVV",
+      "apy": 229.30444,
+      "il_est": 1.0666666666666667
+    },
+    {
+      "symbol": "VIRTUAL-WETH",
+      "apy": 171.5143,
+      "il_est": 1.0666666666666667
+    }
+  ]
+}

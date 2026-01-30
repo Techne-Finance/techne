@@ -11,38 +11,59 @@ import os
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 
+# Import historian for APY history tracking (rotation checks)
+try:
+    from agents.historian_agent import historian
+except ImportError:
+    historian = None
+
+# Import Sugar for Aerodrome on-chain data (zero API cost)
+try:
+    from data_sources.aerodrome_sugar import aerodrome_sugar
+except ImportError:
+    aerodrome_sugar = None
+
 # The Graph Network endpoints for Base chain
-# Format: https://gateway.thegraph.com/api/{API_KEY}/subgraphs/id/{SUBGRAPH_ID}
-# Or hosted: https://api.thegraph.com/subgraphs/id/{SUBGRAPH_ID}
+# Uses Decentralized Network (with API key) or Studio API as fallback
 
-GRAPH_API_KEY = os.getenv("GRAPH_API_KEY", "")  # Optional, for higher rate limits
+GRAPH_API_KEY = os.getenv("GRAPH_API_KEY", "")
 
-# Real subgraph IDs for Base chain protocols
+# Decentralized Network subgraph IDs (require API key)
 SUBGRAPH_IDS = {
-    "aave": "GQFbb95cE6d8mV989mL5figjaGaKCQB3xqYrr1bRyXqF",  # Aave V3 Base
-    "compound": "5nwMCHGwBgLb9F8dG1FdWg9D7YkXHv9hKxQJ7qHxcDXk",  # Compound V3 Base
-    "aerodrome": "GENunS3xbYe4qdS32cAQY5BsMhcZ4wKPzEkj1Av1UM",  # Aerodrome Base Full
-    "moonwell": "ExCF5jPbKxQ6Fzng8qXPrhCuZNxZ9v7wLZFSR9qmq",  # Moonwell Base
+    "aave": "GQFbb95cE6d8mV989mL5figjaGaKCQB3xqYrr1bRyXqF",      # Aave V3 Base
     "uniswap": "43Hwfi3dJSoGpyas9VwNoDAv55yjgGrPCNzh76hKHKxd",  # Uniswap V3 Base
 }
 
-# Build full URLs
+# Studio API endpoints (no API key required) - for protocols not on Decentralized 
+STUDIO_ENDPOINTS = {
+    "aerodrome": "https://api.studio.thegraph.com/query/50258/aerodrome-v2/version/latest",
+    "compound": "https://api.studio.thegraph.com/query/50419/compound-v3-base/version/latest",
+    "moonwell": "https://api.studio.thegraph.com/query/74584/moonwell-base/version/latest",
+}
+
 def _build_subgraph_url(protocol: str) -> str:
+    """Build URL for subgraph - uses Decentralized or Studio based on availability"""
+    # First check Studio endpoints (no API key needed)
+    if protocol in STUDIO_ENDPOINTS:
+        return STUDIO_ENDPOINTS[protocol]
+    
+    # Then try Decentralized Network
     subgraph_id = SUBGRAPH_IDS.get(protocol)
     if not subgraph_id:
         return ""
     
     if GRAPH_API_KEY:
-        # Decentralized network (recommended for production)
         return f"https://gateway.thegraph.com/api/{GRAPH_API_KEY}/subgraphs/id/{subgraph_id}"
     else:
-        # Hosted service (may have rate limits)
-        return f"https://api.thegraph.com/subgraphs/id/{subgraph_id}"
+        # No API key - can't use Decentralized Network
+        return ""
 
-SUBGRAPHS = {
-    protocol: _build_subgraph_url(protocol)
-    for protocol in SUBGRAPH_IDS.keys()
-}
+# Build all URLs
+SUBGRAPHS = {}
+for protocol in set(list(SUBGRAPH_IDS.keys()) + list(STUDIO_ENDPOINTS.keys())):
+    url = _build_subgraph_url(protocol)
+    if url:
+        SUBGRAPHS[protocol] = url
 
 # Pool addresses we track on Base
 TRACKED_POOLS = {
@@ -89,9 +110,32 @@ class PoolDataFetcher:
             if datetime.utcnow() - self.last_fetch.get(cache_key, datetime.min) < timedelta(seconds=self.cache_ttl):
                 return self.cache[cache_key]
         
-        # Fetch fresh data
+        # Fetch fresh data - priority: Sugar (on-chain) -> The Graph -> DefiLlama
         try:
+            # For Aerodrome, use Sugar contracts (zero API cost, on-chain data)
+            if protocol == "aerodrome" and aerodrome_sugar:
+                pool = await aerodrome_sugar.get_pool_by_address(pool_address)
+                if pool:
+                    data = {
+                        "tvl": pool.get("tvlUsd", 0),
+                        "apy": pool.get("apy", 0),
+                        "emissions": pool.get("emissions", 0),
+                        "source": "sugar_v3"
+                    }
+                    self.cache[cache_key] = data
+                    self.last_fetch[cache_key] = datetime.utcnow()
+                    return data
+            
+            # For other protocols, try The Graph
             data = await self._fetch_from_subgraph(protocol, pool_address)
+            if data and data.get("tvl", 0) > 0:
+                self.cache[cache_key] = data
+                self.last_fetch[cache_key] = datetime.utcnow()
+                return data
+            
+            # Fallback to DefiLlama if The Graph returns no data
+            print(f"[PoolDataFetcher] The Graph failed for {protocol}, trying DefiLlama...")
+            data = await self._fetch_from_defillama(protocol, pool_address)
             if data:
                 self.cache[cache_key] = data
                 self.last_fetch[cache_key] = datetime.utcnow()
@@ -242,6 +286,52 @@ class PoolDataFetcher:
                 "source": "thegraph"
             }
     
+    async def _fetch_from_defillama(self, protocol: str, pool_address: str) -> Optional[dict]:
+        """
+        Fallback: Fetch pool data from DefiLlama yields API.
+        Works when The Graph is down or subgraph doesn't exist.
+        """
+        import httpx
+        
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get("https://yields.llama.fi/pools")
+                if resp.status_code != 200:
+                    return None
+                
+                pools = resp.json().get("data", [])
+                
+                # Search by address or protocol name
+                for p in pools:
+                    # Match by pool address
+                    if pool_address.lower() in (p.get("pool", "") or "").lower():
+                        return {
+                            "tvl": p.get("tvlUsd", 0),
+                            "apy": p.get("apy", 0),
+                            "volume_24h": p.get("volumeUsd1d"),
+                            "source": "defillama",
+                            "symbol": p.get("symbol"),
+                            "pool_id": p.get("pool")
+                        }
+                    
+                    # Match by protocol and chain
+                    if (protocol.lower() in (p.get("project", "") or "").lower() 
+                        and p.get("chain", "").lower() == "base"):
+                        # Return first matching pool for this protocol
+                        return {
+                            "tvl": p.get("tvlUsd", 0),
+                            "apy": p.get("apy", 0),
+                            "volume_24h": p.get("volumeUsd1d"),
+                            "source": "defillama",
+                            "symbol": p.get("symbol"),
+                            "pool_id": p.get("pool")
+                        }
+                
+                return None
+        except Exception as e:
+            print(f"[PoolDataFetcher] DefiLlama fallback error: {e}")
+            return None
+    
     async def refresh_all_pools(self) -> Dict[str, dict]:
         """Refresh data for all tracked pools"""
         results = {}
@@ -266,6 +356,20 @@ class PoolDataFetcher:
                         ))
                 except Exception as e:
                     print(f"[PoolDataFetcher] Supabase cache failed: {e}")
+                
+                # Feed Historian for 12h APY average rotation checks
+                if historian:
+                    try:
+                        historian.record_pool_data({
+                            "pool": pool_name,
+                            "symbol": pool_name,
+                            "project": protocol,
+                            "apy": data.get('apy', 0),
+                            "tvlUsd": data.get('tvl', 0),
+                            "volumeUsd24h": data.get('volume_24h')
+                        })
+                    except Exception as e:
+                        print(f"[PoolDataFetcher] Historian record failed: {e}")
         
         return results
     

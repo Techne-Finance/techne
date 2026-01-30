@@ -17,6 +17,7 @@ class AgentBuilderUI {
 
             // Risk & Returns
             riskLevel: 'medium',
+            tradingStyle: 'moderate',  // conservative, moderate, aggressive
             minApy: 5,
             maxApy: 200,
             maxDrawdown: 20,
@@ -332,13 +333,34 @@ class AgentBuilderUI {
         }
     }
 
+    updateTradingStyleHint(style) {
+        const hint = document.getElementById('tradingStyleHint');
+        if (!hint) return;
+
+        const hints = {
+            conservative: '<strong>Conservative:</strong> TVL >$1M, APY <100%, Pool age >14 days, Audited only',
+            moderate: '<strong>Moderate:</strong> TVL >$500k, APY <300%, Pool age >7 days',
+            aggressive: '<strong>Aggressive:</strong> TVL >$100k, APY unlimited, No age limit, All tokens allowed'
+        };
+
+        hint.innerHTML = hints[style] || hints.moderate;
+    }
+
     bindConfigEvents() {
-        // Risk selector
+        // Risk selector (legacy) and Trading Style selector
         document.querySelectorAll('.risk-option').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.risk-option').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                this.config.riskLevel = btn.dataset.risk;
+
+                // Handle both legacy data-risk and new data-style attributes
+                if (btn.dataset.style) {
+                    this.config.tradingStyle = btn.dataset.style;
+                    this.updateTradingStyleHint(btn.dataset.style);
+                    console.log('[AgentBuilder] Trading style:', this.config.tradingStyle);
+                } else if (btn.dataset.risk) {
+                    this.config.riskLevel = btn.dataset.risk;
+                }
                 this.markCustom();
             });
         });

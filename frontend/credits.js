@@ -11,7 +11,7 @@
 const CreditsManager = {
     STORAGE_KEY: 'techne_credits',
     CREDITS_PER_PURCHASE: 100,
-    FILTER_COST: 25,
+    FILTER_COST: 20,
     PRICE_USDC: 0.1,
     PREMIUM_DAILY_CREDITS: 3000,
 
@@ -79,7 +79,7 @@ const CreditsManager = {
             const textEl = applyBtn.querySelector('.apply-text');
             if (credits < this.FILTER_COST) {
                 applyBtn.disabled = true;
-                if (textEl) textEl.textContent = 'Need 25 Credits';
+                if (textEl) textEl.textContent = 'Need 20 Credits';
             } else {
                 applyBtn.disabled = false;
                 if (textEl) textEl.textContent = `Apply (${this.FILTER_COST} credits)`;

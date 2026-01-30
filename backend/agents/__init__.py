@@ -1,13 +1,13 @@
 """
 Techne Protocol - Multi-Agent System
-Artisan's Workshop of 9 Specialized Agents
+Scalable Architecture for 1000+ Users
 
-Core Agents (MVP):
+Core Agents (Shared Services):
 - Scout: Data collection (DeFiLlama, Beefy, whales)
 - Appraiser: Risk analysis and verification
 - Merchant: x402/Meridian payments
 - Concierge: User-facing formatting
-- Engineer: Execution layer (NEW!)
+- Engineer: Execution layer
 
 Extended Agents (Security & Optimization):
 - Sentinel: Security monitoring, rug detection
@@ -15,9 +15,12 @@ Extended Agents (Security & Optimization):
 - Arbitrageur: Yield optimization, rebalancing
 - Guardian: Position monitoring, stop-loss, alerts
 
+Scalable Execution (Per-User):
+- strategy_executor.py: Executes user strategies with their agent wallet
+- agent_wallet.py: Per-user sovereign EOA agent
+
 Infrastructure:
-- Chainlink Oracle: Depeg monitoring (NEW!)
-- Coordinator: Routes data between all agents
+- Chainlink Oracle: Depeg monitoring
 """
 
 # Core Agents
@@ -39,10 +42,7 @@ from .security_policy import security_policy, SecurityPolicyManager, ActionType,
 # Infrastructure
 from .chainlink_oracle import oracle as chainlink
 
-# Coordinator - disabled due to legacy scout API
-# from .coordinator import coordinator, AgentCoordinator
-coordinator = None
-AgentCoordinator = None
+# Coordinator removed - replaced by strategy_executor.py for scalable per-user execution
 
 __all__ = [
     # Core singleton instances
@@ -59,24 +59,20 @@ __all__ = [
     "guardian",
     
     # Infrastructure
-    "chainlink",  # NEW
-    
-    # Coordinator
-    "coordinator",
+    "chainlink",
     
     # Core Classes
     "ScoutAgent",
     "AppraiserAgent",
     "MerchantAgent",
     "ConciergeAgent",
-    "EngineerAgent",  # NEW
+    "EngineerAgent",
     
     # Extended Classes
     "SentinelAgent",
     "HistorianAgent",
     "ArbitrageurAgent",
     "GuardianAgent",
-    "AgentCoordinator",
     
     # Enums
     "RiskLevel",

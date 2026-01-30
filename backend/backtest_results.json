@@ -1,0 +1,278 @@
+{
+  "config": {
+    "initial_capital": 10000,
+    "min_apy": 50,
+    "min_tvl": 500000,
+    "allocation_percent": 10,
+    "max_positions": 10,
+    "max_duration_days": 1,
+    "simulation_days": 4,
+    "protocol": "aerodrome",
+    "chain": "Base",
+    "pool_type": "dual",
+    "max_apy_volatility": 500,
+    "max_il_estimate": 15,
+    "min_history_days": 3,
+    "use_median_apy": false
+  },
+  "capital": 10000,
+  "positions": 6,
+  "position_size": 1000.0,
+  "simulation_days": 4,
+  "gross_yield": 194.973078630137,
+  "il_loss": 47.33333333333333,
+  "gas_costs": 0.36,
+  "net_yield": 147.27974529680364,
+  "roi_percent": 1.4727974529680363,
+  "annualized_apy": 134.39276758333332,
+  "daily_log": [
+    {
+      "day": 1,
+      "gross_yield": 16.19713616438356,
+      "il_loss": 11.833333333333332,
+      "gas_cost": 0,
+      "net_yield": 4.363802831050229,
+      "positions": [
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 328.06753,
+          "yield": 8.988151506849315,
+          "il_loss": 2.6666666666666665,
+          "net": 6.321484840182649
+        },
+        {
+          "pool": "WETH-USDC",
+          "apy": 27.47319,
+          "yield": 0.7526901369863014,
+          "il_loss": 2.6666666666666665,
+          "net": -1.9139765296803652
+        },
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 33.7213,
+          "yield": 0.9238712328767124,
+          "il_loss": 2.6666666666666665,
+          "net": -1.7427954337899543
+        },
+        {
+          "pool": "WETH-CBBTC",
+          "apy": 43.5186,
+          "yield": 1.1922904109589043,
+          "il_loss": 1.0,
+          "net": 0.1922904109589043
+        },
+        {
+          "pool": "SOL-USDC",
+          "apy": 104.9406,
+          "yield": 2.8750849315068496,
+          "il_loss": 2.6666666666666665,
+          "net": 0.2084182648401831
+        },
+        {
+          "pool": "USDC-USDT",
+          "apy": 53.47425,
+          "yield": 1.4650479452054794,
+          "il_loss": 0.16666666666666666,
+          "net": 1.2983812785388127
+        }
+      ]
+    },
+    {
+      "day": 2,
+      "gross_yield": 54.92602136986301,
+      "il_loss": 11.833333333333332,
+      "gas_cost": 0.12,
+      "net_yield": 42.97268803652968,
+      "positions": [
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 343.50493,
+          "yield": 9.41109397260274,
+          "il_loss": 2.6666666666666665,
+          "net": 6.744427305936075
+        },
+        {
+          "pool": "WETH-USDC",
+          "apy": 78.07378,
+          "yield": 2.1390076712328767,
+          "il_loss": 2.6666666666666665,
+          "net": -0.5276589954337898
+        },
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 38.92213,
+          "yield": 1.0663597260273974,
+          "il_loss": 2.6666666666666665,
+          "net": -1.6003069406392691
+        },
+        {
+          "pool": "WETH-CBBTC",
+          "apy": 32.97591,
+          "yield": 0.9034495890410958,
+          "il_loss": 1.0,
+          "net": -0.09655041095890415
+        },
+        {
+          "pool": "SOL-USDC",
+          "apy": 1465.82374,
+          "yield": 40.15955452054794,
+          "il_loss": 2.6666666666666665,
+          "net": 37.49288785388128
+        },
+        {
+          "pool": "USDC-USDT",
+          "apy": 45.49929,
+          "yield": 1.246555890410959,
+          "il_loss": 0.16666666666666666,
+          "net": 1.0798892237442923
+        }
+      ]
+    },
+    {
+      "day": 3,
+      "gross_yield": 76.37706739726028,
+      "il_loss": 11.833333333333332,
+      "gas_cost": 0.12,
+      "net_yield": 64.42373406392694,
+      "positions": [
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 615.72588,
+          "yield": 16.869202191780822,
+          "il_loss": 2.6666666666666665,
+          "net": 14.202535525114156
+        },
+        {
+          "pool": "WETH-USDC",
+          "apy": 38.03627,
+          "yield": 1.042089589041096,
+          "il_loss": 2.6666666666666665,
+          "net": -1.6245770776255706
+        },
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 103.028,
+          "yield": 2.8226849315068496,
+          "il_loss": 2.6666666666666665,
+          "net": 0.1560182648401831
+        },
+        {
+          "pool": "WETH-CBBTC",
+          "apy": 53.37133,
+          "yield": 1.4622282191780822,
+          "il_loss": 1.0,
+          "net": 0.4622282191780822
+        },
+        {
+          "pool": "SOL-USDC",
+          "apy": 1926.6524,
+          "yield": 52.784997260273975,
+          "il_loss": 2.6666666666666665,
+          "net": 50.11833059360731
+        },
+        {
+          "pool": "USDC-USDT",
+          "apy": 50.94908,
+          "yield": 1.395865205479452,
+          "il_loss": 0.16666666666666666,
+          "net": 1.2291985388127853
+        }
+      ]
+    },
+    {
+      "day": 4,
+      "gross_yield": 47.47285369863014,
+      "il_loss": 11.833333333333332,
+      "gas_cost": 0.12,
+      "net_yield": 35.519520365296806,
+      "positions": [
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 1115.6355,
+          "yield": 30.565356164383566,
+          "il_loss": 2.6666666666666665,
+          "net": 27.898689497716898
+        },
+        {
+          "pool": "WETH-USDC",
+          "apy": 220.02622,
+          "yield": 6.028115616438357,
+          "il_loss": 2.6666666666666665,
+          "net": 3.3614489497716904
+        },
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 207.87025,
+          "yield": 5.695075342465753,
+          "il_loss": 2.6666666666666665,
+          "net": 3.0284086757990862
+        },
+        {
+          "pool": "WETH-CBBTC",
+          "apy": 66.40473,
+          "yield": 1.8193076712328768,
+          "il_loss": 1.0,
+          "net": 0.8193076712328768
+        },
+        {
+          "pool": "SOL-USDC",
+          "apy": 62.74783,
+          "yield": 1.719118630136986,
+          "il_loss": 2.6666666666666665,
+          "net": -0.9475480365296804
+        },
+        {
+          "pool": "USDC-USDT",
+          "apy": 60.07463,
+          "yield": 1.6458802739726028,
+          "il_loss": 0.16666666666666666,
+          "net": 1.479213607305936
+        }
+      ]
+    }
+  ],
+  "selected_pools": [
+    {
+      "symbol": "USDC-CBBTC",
+      "median_apy": 1115.6355,
+      "volatility": 71.33589230409629,
+      "trend": "rising",
+      "il_estimate": 1.0666666666666667
+    },
+    {
+      "symbol": "WETH-USDC",
+      "median_apy": 220.02622,
+      "volatility": 128.90610891470675,
+      "trend": "rising",
+      "il_estimate": 1.0666666666666667
+    },
+    {
+      "symbol": "USDC-CBBTC",
+      "median_apy": 207.87025,
+      "volatility": 112.65497735949685,
+      "trend": "rising",
+      "il_estimate": 1.0666666666666667
+    },
+    {
+      "symbol": "WETH-CBBTC",
+      "median_apy": 66.40473,
+      "volatility": 50.78438134450825,
+      "trend": "rising",
+      "il_estimate": 0.4
+    },
+    {
+      "symbol": "SOL-USDC",
+      "median_apy": 62.74783,
+      "volatility": 94.33755331200497,
+      "trend": "rising",
+      "il_estimate": 1.0666666666666667
+    },
+    {
+      "symbol": "USDC-USDT",
+      "median_apy": 60.07463,
+      "volatility": 43.22076443648049,
+      "trend": "rising",
+      "il_estimate": 0.06666666666666667
+    }
+  ]
+}

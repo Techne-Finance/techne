@@ -1,0 +1,259 @@
+{
+  "config": {
+    "initial_capital": 10000,
+    "min_apy": 100,
+    "min_tvl": 500000,
+    "allocation_percent": 10,
+    "max_positions": 10,
+    "max_duration_days": 1,
+    "simulation_days": 4,
+    "protocol": "aerodrome",
+    "chain": "Base",
+    "pool_type": "dual"
+  },
+  "capital": 10000,
+  "positions": 10,
+  "position_size": 1000.0,
+  "simulation_days": 4,
+  "gross_yield": 29699.666292328766,
+  "gas_costs": 0.68,
+  "net_yield": 29698.986292328766,
+  "roi_percent": 296.98986292328766,
+  "annualized_apy": 27100.32499175,
+  "rotations": 2,
+  "daily_log": [
+    {
+      "day": 1,
+      "gross_yield": 1102.2128290410963,
+      "gas_cost": 0,
+      "net_yield": 1102.2128290410963,
+      "positions": [
+        {
+          "pool": "WETH-USDC",
+          "apy": 3501.87761,
+          "yield": 95.94185232876713
+        },
+        {
+          "pool": "USDC-VFY",
+          "apy": 29210.01741,
+          "yield": 800.2744495890412
+        },
+        {
+          "pool": "WETH-CBBTC",
+          "apy": 1697.88297,
+          "yield": 46.517341643835614
+        },
+        {
+          "pool": "EURC-USDC",
+          "apy": 39.19019,
+          "yield": 1.0737038356164386
+        },
+        {
+          "pool": "AVNT-USDC",
+          "apy": 4416.32075,
+          "yield": 120.9950890410959
+        },
+        {
+          "pool": "USDC-TITN",
+          "apy": 257.41798,
+          "yield": 7.052547397260273
+        },
+        {
+          "pool": "WETH-REI",
+          "apy": 283.72173,
+          "yield": 7.773198082191779
+        },
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 328.06753,
+          "yield": 8.988151506849315
+        },
+        {
+          "pool": "VIRTUAL-MAMO",
+          "apy": 202.40392,
+          "yield": 5.545312876712328
+        },
+        {
+          "pool": "FUN-USDC",
+          "apy": 293.86817,
+          "yield": 8.051182739726027
+        }
+      ]
+    },
+    {
+      "day": 2,
+      "gross_yield": 14336.35150575342,
+      "gas_cost": 0.24000000000000002,
+      "net_yield": 14336.11150575342,
+      "positions": [
+        {
+          "pool": "WETH-USDC",
+          "apy": 5448.41097,
+          "yield": 149.27153342465752
+        },
+        {
+          "pool": "USDC-VFY",
+          "apy": 42112.6436,
+          "yield": 1153.771057534247
+        },
+        {
+          "pool": "WETH-CBBTC",
+          "apy": 310.65895,
+          "yield": 8.511204109589041
+        },
+        {
+          "pool": "EURC-USDC",
+          "apy": 61.91545,
+          "yield": 1.6963136986301368
+        },
+        {
+          "pool": "AVNT-USDC",
+          "apy": 472508.16147,
+          "yield": 12945.42908136986
+        },
+        {
+          "pool": "USDC-TITN",
+          "apy": 246.42255,
+          "yield": 6.751302739726028
+        },
+        {
+          "pool": "WETH-REI",
+          "apy": 359.17747,
+          "yield": 9.840478630136987
+        },
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 343.50493,
+          "yield": 9.41109397260274
+        },
+        {
+          "pool": "VIRTUAL-MAMO",
+          "apy": 192.67075,
+          "yield": 5.278650684931508
+        },
+        {
+          "pool": "FUN-USDC",
+          "apy": 1693.26382,
+          "yield": 46.3907895890411
+        }
+      ]
+    },
+    {
+      "day": 3,
+      "gross_yield": 12291.963251232877,
+      "gas_cost": 0.24000000000000002,
+      "net_yield": 12291.723251232877,
+      "positions": [
+        {
+          "pool": "WETH-USDC",
+          "apy": 11081.63649,
+          "yield": 303.6064791780822
+        },
+        {
+          "pool": "USDC-VFY",
+          "apy": 70672.2821,
+          "yield": 1936.2269068493147
+        },
+        {
+          "pool": "WETH-CBBTC",
+          "apy": 4412.73783,
+          "yield": 120.89692684931507
+        },
+        {
+          "pool": "EURC-USDC",
+          "apy": 63.25533,
+          "yield": 1.7330227397260274
+        },
+        {
+          "pool": "AVNT-USDC",
+          "apy": 358267.73659,
+          "yield": 9815.554427123287
+        },
+        {
+          "pool": "USDC-TITN",
+          "apy": 3020.83998,
+          "yield": 82.7627391780822
+        },
+        {
+          "pool": "WETH-REI",
+          "apy": 301.05499,
+          "yield": 8.24808191780822
+        },
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 615.72588,
+          "yield": 16.869202191780822
+        },
+        {
+          "pool": "VIRTUAL-MAMO",
+          "apy": 118.29801,
+          "yield": 3.2410413698630136
+        },
+        {
+          "pool": "FUN-USDC",
+          "apy": 103.09147,
+          "yield": 2.8244238356164386
+        }
+      ]
+    },
+    {
+      "day": 4,
+      "gross_yield": 1969.1387063013701,
+      "gas_cost": 0.2,
+      "net_yield": 1968.93870630137,
+      "positions": [
+        {
+          "pool": "WETH-USDC",
+          "apy": 44259.94421,
+          "yield": 1212.6012112328767
+        },
+        {
+          "pool": "USDC-VFY",
+          "apy": 10144.30233,
+          "yield": 277.92609123287673
+        },
+        {
+          "pool": "WETH-CBBTC",
+          "apy": 6246.26769,
+          "yield": 171.1306216438356
+        },
+        {
+          "pool": "EURC-USDC",
+          "apy": 3996.92489,
+          "yield": 109.5047915068493
+        },
+        {
+          "pool": "AVNT-USDC",
+          "apy": 3016.22168,
+          "yield": 82.6362104109589
+        },
+        {
+          "pool": "USDC-TITN",
+          "apy": 1265.93287,
+          "yield": 34.683092328767124
+        },
+        {
+          "pool": "WETH-REI",
+          "apy": 1220.64452,
+          "yield": 33.44231561643836
+        },
+        {
+          "pool": "USDC-CBBTC",
+          "apy": 1115.6355,
+          "yield": 30.565356164383566
+        },
+        {
+          "pool": "VIRTUAL-MAMO",
+          "apy": 371.42963,
+          "yield": 10.176154246575342
+        },
+        {
+          "pool": "FUN-USDC",
+          "apy": 236.25946,
+          "yield": 6.472861917808219
+        }
+      ]
+    }
+  ],
+  "eligible_pools": 18
+}
