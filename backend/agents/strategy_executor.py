@@ -72,14 +72,21 @@ class StrategyExecutor:
         self.execution_interval = 300  # 5 minutes
         self.last_execution: Dict[str, datetime] = {}
         
-        # PARK THRESHOLDS - auto-deposit to Aave if conditions met
-        self.park_idle_threshold = 100  # $100 USDC minimum to trigger Park (covers tx fees)
-        self.park_idle_hours = 12  # Hours idle before Park
-        self.park_no_pools_hours = 0.25  # 15 minutes without matching pools before Park
+        # PARK THRESHOLDS - auto-deposit to Aave USDC
+        self.park_min_amount = 100  # $100 USDC minimum to trigger Park (covers tx fees)
+        self.park_lock_hours = 1  # Funds locked in Aave for minimum 1 hour
+        
+        # Case 1: Fresh deposit, no matching pools found
+        self.park_no_pools_hours = 1  # 1 hour without pools → Park
+        
+        # Case 2: Partial allocation (e.g. 60% allocated, 40% idle)
+        self.park_partial_idle_minutes = 15  # 15 minutes idle → Park remaining
         
         # Track state for Park logic
-        self.last_pools_found: Dict[str, datetime] = {}  # agent_id -> when pools were last found
-        self.idle_since: Dict[str, datetime] = {}  # agent_id -> when idle balance started
+        self.last_pools_found: Dict[str, datetime] = {}  # agent_id → when pools were last found
+        self.idle_since: Dict[str, datetime] = {}  # agent_id → when idle balance started
+        self.park_locked_until: Dict[str, datetime] = {}  # agent_id → when Park lock expires
+        self.parked_amount: Dict[str, float] = {}  # agent_id → amount parked in Aave
         
         # Smart contract config - V4.3.3 PRODUCTION (same as frontend!)
         self.wallet_contract = os.getenv(
@@ -196,60 +203,103 @@ class StrategyExecutor:
         print(f"[StrategyExecutor] Avoid IL filter: {len(pools)} -> {len(filtered)} pools")
         return filtered if filtered else pools[:3]  # Fallback to top 3 if all filtered
     
-    def check_park_conditions(self, agent: dict, pools_found: bool, idle_balance: float) -> dict:
+    def check_park_conditions(self, agent: dict, pools_found: bool, idle_balance: float, has_allocations: bool = False) -> dict:
         """
         Check if Park conditions are met for auto-deposit to Aave USDC.
         
-        Triggers Park when:
-        1. No matching pools found for > 6 hours (park_no_pools_hours)
-        2. Idle balance > $5000 for > 12 hours (park_idle_hours)
+        CASE 1: Fresh deposit, no matching pools found
+        - Balance > $100 + no pools for > 1 hour → Park ALL to Aave
+        - Lock for 1 hour (continue searching but don't move funds)
+        
+        CASE 2: Partial allocation (e.g. 60% allocated, 40% idle)
+        - Has existing allocations + idle > $100 for > 15 minutes → Park REMAINING to Aave
+        - Lock for 1 hour
         
         Returns:
-            dict with should_park, reason, trigger
+            dict with should_park, reason, trigger, is_locked, lock_expires
         """
         agent_id = agent.get("id", "unknown")
         now = datetime.utcnow()
+        
+        # Check if currently locked (can't reallocate parked funds)
+        lock_expires = self.park_locked_until.get(agent_id)
+        if lock_expires and now < lock_expires:
+            remaining_mins = (lock_expires - now).total_seconds() / 60
+            return {
+                "should_park": False,
+                "is_locked": True,
+                "lock_expires": lock_expires.isoformat(),
+                "reason": f"Park locked for {remaining_mins:.0f} more minutes",
+                "trigger": None
+            }
+        
+        # Clear expired lock
+        if lock_expires and now >= lock_expires:
+            old_parked = self.parked_amount.get(agent_id, 0)
+            if agent_id in self.park_locked_until:
+                del self.park_locked_until[agent_id]
+            if agent_id in self.parked_amount:
+                del self.parked_amount[agent_id]
+            print(f"[StrategyExecutor] 🔓 Park lock expired for {agent_id[:15]}, ${old_parked:.0f} available for reallocation")
+        
+        # Minimum amount check
+        if idle_balance < self.park_min_amount:
+            return {"should_park": False, "is_locked": False, "reason": None, "trigger": None}
         
         # Track pools found state
         if pools_found:
             self.last_pools_found[agent_id] = now
         
         # Track idle state
-        if idle_balance >= self.park_idle_threshold:
+        if idle_balance >= self.park_min_amount:
             if agent_id not in self.idle_since:
                 self.idle_since[agent_id] = now
                 print(f"[StrategyExecutor] 🅿️ Idle tracking started for {agent_id[:15]}: ${idle_balance:.0f}")
         else:
-            # Reset idle tracking if balance drops below threshold
             if agent_id in self.idle_since:
                 del self.idle_since[agent_id]
         
-        # CHECK 1: No pools found for > 6 hours
-        last_found = self.last_pools_found.get(agent_id)
-        if last_found:
-            hours_since_pools = (now - last_found).total_seconds() / 3600
-            if not pools_found and hours_since_pools >= self.park_no_pools_hours:
-                return {
-                    "should_park": True,
-                    "reason": f"No matching pools for {hours_since_pools:.1f}h (threshold: {self.park_no_pools_hours}h)",
-                    "trigger": "no_pools_timeout"
-                }
-        elif not pools_found:
-            # First time - initialize tracking
-            self.last_pools_found[agent_id] = now
+        # CASE 1: No pools found for > 1 hour (fresh deposit scenario)
+        if not has_allocations:
+            last_found = self.last_pools_found.get(agent_id)
+            if not pools_found:
+                if not last_found:
+                    self.last_pools_found[agent_id] = now
+                else:
+                    hours_since_pools = (now - last_found).total_seconds() / 3600
+                    if hours_since_pools >= self.park_no_pools_hours:
+                        return {
+                            "should_park": True,
+                            "is_locked": False,
+                            "reason": f"No matching pools for {hours_since_pools:.1f}h (threshold: {self.park_no_pools_hours}h)",
+                            "trigger": "no_pools_timeout",
+                            "amount": idle_balance
+                        }
         
-        # CHECK 2: Idle balance > $5k for > 12 hours  
-        idle_start = self.idle_since.get(agent_id)
-        if idle_start and idle_balance >= self.park_idle_threshold:
-            hours_idle = (now - idle_start).total_seconds() / 3600
-            if hours_idle >= self.park_idle_hours:
-                return {
-                    "should_park": True,
-                    "reason": f"${idle_balance:.0f} idle for {hours_idle:.1f}h (threshold: {self.park_idle_hours}h)",
-                    "trigger": "idle_timeout"
-                }
+        # CASE 2: Partial allocation - idle remaining for > 15 minutes
+        if has_allocations:
+            idle_start = self.idle_since.get(agent_id)
+            if idle_start:
+                minutes_idle = (now - idle_start).total_seconds() / 60
+                if minutes_idle >= self.park_partial_idle_minutes:
+                    return {
+                        "should_park": True,
+                        "is_locked": False,
+                        "reason": f"${idle_balance:.0f} idle for {minutes_idle:.0f}min (partial allocation, threshold: {self.park_partial_idle_minutes}min)",
+                        "trigger": "partial_idle_timeout",
+                        "amount": idle_balance
+                    }
         
-        return {"should_park": False, "reason": None, "trigger": None}
+        return {"should_park": False, "is_locked": False, "reason": None, "trigger": None}
+    
+    def set_park_lock(self, agent_id: str, amount: float):
+        """Set the 1-hour lock after parking funds to Aave"""
+        self.park_locked_until[agent_id] = datetime.utcnow() + timedelta(hours=self.park_lock_hours)
+        self.parked_amount[agent_id] = amount
+        # Reset idle tracking
+        if agent_id in self.idle_since:
+            del self.idle_since[agent_id]
+        print(f"[StrategyExecutor] 🔒 Park lock set for {agent_id[:15]}: ${amount:.0f} locked for {self.park_lock_hours}h")
     
     async def start(self):
         """Start the executor loop"""
@@ -413,9 +463,20 @@ class StrategyExecutor:
             try:
                 idle_balance = await self.get_user_idle_balance(user_address, agent)
                 
-                # Check Park conditions (6h no pools, 12h idle > $5k)
+                # Check if agent has existing allocations (for Case 2 logic)
+                has_allocations = bool(agent.get("allocations", []))
+                
+                # Check Park conditions (Case 1: no pools >1h, Case 2: partial idle >15min)
                 pools_were_found = len(pools) > 0 and pools[0].get("project") != "aave-v3"  # Not just fallback
-                park_check = self.check_park_conditions(agent, pools_were_found, idle_balance)
+                park_check = self.check_park_conditions(agent, pools_were_found, idle_balance, has_allocations)
+                
+                # If locked, skip reallocation but continue searching
+                if park_check.get("is_locked"):
+                    print(f"[StrategyExecutor] 🔒 {park_check['reason']} - continuing search only")
+                    # Update last scan time but don't execute
+                    agent["last_scan"] = datetime.utcnow().isoformat()
+                    self.last_execution[agent_id] = datetime.utcnow()
+                    return  # Skip execution, will retry next scan
                 
                 if park_check.get("should_park"):
                     print(f"[StrategyExecutor] 🅿️ PARK TRIGGERED: {park_check['reason']}")
@@ -441,6 +502,9 @@ class StrategyExecutor:
                         "pool": "aave-usdc-base"
                     }]
                     
+                    # Set 1-hour lock after parking
+                    self.set_park_lock(agent_id, idle_balance)
+                    
                     if log_audit_entry:
                         log_audit_entry(
                             action="PARKING_ENGAGED",
@@ -449,13 +513,14 @@ class StrategyExecutor:
                                 "apy": aave_usdc_apy,
                                 "reason": park_check["reason"],
                                 "trigger": park_check["trigger"],
-                                "idle_balance": idle_balance,
+                                "amount": idle_balance,
+                                "lock_hours": self.park_lock_hours,
                                 "source": "on-chain"
                             }
                         )
                 
-                # MINIMUM $20 USDC to execute any moves (prevent dust trades)
-                if idle_balance >= 20:
+                # MINIMUM $100 USDC to execute any moves (matches park threshold)
+                if idle_balance >= self.park_min_amount:
                     print(f"[StrategyExecutor] User has ${idle_balance:.2f} idle - auto-allocating!")
                     
                     # Log: Starting allocation
