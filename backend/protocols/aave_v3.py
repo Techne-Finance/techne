@@ -102,6 +102,7 @@ ERC20_ABI = [
 # ==========================================
 # UI POOL DATA PROVIDER ABI (for pool discovery like Aerodrome Sugar)
 # Returns all reserves with APY, TVL, liquidity
+# NOTE: Actual on-chain output is 24 fields per reserve (not 56!)
 # ==========================================
 UI_POOL_DATA_PROVIDER_ABI = [
     {
@@ -110,70 +111,37 @@ UI_POOL_DATA_PROVIDER_ABI = [
         "outputs": [
             {
                 "components": [
-                    {"name": "underlyingAsset", "type": "address"},
-                    {"name": "name", "type": "string"},
-                    {"name": "symbol", "type": "string"},
-                    {"name": "decimals", "type": "uint256"},
-                    {"name": "baseLTVasCollateral", "type": "uint256"},
-                    {"name": "reserveLiquidationThreshold", "type": "uint256"},
-                    {"name": "reserveLiquidationBonus", "type": "uint256"},
-                    {"name": "reserveFactor", "type": "uint256"},
-                    {"name": "usageAsCollateralEnabled", "type": "bool"},
-                    {"name": "borrowingEnabled", "type": "bool"},
-                    {"name": "stableBorrowRateEnabled", "type": "bool"},
-                    {"name": "isActive", "type": "bool"},
-                    {"name": "isFrozen", "type": "bool"},
-                    {"name": "liquidityIndex", "type": "uint128"},
-                    {"name": "variableBorrowIndex", "type": "uint128"},
-                    {"name": "liquidityRate", "type": "uint128"},  # Supply APY in Ray (1e27)
-                    {"name": "variableBorrowRate", "type": "uint128"},
-                    {"name": "stableBorrowRate", "type": "uint128"},
-                    {"name": "lastUpdateTimestamp", "type": "uint40"},
-                    {"name": "aTokenAddress", "type": "address"},
-                    {"name": "stableDebtTokenAddress", "type": "address"},
-                    {"name": "variableDebtTokenAddress", "type": "address"},
-                    {"name": "interestRateStrategyAddress", "type": "address"},
-                    {"name": "availableLiquidity", "type": "uint256"},  # Available to borrow
-                    {"name": "totalPrincipalStableDebt", "type": "uint256"},
-                    {"name": "averageStableRate", "type": "uint256"},
-                    {"name": "stableDebtLastUpdateTimestamp", "type": "uint256"},
-                    {"name": "totalScaledVariableDebt", "type": "uint256"},
-                    {"name": "priceInMarketReferenceCurrency", "type": "uint256"},
-                    {"name": "priceOracle", "type": "address"},
-                    {"name": "variableRateSlope1", "type": "uint256"},
-                    {"name": "variableRateSlope2", "type": "uint256"},
-                    {"name": "stableRateSlope1", "type": "uint256"},
-                    {"name": "stableRateSlope2", "type": "uint256"},
-                    {"name": "baseStableBorrowRate", "type": "uint256"},
-                    {"name": "baseVariableBorrowRate", "type": "uint256"},
-                    {"name": "optimalUsageRatio", "type": "uint256"},
-                    {"name": "isPaused", "type": "bool"},
-                    {"name": "isSiloedBorrowing", "type": "bool"},
-                    {"name": "accruedToTreasury", "type": "uint128"},
-                    {"name": "unbacked", "type": "uint128"},
-                    {"name": "isolationModeTotalDebt", "type": "uint128"},
-                    {"name": "flashLoanEnabled", "type": "bool"},
-                    {"name": "debtCeiling", "type": "uint256"},
-                    {"name": "debtCeilingDecimals", "type": "uint256"},
-                    {"name": "eModeCategoryId", "type": "uint8"},
-                    {"name": "borrowCap", "type": "uint256"},
-                    {"name": "supplyCap", "type": "uint256"},
-                    {"name": "eModeLtv", "type": "uint16"},
-                    {"name": "eModeLiquidationThreshold", "type": "uint16"},
-                    {"name": "eModeLiquidationBonus", "type": "uint16"},
-                    {"name": "eModePriceSource", "type": "address"},
-                    {"name": "eModeLabel", "type": "string"},
-                    {"name": "borrowableInIsolation", "type": "bool"}
+                    {"name": "underlyingAsset", "type": "address"},      # 0
+                    {"name": "name", "type": "string"},                  # 1
+                    {"name": "symbol", "type": "string"},                # 2
+                    {"name": "decimals", "type": "uint256"},             # 3
+                    {"name": "baseLTVasCollateral", "type": "uint256"},  # 4
+                    {"name": "reserveLiquidationThreshold", "type": "uint256"},  # 5
+                    {"name": "reserveLiquidationBonus", "type": "uint256"},      # 6
+                    {"name": "reserveFactor", "type": "uint256"},        # 7
+                    {"name": "usageAsCollateralEnabled", "type": "bool"},  # 8
+                    {"name": "borrowingEnabled", "type": "bool"},        # 9
+                    {"name": "stableBorrowRateEnabled", "type": "bool"}, # 10
+                    {"name": "isActive", "type": "bool"},                # 11
+                    {"name": "isFrozen", "type": "bool"},                # 12
+                    {"name": "liquidityIndex", "type": "uint128"},       # 13
+                    {"name": "variableBorrowIndex", "type": "uint128"},  # 14
+                    {"name": "liquidityRate", "type": "uint128"},        # 15 - Supply APY in Ray (1e27)
+                    {"name": "variableBorrowRate", "type": "uint128"},   # 16
+                    {"name": "stableBorrowRate", "type": "uint128"},     # 17
+                    {"name": "lastUpdateTimestamp", "type": "uint40"},   # 18
+                    {"name": "aTokenAddress", "type": "address"},        # 19
+                    {"name": "stableDebtTokenAddress", "type": "address"},       # 20
+                    {"name": "variableDebtTokenAddress", "type": "address"},     # 21
+                    {"name": "interestRateStrategyAddress", "type": "address"},  # 22
+                    {"name": "availableLiquidity", "type": "uint256"}    # 23 - TVL proxy
                 ],
                 "name": "",
                 "type": "tuple[]"
             },
             {
                 "components": [
-                    {"name": "marketReferenceCurrencyUnit", "type": "uint256"},
-                    {"name": "marketReferenceCurrencyPriceInUsd", "type": "int256"},
-                    {"name": "networkBaseTokenPriceInUsd", "type": "int256"},
-                    {"name": "networkBaseTokenPriceDecimals", "type": "uint8"}
+                    {"name": "marketReferenceCurrencyUnit", "type": "uint256"}
                 ],
                 "name": "",
                 "type": "tuple"
@@ -198,6 +166,7 @@ class AaveV3Protocol:
             raise ValueError("RPC URL required for Aave V3 integration")
         
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
+        logger.info(f"🔷 Aave V3 Protocol initialized on Base, connected: {self.w3.is_connected()}")
         
         # Initialize contracts
         self.pool = self.w3.eth.contract(
