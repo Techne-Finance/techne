@@ -272,19 +272,35 @@ class StrategyExecutor:
         
         if not pools:
             print(f"[StrategyExecutor] No matching pools found - using Aave USDC fallback")
-            # Log: No pools found
+            
+            # Fetch live APY from Aave on-chain (like Aerodrome Sugar)
+            aave_usdc_apy = 5.0  # Default fallback
+            aave_usdc_tvl = 30000000  # Default $30M
+            try:
+                from protocols.aave_v3 import get_aave_protocol
+                aave = get_aave_protocol()
+                reserves = aave.get_reserves_data()
+                usdc_reserve = next((r for r in reserves if r.get("asset") == "USDC"), None)
+                if usdc_reserve:
+                    aave_usdc_apy = usdc_reserve.get("apy", 5.0)
+                    aave_usdc_tvl = usdc_reserve.get("tvl", 30000000)
+                    print(f"[StrategyExecutor] Live Aave USDC: APY={aave_usdc_apy}%, TVL=${aave_usdc_tvl:,.0f}")
+            except Exception as e:
+                print(f"[StrategyExecutor] Aave live fetch failed, using defaults: {e}")
+            
+            # Log: No pools found - parking in Aave
             if log_audit_entry:
                 log_audit_entry(
                     action="PARKING_ENGAGED",
                     wallet=user_address,
-                    details={"apy": 6.2, "reason": "No matching pools found"}
+                    details={"apy": aave_usdc_apy, "reason": "No matching pools found", "source": "on-chain"}
                 )
             # Fallback: Default to Aave USDC (always available, always safe)
             pools = [{
                 "symbol": "USDC",
                 "project": "aave-v3",
-                "apy": 6.2,
-                "tvl": 500000000,
+                "apy": aave_usdc_apy,
+                "tvl": aave_usdc_tvl,
                 "chain": "Base",
                 "risk_score": "Low",
                 "pool": "aave-usdc-base"
