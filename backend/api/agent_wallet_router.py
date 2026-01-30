@@ -707,3 +707,34 @@ async def aave_get_position(agent_address: str = Query(...)):
     except Exception as e:
         logger.error(f"Aave position error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/aave/reserves")
+async def aave_get_reserves():
+    """
+    Get all Aave V3 reserves (pools) with live APY and TVL.
+    On-chain data source - similar to Aerodrome Sugar contract.
+    
+    Returns list of available lending markets with:
+    - Asset symbol and address
+    - Current supply APY
+    - Available liquidity (TVL)
+    - Risk level and pool type
+    """
+    try:
+        from protocols.aave_v3 import get_aave_protocol
+        
+        aave = get_aave_protocol()
+        reserves = aave.get_reserves_data()
+        
+        return {
+            "success": True,
+            "reserves": reserves,
+            "count": len(reserves),
+            "source": "on-chain",
+            "protocol": "aave_v3"
+        }
+        
+    except Exception as e:
+        logger.error(f"Aave reserves error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -17,6 +17,10 @@ AAVE_V3_POOL = "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"
 USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 AUSDC_ADDRESS = "0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB"  # aToken
 
+# Pool discovery contracts (like Aerodrome Sugar)
+UI_POOL_DATA_PROVIDER = "0x174446a6741300cD2E7C1b1A636Fee99c8F83502"
+POOL_ADDRESSES_PROVIDER = "0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D"
+
 # ==========================================
 # AAVE V3 POOL ABI (minimal for supply/withdraw)
 # ==========================================
@@ -95,6 +99,91 @@ ERC20_ABI = [
     }
 ]
 
+# ==========================================
+# UI POOL DATA PROVIDER ABI (for pool discovery like Aerodrome Sugar)
+# Returns all reserves with APY, TVL, liquidity
+# ==========================================
+UI_POOL_DATA_PROVIDER_ABI = [
+    {
+        "inputs": [{"name": "provider", "type": "address"}],
+        "name": "getReservesData",
+        "outputs": [
+            {
+                "components": [
+                    {"name": "underlyingAsset", "type": "address"},
+                    {"name": "name", "type": "string"},
+                    {"name": "symbol", "type": "string"},
+                    {"name": "decimals", "type": "uint256"},
+                    {"name": "baseLTVasCollateral", "type": "uint256"},
+                    {"name": "reserveLiquidationThreshold", "type": "uint256"},
+                    {"name": "reserveLiquidationBonus", "type": "uint256"},
+                    {"name": "reserveFactor", "type": "uint256"},
+                    {"name": "usageAsCollateralEnabled", "type": "bool"},
+                    {"name": "borrowingEnabled", "type": "bool"},
+                    {"name": "stableBorrowRateEnabled", "type": "bool"},
+                    {"name": "isActive", "type": "bool"},
+                    {"name": "isFrozen", "type": "bool"},
+                    {"name": "liquidityIndex", "type": "uint128"},
+                    {"name": "variableBorrowIndex", "type": "uint128"},
+                    {"name": "liquidityRate", "type": "uint128"},  # Supply APY in Ray (1e27)
+                    {"name": "variableBorrowRate", "type": "uint128"},
+                    {"name": "stableBorrowRate", "type": "uint128"},
+                    {"name": "lastUpdateTimestamp", "type": "uint40"},
+                    {"name": "aTokenAddress", "type": "address"},
+                    {"name": "stableDebtTokenAddress", "type": "address"},
+                    {"name": "variableDebtTokenAddress", "type": "address"},
+                    {"name": "interestRateStrategyAddress", "type": "address"},
+                    {"name": "availableLiquidity", "type": "uint256"},  # Available to borrow
+                    {"name": "totalPrincipalStableDebt", "type": "uint256"},
+                    {"name": "averageStableRate", "type": "uint256"},
+                    {"name": "stableDebtLastUpdateTimestamp", "type": "uint256"},
+                    {"name": "totalScaledVariableDebt", "type": "uint256"},
+                    {"name": "priceInMarketReferenceCurrency", "type": "uint256"},
+                    {"name": "priceOracle", "type": "address"},
+                    {"name": "variableRateSlope1", "type": "uint256"},
+                    {"name": "variableRateSlope2", "type": "uint256"},
+                    {"name": "stableRateSlope1", "type": "uint256"},
+                    {"name": "stableRateSlope2", "type": "uint256"},
+                    {"name": "baseStableBorrowRate", "type": "uint256"},
+                    {"name": "baseVariableBorrowRate", "type": "uint256"},
+                    {"name": "optimalUsageRatio", "type": "uint256"},
+                    {"name": "isPaused", "type": "bool"},
+                    {"name": "isSiloedBorrowing", "type": "bool"},
+                    {"name": "accruedToTreasury", "type": "uint128"},
+                    {"name": "unbacked", "type": "uint128"},
+                    {"name": "isolationModeTotalDebt", "type": "uint128"},
+                    {"name": "flashLoanEnabled", "type": "bool"},
+                    {"name": "debtCeiling", "type": "uint256"},
+                    {"name": "debtCeilingDecimals", "type": "uint256"},
+                    {"name": "eModeCategoryId", "type": "uint8"},
+                    {"name": "borrowCap", "type": "uint256"},
+                    {"name": "supplyCap", "type": "uint256"},
+                    {"name": "eModeLtv", "type": "uint16"},
+                    {"name": "eModeLiquidationThreshold", "type": "uint16"},
+                    {"name": "eModeLiquidationBonus", "type": "uint16"},
+                    {"name": "eModePriceSource", "type": "address"},
+                    {"name": "eModeLabel", "type": "string"},
+                    {"name": "borrowableInIsolation", "type": "bool"}
+                ],
+                "name": "",
+                "type": "tuple[]"
+            },
+            {
+                "components": [
+                    {"name": "marketReferenceCurrencyUnit", "type": "uint256"},
+                    {"name": "marketReferenceCurrencyPriceInUsd", "type": "int256"},
+                    {"name": "networkBaseTokenPriceInUsd", "type": "int256"},
+                    {"name": "networkBaseTokenPriceDecimals", "type": "uint8"}
+                ],
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
+
 
 class AaveV3Protocol:
     """
@@ -124,7 +213,76 @@ class AaveV3Protocol:
             abi=ERC20_ABI
         )
         
+        # UI Pool Data Provider (like Aerodrome Sugar - returns all pools with APY/TVL)
+        self.ui_data_provider = self.w3.eth.contract(
+            address=Web3.to_checksum_address(UI_POOL_DATA_PROVIDER),
+            abi=UI_POOL_DATA_PROVIDER_ABI
+        )
+        
         logger.info(f"🔷 Aave V3 Protocol initialized on Base")
+    
+    def get_reserves_data(self) -> list[Dict[str, Any]]:
+        """
+        Get all Aave V3 reserves (pools) with live APY and TVL.
+        Similar to Aerodrome Sugar.byAddress() but for lending pools.
+        
+        Returns:
+            List of reserve data dicts with APY, TVL, asset info
+        """
+        try:
+            # Call getReservesData with Pool Addresses Provider
+            result = self.ui_data_provider.functions.getReservesData(
+                Web3.to_checksum_address(POOL_ADDRESSES_PROVIDER)
+            ).call()
+            
+            reserves_data, base_currency_info = result
+            
+            pools = []
+            for reserve in reserves_data:
+                # Skip paused/frozen reserves
+                if reserve[12] or reserve[56]:  # isFrozen or isPaused
+                    continue
+                
+                symbol = reserve[2]
+                decimals = reserve[3]
+                
+                # liquidityRate is in Ray (1e27) - convert to APY %
+                liquidity_rate_ray = reserve[15]
+                supply_apy = (liquidity_rate_ray / 1e27) * 100  # Convert to percentage
+                
+                # Available liquidity (TVL proxy)
+                available_liquidity = reserve[23]
+                tvl_usd = (available_liquidity / (10 ** decimals))
+                
+                # Calculate total supply using aToken
+                atoken_address = reserve[19]
+                
+                pools.append({
+                    "id": f"aave_v3_{symbol.lower()}",
+                    "protocol": "aave_v3",
+                    "name": f"Aave V3 {symbol}",
+                    "asset": symbol,
+                    "underlying_asset": reserve[0],  # Token address
+                    "atoken_address": atoken_address,
+                    "decimals": decimals,
+                    "apy": round(supply_apy, 2),
+                    "tvl": tvl_usd,
+                    "pool_type": "single",
+                    "risk_level": "low",
+                    "is_lending": True,
+                    "is_active": reserve[11],
+                    "is_frozen": reserve[12],
+                    "borrowing_enabled": reserve[9],
+                    "audited": True,
+                    "implemented": True
+                })
+            
+            logger.info(f"🔷 Aave V3: Fetched {len(pools)} reserves on-chain")
+            return pools
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch Aave reserves: {e}")
+            return []
     
     def get_usdc_balance(self, user_address: str) -> int:
         """Get USDC balance in wei (6 decimals)."""
