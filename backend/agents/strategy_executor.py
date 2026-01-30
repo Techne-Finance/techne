@@ -72,6 +72,15 @@ class StrategyExecutor:
         self.execution_interval = 300  # 5 minutes
         self.last_execution: Dict[str, datetime] = {}
         
+        # PARK THRESHOLDS - auto-deposit to Aave if conditions met
+        self.park_idle_threshold = 5000  # $5k USDC minimum to trigger Park
+        self.park_idle_hours = 12  # Hours idle before Park
+        self.park_no_pools_hours = 6  # Hours without matching pools before Park
+        
+        # Track state for Park logic
+        self.last_pools_found: Dict[str, datetime] = {}  # agent_id -> when pools were last found
+        self.idle_since: Dict[str, datetime] = {}  # agent_id -> when idle balance started
+        
         # Smart contract config - V4.3.3 PRODUCTION (same as frontend!)
         self.wallet_contract = os.getenv(
             "AGENT_WALLET_ADDRESS", 
@@ -186,6 +195,61 @@ class StrategyExecutor:
         
         print(f"[StrategyExecutor] Avoid IL filter: {len(pools)} -> {len(filtered)} pools")
         return filtered if filtered else pools[:3]  # Fallback to top 3 if all filtered
+    
+    def check_park_conditions(self, agent: dict, pools_found: bool, idle_balance: float) -> dict:
+        """
+        Check if Park conditions are met for auto-deposit to Aave USDC.
+        
+        Triggers Park when:
+        1. No matching pools found for > 6 hours (park_no_pools_hours)
+        2. Idle balance > $5000 for > 12 hours (park_idle_hours)
+        
+        Returns:
+            dict with should_park, reason, trigger
+        """
+        agent_id = agent.get("id", "unknown")
+        now = datetime.utcnow()
+        
+        # Track pools found state
+        if pools_found:
+            self.last_pools_found[agent_id] = now
+        
+        # Track idle state
+        if idle_balance >= self.park_idle_threshold:
+            if agent_id not in self.idle_since:
+                self.idle_since[agent_id] = now
+                print(f"[StrategyExecutor] 🅿️ Idle tracking started for {agent_id[:15]}: ${idle_balance:.0f}")
+        else:
+            # Reset idle tracking if balance drops below threshold
+            if agent_id in self.idle_since:
+                del self.idle_since[agent_id]
+        
+        # CHECK 1: No pools found for > 6 hours
+        last_found = self.last_pools_found.get(agent_id)
+        if last_found:
+            hours_since_pools = (now - last_found).total_seconds() / 3600
+            if not pools_found and hours_since_pools >= self.park_no_pools_hours:
+                return {
+                    "should_park": True,
+                    "reason": f"No matching pools for {hours_since_pools:.1f}h (threshold: {self.park_no_pools_hours}h)",
+                    "trigger": "no_pools_timeout"
+                }
+        elif not pools_found:
+            # First time - initialize tracking
+            self.last_pools_found[agent_id] = now
+        
+        # CHECK 2: Idle balance > $5k for > 12 hours  
+        idle_start = self.idle_since.get(agent_id)
+        if idle_start and idle_balance >= self.park_idle_threshold:
+            hours_idle = (now - idle_start).total_seconds() / 3600
+            if hours_idle >= self.park_idle_hours:
+                return {
+                    "should_park": True,
+                    "reason": f"${idle_balance:.0f} idle for {hours_idle:.1f}h (threshold: {self.park_idle_hours}h)",
+                    "trigger": "idle_timeout"
+                }
+        
+        return {"should_park": False, "reason": None, "trigger": None}
     
     async def start(self):
         """Start the executor loop"""
@@ -348,6 +412,47 @@ class StrategyExecutor:
         if user_address and selected_pools:
             try:
                 idle_balance = await self.get_user_idle_balance(user_address, agent)
+                
+                # Check Park conditions (6h no pools, 12h idle > $5k)
+                pools_were_found = len(pools) > 0 and pools[0].get("project") != "aave-v3"  # Not just fallback
+                park_check = self.check_park_conditions(agent, pools_were_found, idle_balance)
+                
+                if park_check.get("should_park"):
+                    print(f"[StrategyExecutor] 🅿️ PARK TRIGGERED: {park_check['reason']}")
+                    
+                    # Force Aave USDC for Park
+                    aave_usdc_apy = 5.0
+                    try:
+                        from protocols.aave_v3 import get_aave_protocol
+                        aave = get_aave_protocol()
+                        reserves = aave.get_reserves_data()
+                        usdc_reserve = next((r for r in reserves if r.get("asset") == "USDC"), None)
+                        if usdc_reserve:
+                            aave_usdc_apy = usdc_reserve.get("apy", 5.0)
+                    except:
+                        pass
+                    
+                    selected_pools = [{
+                        "symbol": "USDC",
+                        "project": "aave-v3",
+                        "apy": aave_usdc_apy,
+                        "chain": "Base",
+                        "risk_score": "Low",
+                        "pool": "aave-usdc-base"
+                    }]
+                    
+                    if log_audit_entry:
+                        log_audit_entry(
+                            action="PARKING_ENGAGED",
+                            wallet=user_address,
+                            details={
+                                "apy": aave_usdc_apy,
+                                "reason": park_check["reason"],
+                                "trigger": park_check["trigger"],
+                                "idle_balance": idle_balance,
+                                "source": "on-chain"
+                            }
+                        )
                 
                 # MINIMUM $20 USDC to execute any moves (prevent dust trades)
                 if idle_balance >= 20:
