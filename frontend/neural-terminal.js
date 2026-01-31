@@ -242,7 +242,7 @@ class NeuralTerminal {
             { delay: 100, msg: '[VALIDATE] Checking strategy configuration...', type: 'info' },
             { delay: 300, msg: `[VALIDATE] Strategy: ${config.preset?.replace(/-/g, ' ') || 'Custom'}`, type: 'info' },
             { delay: 200, msg: `[VALIDATE] Risk Level: ${config.riskLevel || 'Medium'}`, type: 'info' },
-            { delay: 200, msg: `[VALIDATE] APY Target: ${config.minApy || 10}% - ${config.maxApy || 50}%`, type: 'info' },
+            { delay: 200, msg: `[VALIDATE] APY Target: ${config.minApy}% - ${config.maxApy}%${config.maxApy >= 100 ? '+' : ''}`, type: 'info' },
         ];
 
         // Add Pro Mode validation if applicable

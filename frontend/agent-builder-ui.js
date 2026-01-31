@@ -5,47 +5,49 @@
 
 class AgentBuilderUI {
     constructor() {
+        // Default config matches Steady preset (the default selected strategy)
         this.config = {
-            // Strategy preset
-            preset: 'balanced-growth',
+            // Strategy preset - Steady is default
+            preset: 'steady',
 
             // Chain - LOCKED to Base
             chain: 'base',
 
-            // Pool type - Single-sided only
-            poolType: 'single',
+            // Pool type - both for Steady
+            poolType: 'both',
+            maxDualPools: 3,
 
-            // Risk & Returns
+            // Risk & Returns - Steady values
             riskLevel: 'medium',
-            tradingStyle: 'moderate',  // conservative, moderate, aggressive
-            minApy: 5,
-            maxApy: 200,
+            tradingStyle: 'moderate',
+            minApy: 10,
+            maxApy: 30,
             maxDrawdown: 20,
 
             // Protocols - Base only
-            protocols: ['morpho', 'aave', 'moonwell', 'aerodrome', 'beefy'],
+            protocols: ['morpho', 'aave', 'moonwell', 'aerodrome'],
 
-            // Assets
-            preferredAssets: ['USDC', 'WETH'],
+            // Assets - Steady includes USDT
+            preferredAssets: ['USDC', 'WETH', 'USDT'],
 
             // Duration & Allocation
             duration: 30,
-            maxAllocation: 25,
+            maxAllocation: 20,
             vaultCount: 5,
 
             // Advanced
             autoRebalance: true,
             rebalanceThreshold: 5,
-            maxGasPrice: 10,  // 10 gwei - Base normally 0.001-0.01, spikes to 1-5
+            maxGasPrice: 50,
             slippage: 0.5,
             compoundFrequency: 7,
             onlyAudited: true,
-            avoidIL: true,  // True for single-sided
+            avoidIL: false,  // Steady allows dual pools
             emergencyExit: true,
-            apyCheckHours: 24,  // Hours before APY rotation (12, 24, 72, 168)
+            apyCheckHours: 24,
 
             // Pro Features
-            minPoolTvl: 500000,  // $500k - degens welcome
+            minPoolTvl: 10000000,  // $10M for Steady
             harvestStrategy: 'compound',
             volatilityThreshold: 10,
             mevProtection: false
@@ -169,31 +171,92 @@ class AgentBuilderUI {
     bindAIInstantEvents() {
         const strategies = {
             'safe': {
+                // Risk & Returns
                 riskLevel: 'low',
                 minApy: 5, maxApy: 12, maxDrawdown: 10,
+                // Protocols & Assets
                 protocols: ['aave', 'morpho', 'moonwell', 'compound'],
                 preferredAssets: ['USDC', 'USDT'],
-                poolType: 'single', avoidIL: true, onlyAudited: true,
-                minPoolTvl: 50000000,
-                narrative: '[AI] Strategy: <strong>Safe</strong> selected. Maximum security mode. Targeting 5-12% APY on audited protocols only. TVL $50M+ required. No IL exposure. Ready to deploy.'
+                poolType: 'single',
+                // Pool Selection
+                minPoolTvl: 10000000,  // $10M
+                avoidIL: true,
+                onlyAudited: true,
+                // Allocation & Vaults
+                vaultCount: 4,
+                maxAllocation: 25,
+                // Execution
+                rebalanceThreshold: 3,
+                maxGasPrice: 30,
+                slippage: 0.3,
+                compoundFrequency: 7,
+                apyCheckHours: 24,
+                // Duration
+                duration: 0,  // 0 = infinite, runs until APY drops below minApy (5%)
+                exitOnLowApy: true,  // Exit when APY < 5%
+                // Safety
+                emergencyExit: true,
+                harvestStrategy: 'compound',
+                volatilityThreshold: 5,
+                mevProtection: false,
+                narrative: '[AI] Strategy: <strong>Safe</strong> selected. Maximum security mode. Targeting 5-12% APY on audited protocols only. TVL $10M+ required. No IL exposure. Runs until APY < 5%.'
             },
             'steady': {
+                // Risk & Returns
                 riskLevel: 'medium',
                 minApy: 10, maxApy: 30, maxDrawdown: 20,
+                // Protocols & Assets
                 protocols: ['morpho', 'aave', 'moonwell', 'aerodrome'],
-                preferredAssets: ['USDC', 'WETH'],
-                poolType: 'single', avoidIL: true, onlyAudited: true,
-                minPoolTvl: 10000000,
-                narrative: '[AI] Strategy: <strong>Steady</strong> selected. Balanced approach. Targeting 10-30% APY. TVL $10M+, risk medium, auto-compound enabled. Ready to deploy.'
+                preferredAssets: ['USDC', 'WETH', 'USDT'],
+                poolType: 'both',  // single + dual allowed
+                maxDualPools: 3,   // max 3 dual-sided pools
+                // Pool Selection
+                minPoolTvl: 10000000,  // $10M
+                avoidIL: false,  // Dual pools have IL
+                onlyAudited: true,
+                // Allocation & Vaults
+                vaultCount: 5,
+                maxAllocation: 20,
+                // Execution
+                rebalanceThreshold: 5,
+                maxGasPrice: 50,
+                slippage: 0.5,
+                compoundFrequency: 7,
+                apyCheckHours: 24,
+                // Safety
+                emergencyExit: true,
+                harvestStrategy: 'compound',
+                volatilityThreshold: 10,
+                mevProtection: false,
+                narrative: '[AI] Strategy: <strong>Steady</strong> selected. Balanced approach. Targeting 10-30% APY. TVL $10M+, single + dual pools (max 3 dual). Ready to deploy.'
             },
-            'fast': {
+            'degen': {
+                // Risk & Returns
                 riskLevel: 'high',
                 minApy: 30, maxApy: 100, maxDrawdown: 40,
-                protocols: ['aerodrome', 'beefy', 'morpho', 'moonwell'],
-                preferredAssets: ['WETH', 'AERO', 'cbETH'],
-                poolType: 'dual', avoidIL: false, onlyAudited: false,
-                minPoolTvl: 1000000,
-                narrative: '[AI] Strategy: <strong>Fast</strong> selected. Aggressive growth. Targeting 30-100%+ APY. Active rotation enabled. IL exposure possible. Ready to deploy.'
+                // Protocols & Assets
+                protocols: ['aerodrome', 'beefy', 'morpho', 'moonwell', 'uniswap', 'extra'],
+                preferredAssets: ['WETH', 'AERO', 'USDC', 'USDT'],
+                poolType: 'dual',
+                // Pool Selection
+                minPoolTvl: 1000000,  // $1M
+                avoidIL: false,
+                onlyAudited: false,
+                // Allocation & Vaults
+                vaultCount: 7,
+                maxAllocation: 15,
+                // Execution
+                rebalanceThreshold: 10,
+                maxGasPrice: 100,
+                slippage: 1.0,
+                compoundFrequency: 1,
+                apyCheckHours: 12,
+                // Safety
+                emergencyExit: true,
+                harvestStrategy: 'compound',
+                volatilityThreshold: 20,
+                mevProtection: true,
+                narrative: '[AI] Strategy: <strong>Degen</strong> selected. Aggressive growth. Targeting 30-100%+ APY. Active rotation, dual-sided LPs, IL exposure. LFG! 🚀'
             }
         };
 
@@ -208,16 +271,21 @@ class AgentBuilderUI {
                 const config = strategies[strategy];
 
                 if (config) {
-                    // Apply strategy config
+                    // Apply strategy config - FULLY REPLACE relevant fields
                     Object.assign(this.config, config);
+
+                    // Set preset name for Neural Terminal display
+                    this.config.preset = strategy;
+
+                    // Log for debugging
+                    console.log('[AgentBuilder] AI-Instant strategy applied:', strategy);
+                    console.log('[AgentBuilder] Config now:', this.config.minApy, '-', this.config.maxApy, '% APY');
 
                     // Update narrative terminal
                     const narrative = document.getElementById('aiNarrativeContent');
                     if (narrative) {
                         narrative.innerHTML = config.narrative;
                     }
-
-                    console.log('[AgentBuilder] AI-Instant strategy:', strategy, config);
                 }
             });
         });
