@@ -188,12 +188,12 @@ class AgentBuilderUI {
             },
             'fast': {
                 riskLevel: 'high',
-                minApy: 20, maxApy: 200, maxDrawdown: 40,
+                minApy: 30, maxApy: 100, maxDrawdown: 40,
                 protocols: ['aerodrome', 'beefy', 'morpho', 'moonwell'],
                 preferredAssets: ['WETH', 'AERO', 'cbETH'],
                 poolType: 'dual', avoidIL: false, onlyAudited: false,
                 minPoolTvl: 1000000,
-                narrative: '[AI] Strategy: <strong>Fast</strong> selected. Maximum growth potential. Targeting 20-50%+ APY. Aggressive rotation enabled. IL exposure possible. Ready to deploy.'
+                narrative: '[AI] Strategy: <strong>Fast</strong> selected. Aggressive growth. Targeting 30-100%+ APY. Active rotation enabled. IL exposure possible. Ready to deploy.'
             }
         };
 
