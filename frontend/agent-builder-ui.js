@@ -179,12 +179,12 @@ class AgentBuilderUI {
             },
             'steady': {
                 riskLevel: 'medium',
-                minApy: 10, maxApy: 25, maxDrawdown: 20,
+                minApy: 10, maxApy: 30, maxDrawdown: 20,
                 protocols: ['morpho', 'aave', 'moonwell', 'aerodrome'],
                 preferredAssets: ['USDC', 'WETH'],
                 poolType: 'single', avoidIL: true, onlyAudited: true,
                 minPoolTvl: 10000000,
-                narrative: '[AI] Strategy: <strong>Steady</strong> selected. Balanced approach. Targeting 10-25% APY. TVL $10M+, risk medium, auto-compound enabled. Ready to deploy.'
+                narrative: '[AI] Strategy: <strong>Steady</strong> selected. Balanced approach. Targeting 10-30% APY. TVL $10M+, risk medium, auto-compound enabled. Ready to deploy.'
             },
             'fast': {
                 riskLevel: 'high',
