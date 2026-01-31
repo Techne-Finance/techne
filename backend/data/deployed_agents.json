@@ -44,7 +44,8 @@
       "is_active": true,
       "positions": [],
       "total_deposited": 0,
-      "total_value": 0
+      "total_value": 0,
+      "encrypted_private_key": "eoEyDGhVTKAn+NCukxvTi/KLL4pDUp6ML1IRkCHgcLJ6yTVUPAcaoSyphavFF9XY8t5x3EAGnNd5BUaWdLcl5H2f"
     }
   ]
 }

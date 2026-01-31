@@ -278,12 +278,25 @@ PENDING_DEPLOYS = {}
 
 def _build_agent_data(request, user_address: str, agent_id: str, agent_address: str, signature_verified: bool, user_agents: list) -> dict:
     """Build agent data dict from request"""
+    # Generate agent private key for autonomous signing
+    from services.agent_keys import generate_agent_wallet, encrypt_private_key
+    
+    try:
+        _, generated_address = generate_agent_wallet()
+        pk, _ = generate_agent_wallet()  # Generate fresh keypair for agent signing
+        encrypted_pk = encrypt_private_key(pk)
+        print(f"[AgentConfig] Generated encrypted private key for agent {agent_id[:20]}...")
+    except Exception as e:
+        print(f"[AgentConfig] WARNING: Could not generate agent key: {e}")
+        encrypted_pk = None
+    
     return {
         "id": agent_id,
         "name": request.agent_name or f"Agent #{len(user_agents) + 1}",
         "user_address": user_address,
         "agent_address": agent_address,
         "account_type": "erc8004",
+        "encrypted_private_key": encrypted_pk,  # For autonomous signing
         "signature_verified": signature_verified,
         "chain": request.chain,
         "preset": request.preset,
