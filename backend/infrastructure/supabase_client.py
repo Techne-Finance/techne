@@ -451,6 +451,122 @@ class SupabaseClient:
         )
         return result[0].get("config") if result else None
     
+    async def delete_agent(self, agent_address: str) -> bool:
+        """
+        Delete an agent from Supabase agents_v2 table.
+        Returns True if deleted, False otherwise.
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            result = await self._request(
+                "DELETE", "agents_v2",
+                params={"agent_address": f"eq.{agent_address.lower()}"}
+            )
+            logger.info(f"[Supabase] Deleted agent: {agent_address[:10]}...")
+            return True
+        except Exception as e:
+            logger.error(f"[Supabase] Delete agent failed: {e}")
+            return False
+    
+    # ==========================================
+    # AGENT BALANCES CACHE (for portfolio)
+    # ==========================================
+    
+    async def save_agent_balances(
+        self,
+        agent_address: str,
+        user_address: str,
+        holdings: list,
+        positions: list,
+        total_value_usd: float
+    ) -> bool:
+        """
+        Save/update cached portfolio balances.
+        Called by background job every 10 min.
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            data = {
+                "agent_address": agent_address.lower(),
+                "user_address": user_address.lower(),
+                "holdings": holdings,
+                "positions": positions,
+                "total_value_usd": total_value_usd,
+                "fetched_at": datetime.utcnow().isoformat()
+            }
+            
+            # Upsert on agent_address
+            result = await self._request(
+                "POST", "agent_balances",
+                data=data,
+                params={"on_conflict": "agent_address"}
+            )
+            logger.info(f"[Supabase] Saved balances for agent {agent_address[:10]}...")
+            return True
+        except Exception as e:
+            logger.error(f"[Supabase] Save agent balances failed: {e}")
+            return False
+    
+    async def get_agent_balances(self, agent_address: str) -> Optional[dict]:
+        """
+        Get cached portfolio balances for an agent.
+        Returns None if not found or stale (>15 min).
+        """
+        if not self.is_available:
+            return None
+        
+        try:
+            result = await self._request(
+                "GET", "agent_balances",
+                params={
+                    "agent_address": f"eq.{agent_address.lower()}",
+                    "select": "holdings,positions,total_value_usd,fetched_at",
+                    "limit": "1"
+                }
+            )
+            
+            if result and len(result) > 0:
+                cached = result[0]
+                # Check if data is fresh (within 15 min - slightly longer than refresh interval)
+                fetched_at = datetime.fromisoformat(cached["fetched_at"].replace("Z", "+00:00"))
+                age_seconds = (datetime.now(fetched_at.tzinfo) - fetched_at).total_seconds()
+                
+                if age_seconds < 900:  # 15 min
+                    logger.info(f"[Supabase] Cache HIT for {agent_address[:10]}... (age: {age_seconds:.0f}s)")
+                    return cached
+                else:
+                    logger.info(f"[Supabase] Cache STALE for {agent_address[:10]}... (age: {age_seconds:.0f}s)")
+            
+            return None
+        except Exception as e:
+            logger.error(f"[Supabase] Get agent balances failed: {e}")
+            return None
+    
+    async def get_all_agents_for_refresh(self) -> list:
+        """
+        Get all agents that need balance refresh.
+        Used by background job.
+        """
+        if not self.is_available:
+            return []
+        
+        try:
+            result = await self._request(
+                "GET", "agents_v2",
+                params={
+                    "select": "agent_address,user_address",
+                    "status": "eq.active"
+                }
+            )
+            return result or []
+        except Exception as e:
+            logger.error(f"[Supabase] Get agents for refresh failed: {e}")
+            return []
+    
     # ==========================================
     # HARVESTS
     # ==========================================

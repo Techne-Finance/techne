@@ -277,19 +277,40 @@ async def get_reasoning_logs(
                     # Map Supabase entries to friendly format
                     formatted = []
                     for entry in data:
+                        # Parse full details from reason JSON field (stored there by log_audit_entry)
+                        full_details = {}
+                        reason_raw = entry.get("reason", "")
+                        if reason_raw and reason_raw.startswith("{"):
+                            try:
+                                import json
+                                full_details = json.loads(reason_raw)
+                            except:
+                                pass
+                        
+                        # Merge with column values (fallback for older entries)
+                        merged_details = {
+                            "gas_cost": full_details.get("gas_cost", entry.get("gas_cost", 0) or 0),
+                            "risk_score": full_details.get("risk_score", entry.get("risk_score", 0) or 0),
+                            "reason": full_details.get("reason", ""),
+                            "amount": full_details.get("amount", full_details.get("idle_balance", entry.get("amount_usd", 0) or 0)),
+                            "protocol": full_details.get("protocol", full_details.get("top_pool", entry.get("protocol", ""))),
+                            "profit": full_details.get("profit", entry.get("profit_usd", 0) or 0),
+                            "apy": full_details.get("apy", full_details.get("top_apy", entry.get("apy", 0) or 0)),
+                            # Strategy executor specific fields
+                            "pools_found": full_details.get("pools_found", 0),
+                            "top_pool": full_details.get("top_pool", ""),
+                            "top_apy": full_details.get("top_apy", 0),
+                            "selected_count": full_details.get("selected_count", 0),
+                            "pools": full_details.get("pools", []),
+                            "protocols": full_details.get("protocols", ""),
+                            "min_apy": full_details.get("min_apy", 0),
+                        }
+                        
                         mapped = {
                             "id": entry.get("id"),
                             "timestamp": entry.get("created_at"),
                             "action": entry.get("action", entry.get("event_type", "UNKNOWN")),
-                            "details": {
-                                "gas_cost": entry.get("gas_cost", 0) or 0,
-                                "risk_score": entry.get("risk_score", 0) or 0,
-                                "reason": entry.get("reason", ""),
-                                "amount": entry.get("amount_usd", 0) or 0,
-                                "protocol": entry.get("protocol", ""),
-                                "profit": entry.get("profit_usd", 0) or 0,
-                                "apy": entry.get("apy", 0) or 0,
-                            }
+                            "details": merged_details
                         }
                         formatted.append(map_technical_to_friendly(mapped))
                     
@@ -374,18 +395,21 @@ def log_audit_entry(
                 'Prefer': 'return=minimal'
             }
             
+            import json
+            
             supabase_entry = {
                 "id": entry_id,
                 "action": action,
                 "user_address": wallet,
                 "event_type": action,
-                "reason": details.get("reason", "") if details else "",
+                # Store full details as JSON for Neural Terminal to use
+                "reason": json.dumps(details) if details else "{}",  # Full details JSON
                 "gas_cost": details.get("gas_cost", 0) if details else 0,
-                "apy": details.get("apy", 0) if details else 0,
-                "amount_usd": details.get("amount", 0) if details else 0,
+                "apy": details.get("apy", details.get("top_apy", 0)) if details else 0,
+                "amount_usd": details.get("amount", details.get("idle_balance", 0)) if details else 0,
                 "profit_usd": details.get("profit", 0) if details else 0,
                 "risk_score": details.get("risk_score", 0) if details else 0,
-                "protocol": details.get("protocol", "") if details else "",
+                "protocol": details.get("protocol", details.get("top_pool", str(details.get("pools", ""))[:50])) if details else "",
             }
             
             response = requests.post(

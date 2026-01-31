@@ -1070,6 +1070,52 @@ What would you like to configure?`;
                         deployedAddress = confirmResult.agent_address;
                         console.log('[AgentBuilder] Agent deployed and confirmed:', deployedAddress);
 
+                        // STEP 2: Setup auto-trading (session key + protocol whitelist)
+                        this.addAgentMessage('<span class="techne-icon">' + TechneIcons.chartLine + '</span> Setting up auto-trading permissions...\n**Please confirm one more transaction to enable automated trading.**');
+
+                        try {
+                            const setupResponse = await fetch(`${API_BASE}/api/agent/setup-auto-trading`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    user_address: window.connectedWallet,
+                                    agent_id: agentId,
+                                    agent_address: deployedAddress
+                                })
+                            });
+
+                            const setupResult = await setupResponse.json();
+                            console.log('[AgentBuilder] Setup auto-trading result:', setupResult);
+
+                            if (setupResult.success && setupResult.transaction) {
+                                // Send setup transaction via MetaMask
+                                const setupTxHash = await window.ethereum.request({
+                                    method: 'eth_sendTransaction',
+                                    params: [{
+                                        from: window.connectedWallet,
+                                        to: setupResult.transaction.to,
+                                        data: setupResult.transaction.data,
+                                        gas: setupResult.transaction.gas,
+                                        value: setupResult.transaction.value || '0x0'
+                                    }]
+                                });
+
+                                console.log('[AgentBuilder] Auto-trading setup tx:', setupTxHash);
+                                this.addAgentMessage('<span class="techne-icon">' + TechneIcons.check + '</span> **Auto-trading enabled!**\nSession key: `' + setupResult.session_key.slice(0, 10) + '...`\nWhitelisted: ' + setupResult.protocols_to_whitelist.join(', '));
+
+                                // Wait for tx confirmation
+                                await new Promise(resolve => setTimeout(resolve, 2000));
+                            } else {
+                                console.log('[AgentBuilder] Auto-trading setup skipped:', setupResult.error || 'No transaction needed');
+                            }
+                        } catch (setupError) {
+                            // Non-blocking - agent is deployed, just warn about manual setup
+                            console.warn('[AgentBuilder] Auto-trading setup failed:', setupError);
+                            if (setupError.code === 4001) {
+                                this.addAgentMessage('<span class="techne-icon">' + TechneIcons.alert + '</span> **Auto-trading not enabled** - you declined the transaction.\nYou can enable it later in Portfolio → Agent Settings.');
+                            }
+                        }
+
                     } catch (txError) {
                         if (txError.code === 4001) {
                             // User rejected transaction

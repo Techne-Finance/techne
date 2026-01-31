@@ -430,6 +430,138 @@ async def confirm_deploy(request: ConfirmDeployRequest):
     }
 
 
+class SetupAutoTradingRequest(BaseModel):
+    """Request to setup auto trading (session key + whitelist)"""
+    user_address: str
+    agent_id: str
+    agent_address: str
+
+
+@router.post("/setup-auto-trading")
+async def setup_auto_trading(request: SetupAutoTradingRequest):
+    """
+    Build transaction to enable auto-trading for Smart Account.
+    
+    This sets up:
+    1. Session key for backend to execute trades
+    2. Protocol whitelist (Aave, Aerodrome, etc.)
+    
+    Returns transaction data for user to sign via MetaMask.
+    """
+    from api.session_key_signer import get_session_key_address
+    from eth_abi import encode
+    
+    user_address = request.user_address.lower()
+    agent_id = request.agent_id
+    agent_address = request.agent_address
+    
+    print(f"[AgentConfig] Setting up auto-trading for {agent_id}")
+    
+    try:
+        # Get the derived session key address for this agent
+        session_key_address = get_session_key_address(agent_id, user_address)
+        print(f"[AgentConfig] Session key for {agent_id}: {session_key_address}")
+        
+        # Protocol addresses to whitelist (Base mainnet)
+        AAVE_POOL = "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"
+        AERODROME_ROUTER = "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43"
+        MORPHO_BLUE = "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb"
+        USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+        WETH = "0x4200000000000000000000000000000000000006"
+        
+        # Common selectors for DeFi operations
+        SELECTORS = {
+            "aave_supply": bytes.fromhex("e8eda9df"),      # supply(address,uint256,address,uint16)
+            "aave_withdraw": bytes.fromhex("69328dec"),    # withdraw(address,uint256,address)
+            "morpho_supply": bytes.fromhex("a99aad89"),    # supply(...)
+            "morpho_withdraw": bytes.fromhex("5c2bea49"), # withdraw(...)
+            "aero_add_liq": bytes.fromhex("5a47ddc3"),    # addLiquidity(...)
+            "aero_remove_liq": bytes.fromhex("0dede6c4"), # removeLiquidity(...)
+            "aero_swap": bytes.fromhex("38ed1739"),       # swapExactTokensForTokens(...)
+            "erc20_approve": bytes.fromhex("095ea7b3"),   # approve(address,uint256)
+            "erc20_transfer": bytes.fromhex("a9059cbb"), # transfer(address,uint256)
+        }
+        
+        # Build executeBatch calldata for Smart Account
+        # Call 1: addSessionKey(address key, uint48 validUntil, uint256 dailyLimitUSD)
+        add_session_key_selector = bytes.fromhex("3644e515")  # addSessionKey(address,uint48,uint256)
+        max_uint48 = (1 << 48) - 1  # type(uint48).max - no expiration
+        daily_limit = 100000 * 10**8  # $100,000 daily limit (8 decimals for USD)
+        
+        add_session_key_data = add_session_key_selector + encode(
+            ['address', 'uint48', 'uint256'],
+            [session_key_address, max_uint48, daily_limit]
+        )
+        
+        # Call 2: batchWhitelist(address[] protocols, bytes4[][] selectors)
+        batch_whitelist_selector = bytes.fromhex("3b3d3b8b")  # batchWhitelist(address[],bytes4[][])
+        
+        protocols = [
+            Web3.to_checksum_address(AAVE_POOL),
+            Web3.to_checksum_address(AERODROME_ROUTER),
+            Web3.to_checksum_address(MORPHO_BLUE),
+            Web3.to_checksum_address(USDC),
+            Web3.to_checksum_address(WETH),
+        ]
+        
+        selectors_per_protocol = [
+            [SELECTORS["aave_supply"], SELECTORS["aave_withdraw"]],  # Aave
+            [SELECTORS["aero_add_liq"], SELECTORS["aero_remove_liq"], SELECTORS["aero_swap"]],  # Aerodrome
+            [SELECTORS["morpho_supply"], SELECTORS["morpho_withdraw"]],  # Morpho
+            [SELECTORS["erc20_approve"], SELECTORS["erc20_transfer"]],  # USDC
+            [SELECTORS["erc20_approve"], SELECTORS["erc20_transfer"]],  # WETH
+        ]
+        
+        # Manually encode for executeBatch
+        # executeBatch(address[] targets, uint256[] values, bytes[] dataArray)
+        execute_batch_selector = bytes.fromhex("34fcd5be")  # executeBatch(address[],uint256[],bytes[])
+        
+        targets = [
+            Web3.to_checksum_address(agent_address),  # addSessionKey on self
+            Web3.to_checksum_address(agent_address),  # batchWhitelist on self
+        ]
+        values = [0, 0]
+        
+        # Build batchWhitelist calldata
+        batch_whitelist_data = batch_whitelist_selector + encode(
+            ['address[]', 'bytes4[][]'],
+            [protocols, [[s for s in sels] for sels in selectors_per_protocol]]
+        )
+        
+        data_array = [add_session_key_data, batch_whitelist_data]
+        
+        # Encode executeBatch call
+        execute_batch_data = execute_batch_selector + encode(
+            ['address[]', 'uint256[]', 'bytes[]'],
+            [targets, values, data_array]
+        )
+        
+        from web3 import Web3
+        w3 = Web3(Web3.HTTPProvider(os.getenv("ALCHEMY_RPC_URL", "")))
+        gas_price = w3.eth.gas_price
+        
+        return {
+            "success": True,
+            "session_key": session_key_address,
+            "agent_id": agent_id,
+            "agent_address": agent_address,
+            "protocols_to_whitelist": ["Aave", "Aerodrome", "Morpho", "USDC", "WETH"],
+            "transaction": {
+                "to": agent_address,
+                "data": "0x" + execute_batch_data.hex(),
+                "gas": "0x" + hex(500000)[2:],  # 500k gas for batch
+                "value": "0x0"
+            },
+            "message": "Sign to enable auto-trading. This adds backend session key and whitelists DeFi protocols."
+        }
+        
+    except Exception as e:
+        print(f"[AgentConfig] Setup auto-trading error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/status/{user_address}")
 async def get_agent_status(user_address: str, agent_id: Optional[str] = None):
     """
@@ -759,6 +891,64 @@ async def get_recommendations(user_address: str, agent_id: Optional[str] = None)
             "protocols": agent.get("protocols"),
             "apy_range": [agent.get("min_apy"), agent.get("max_apy")]
         }
+    }
+
+
+# ===========================================
+# DELETE AGENT
+# ===========================================
+
+@router.delete("/delete/{user_address}/{agent_id}")
+async def delete_agent(user_address: str, agent_id: str):
+    """
+    Delete an agent permanently.
+    Removes from in-memory storage and Supabase.
+    """
+    print(f"[AgentConfig] Delete request: user={user_address[:10]}..., agent={agent_id}")
+    
+    user_key = user_address.lower()
+    
+    # Check if agent exists
+    if user_key not in DEPLOYED_AGENTS:
+        return {"success": False, "error": "User has no agents"}
+    
+    user_agents = DEPLOYED_AGENTS[user_key]
+    original_count = len(user_agents)
+    
+    # Filter out the agent
+    agent_to_delete = next((a for a in user_agents if a.get("id") == agent_id), None)
+    
+    if not agent_to_delete:
+        return {"success": False, "error": "Agent not found"}
+    
+    # Remove from in-memory cache
+    DEPLOYED_AGENTS[user_key] = [a for a in user_agents if a.get("id") != agent_id]
+    
+    # Delete from Supabase
+    if supabase.is_available:
+        try:
+            agent_address = agent_to_delete.get("agent_address") or agent_to_delete.get("address")
+            if agent_address:
+                # Delete from agents_v2 table
+                await supabase.delete_agent(agent_address)
+                print(f"[AgentConfig] Deleted agent from Supabase: {agent_address[:10]}...")
+        except Exception as e:
+            print(f"[AgentConfig] Supabase delete warning: {e}")
+    
+    # Persist to file
+    try:
+        import json
+        with open(DEPLOYED_FILE, "w") as f:
+            json.dump(DEPLOYED_AGENTS, f, indent=2, default=str)
+    except Exception as e:
+        print(f"[AgentConfig] File persist warning: {e}")
+    
+    print(f"[AgentConfig] Agent deleted: {agent_id}, remaining: {len(DEPLOYED_AGENTS.get(user_key, []))}")
+    
+    return {
+        "success": True,
+        "message": f"Agent {agent_id[:8]}... deleted",
+        "remaining_agents": len(DEPLOYED_AGENTS.get(user_key, []))
     }
 
 

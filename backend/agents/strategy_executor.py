@@ -75,7 +75,7 @@ class StrategyExecutor:
     
     def __init__(self):
         self.running = False
-        self.execution_interval = 300  # 5 minutes
+        self.execution_interval = 600  # 10 minutes (scan for pools)
         self.last_execution: Dict[str, datetime] = {}
         
         # PARK THRESHOLDS - auto-deposit to Aave USDC
@@ -896,7 +896,7 @@ class StrategyExecutor:
                 # Check audit status if required
                 if agent.get("only_audited", False):
                     # Trusted protocols are considered audited
-                    trusted = ['aave', 'compound', 'curve', 'uniswap', 'morpho', 'lido']
+                    trusted = ['aave', 'compound', 'curve', 'uniswap', 'morpho', 'lido', 'aerodrome', 'velodrome']
                     if not any(t in project for t in trusted):
                         continue
                 

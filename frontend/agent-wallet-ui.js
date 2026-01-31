@@ -696,6 +696,20 @@ const AgentWalletUI = {
      * @param {string} asset - Token symbol (USDC, ETH, WETH)
      */
     async showWithdrawModal(asset = 'USDC') {
+        // FETCH LIVE PRICES from Pyth+Chainlink oracle (no hardcoding!)
+        const API_BASE = window.API_BASE || '';
+        try {
+            const priceResp = await fetch(`${API_BASE}/api/agent-wallet/prices`);
+            const priceData = await priceResp.json();
+            if (priceData.prices) {
+                window.tokenPrices = priceData.prices;
+                window.ethPrice = priceData.prices.ETH?.price || 3300;
+                console.log('[AgentWallet] Live prices loaded:', priceData.prices);
+            }
+        } catch (e) {
+            console.warn('[AgentWallet] Failed to fetch prices, using fallback:', e);
+        }
+
         // Get agent address and balance from CACHED portfolio data (instant!)
         let agentAddress = null;
         let assetBalance = 0;
@@ -966,6 +980,139 @@ const AgentWalletUI = {
     },
 
     /**
+     * Update withdraw estimate display
+     */
+    updateWithdrawEstimate(amountStr) {
+        const amount = parseFloat(amountStr) || 0;
+        const estimate = document.getElementById('withdrawEstimate');
+        if (estimate) {
+            // For USDC, 1:1 with USD. For ETH, use price from cache
+            const price = this.withdrawToken === 'USDC' ? 1 : (window.ethPrice || 3000);
+            const usdValue = amount * price;
+            estimate.textContent = `$${usdValue.toFixed(2)}`;
+        }
+    },
+
+    /**
+     * Set max withdraw amount
+     * For ETH: reserves ~0.0003 ETH for gas to ensure tx can execute
+     */
+    setMaxWithdraw() {
+        const input = document.getElementById('withdrawShares');
+        if (input && this.withdrawBalance) {
+            let maxAmount = this.withdrawBalance;
+
+            // Reserve gas for ETH withdrawals (~$1 worth at current prices)
+            const GAS_RESERVE_ETH = 0.0003; // ~$1 at $3300/ETH, enough for ~100k gas
+
+            if (this.withdrawToken && this.withdrawToken.toUpperCase() === 'ETH') {
+                maxAmount = Math.max(0, this.withdrawBalance - GAS_RESERVE_ETH);
+                if (maxAmount < GAS_RESERVE_ETH) {
+                    // Not enough ETH even for gas reserve
+                    maxAmount = 0;
+                    Toast?.show('Insufficient ETH - need at least ' + (GAS_RESERVE_ETH * 2).toFixed(4) + ' ETH', 'warning');
+                } else {
+                    console.log(`[AgentWallet] Reserving ${GAS_RESERVE_ETH} ETH for gas. Max withdraw: ${maxAmount.toFixed(6)} ETH`);
+                }
+            }
+
+            input.value = maxAmount.toFixed(this.withdrawToken === 'USDC' ? 2 : 6);
+            this.updateWithdrawEstimate(maxAmount);
+        }
+    },
+
+    /**
+     * Execute the actual withdrawal - sends tokens from agent wallet to user wallet
+     * Uses direct on-chain transfer via agent's private key
+     */
+    async executeWithdraw() {
+        const amountInput = document.getElementById('withdrawShares');
+        const withdrawBtn = document.getElementById('withdrawBtn');
+        const amount = parseFloat(amountInput?.value) || 0;
+
+        if (amount <= 0) {
+            alert('Please enter an amount to withdraw');
+            return;
+        }
+
+        if (amount > this.withdrawBalance) {
+            alert(`Insufficient balance. Available: ${this.withdrawBalance.toFixed(2)} ${this.withdrawToken}`);
+            return;
+        }
+
+        // Update button state
+        if (withdrawBtn) {
+            withdrawBtn.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="spin">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="32" stroke-linecap="round"/>
+                </svg>
+                Withdrawing...
+            `;
+            withdrawBtn.disabled = true;
+        }
+
+        try {
+            const API_BASE = window.API_BASE || '';
+            const userWallet = window.connectedWallet;
+            const agentAddress = this.withdrawAgentAddress;
+
+            if (!userWallet || !agentAddress) {
+                throw new Error('Wallet or agent not connected');
+            }
+
+            // Call backend to execute withdrawal (backend has agent private key)
+            const response = await fetch(`${API_BASE}/api/agent-wallet/withdraw`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_address: userWallet,
+                    agent_address: agentAddress,
+                    token: this.withdrawToken,
+                    amount: amount
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail || result.error || 'Withdraw failed');
+            }
+
+            // Success!
+            document.getElementById('vaultModal')?.remove();
+
+            // Show success toast
+            if (window.showToast) {
+                window.showToast(`✅ Withdrew ${amount.toFixed(2)} ${this.withdrawToken} to your wallet`, 'success');
+            } else {
+                alert(`✅ Withdrew ${amount.toFixed(2)} ${this.withdrawToken} to your wallet\n\nTx: ${result.tx_hash || 'pending'}`);
+            }
+
+            // Refresh portfolio data
+            if (window.portfolioDashboard) {
+                setTimeout(() => window.portfolioDashboard.loadPortfolioData(), 2000);
+            }
+
+        } catch (error) {
+            console.error('[AgentWallet] Withdraw error:', error);
+            alert(`Withdraw failed: ${error.message}`);
+
+            // Reset button
+            if (withdrawBtn) {
+                withdrawBtn.innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M3 12h6l2 3h2l2-3h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M12 3v6m0 0l3-3m-3 3L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Withdraw ${this.withdrawToken}
+                `;
+                withdrawBtn.disabled = false;
+            }
+        }
+    },
+
+    /**
+
      * Select deposit token (USDC or ETH)
      */
     selectToken(symbol) {
@@ -1302,53 +1449,94 @@ const AgentWalletUI = {
         btn.disabled = true;
 
         try {
-            // Get selected agent
-            let agentId = null;
+            // Use agent address stored by showWithdrawModal()
+            let agentAddress = this.withdrawAgentAddress;
+
+            // Fallback: try agent selector if available
             const agentSelector = document.getElementById('withdrawAgentSelect');
             if (agentSelector && agentSelector.value) {
-                agentId = agentSelector.value;
+                // Try to get agent address from localStorage
+                const agents = JSON.parse(localStorage.getItem('techne_deployed_agents') || '[]');
+                const selectedAgent = agents.find(a => a.agent_id === agentSelector.value);
+                if (selectedAgent?.agent_address) {
+                    agentAddress = selectedAgent.agent_address;
+                }
             }
 
-            // Call backend wallet withdraw endpoint  
-            const resp = await fetch(`${window.API_BASE || 'http://localhost:8000'}/api/agent-wallet/withdraw`, {
+            // Final fallback: localStorage first agent
+            if (!agentAddress) {
+                const agents = JSON.parse(localStorage.getItem('techne_deployed_agents') || '[]');
+                if (agents.length > 0) {
+                    agentAddress = agents[0].address || agents[0].agent_address || agents[0].smartAccount;
+                }
+            }
+
+            if (!agentAddress) {
+                throw new Error('No agent address found. Please deploy an agent first.');
+            }
+
+            console.log('[AgentWallet] Withdrawing from Smart Account:', agentAddress);
+
+            // Call new Smart Account withdrawal endpoint (returns TX for MetaMask)
+            const resp = await fetch(`${window.API_BASE || 'http://localhost:8000'}/api/agent-wallet/withdraw-smart-account`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_address: window.connectedWallet,
-                    token: this.withdrawToken || 'USDC',  // ETH, USDC, WETH, etc.
-                    amount: parseFloat(amountInput),
-                    destination: window.connectedWallet  // Withdraw to user's wallet
+                    agent_address: agentAddress,
+                    token: this.withdrawToken || 'USDC',
+                    amount: parseFloat(amountInput)
                 })
             });
 
             const result = await resp.json();
+            console.log('[AgentWallet] Withdraw response:', result);
 
-            if (result.success) {
+            if (result.success && result.transaction) {
+                // Smart Account requires owner signature via MetaMask
+                Toast?.show('Please confirm withdrawal in MetaMask...', 'info');
+
+                const txHash = await window.ethereum.request({
+                    method: 'eth_sendTransaction',
+                    params: [{
+                        from: window.connectedWallet,
+                        to: result.transaction.to,
+                        data: result.transaction.data,
+                        gas: result.transaction.gas,
+                        value: result.transaction.value || '0x0'
+                    }]
+                });
+
+                console.log('[AgentWallet] Withdraw TX submitted:', txHash);
+
                 btn.innerHTML = '<span class="techne-icon">' + TechneIcons.success + '</span> Withdrawn!';
                 btn.style.background = 'var(--success)';
 
-                Toast?.show(`Successfully withdrawn ${amountInput} ${this.withdrawToken || 'USDC'}!`, 'success');
-                console.log('[AgentWallet] Withdraw TX:', result.withdrawal?.tx_hash);
+                Toast?.show(`Successfully withdrawn ${amountInput} ${this.withdrawToken || 'USDC'}! TX: ${txHash.slice(0, 10)}...`, 'success');
 
                 await this.refreshStats();
 
                 // Auto-refresh portfolio to show updated balance
                 if (window.portfolioDashboard?.loadPortfolioData) {
                     console.log('[AgentWallet] Triggering portfolio refresh after withdraw...');
-                    window.portfolioDashboard.isRefreshing = false;  // Reset flag to allow immediate refresh
-                    window.portfolioDashboard.loadPortfolioData();
+                    window.portfolioDashboard.isRefreshing = false;
+                    setTimeout(() => window.portfolioDashboard.loadPortfolioData(), 3000);
                 }
 
                 setTimeout(() => {
                     document.getElementById('vaultModal')?.remove();
                 }, 2000);
             } else {
-                throw new Error(result.error || 'Withdraw failed');
+                throw new Error(result.error || result.detail || 'Withdraw failed');
             }
 
         } catch (e) {
             console.error('[AgentWallet] Withdraw error:', e);
-            alert('Withdraw failed: ' + (e.reason || e.message));
+            if (e.code === 4001) {
+                alert('Withdrawal cancelled by user');
+            } else {
+                alert('Withdraw failed: ' + (e.reason || e.message));
+            }
             btn.innerHTML = '<span class="techne-icon">' + TechneIcons.coin + '</span> Withdraw';
             btn.disabled = false;
         }

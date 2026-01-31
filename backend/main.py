@@ -228,11 +228,12 @@ async def startup_event():
         except Exception as e2:
             print(f"[Startup] Deposit monitor also failed: {e2}")
     
-    # Start strategy executor
+    # Start strategy executor (scans pools, allocates funds every 3 min)
     try:
-        from agents.strategy_executor import start_executor
-        await start_executor()
-        print("[Startup] Strategy executor started")
+        from agents.strategy_executor import StrategyExecutor
+        executor = StrategyExecutor()
+        asyncio.create_task(executor.start())
+        print("[Startup] ✅ Strategy executor started (scans every 10 min)")
     except Exception as e:
         print(f"[Startup] Strategy executor failed: {e}")
     
@@ -257,6 +258,15 @@ async def startup_event():
     
     asyncio.create_task(metrics_persistence_loop())
     print("[Startup] ✅ API Metrics persistence started (every 5 min → Supabase)")
+    
+    # Start Balance Refresh job (every 10 min - saves RPC calls)
+    try:
+        from agents.balance_refresh_job import start_balance_refresh
+        start_balance_refresh()
+        print("[Startup] ✅ Balance refresh job started (every 10 min → Supabase)")
+    except Exception as e:
+        print(f"[Startup] Balance refresh job failed: {e}")
+
 
 # Include agent wallet routes
 if AGENT_WALLET_AVAILABLE:

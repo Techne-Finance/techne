@@ -35,7 +35,7 @@ class PortfolioDashboard {
     async init() {
         this.bindEvents();
         await this.loadAgents();
-        this.loadPortfolioData();
+        this.loadPortfolioData(true);  // Force fresh on first page load
         this.syncAgentStatus();
         this.connectWebSocket();
         this.initPerformanceChart();
@@ -68,9 +68,9 @@ class PortfolioDashboard {
 
 
     bindEvents() {
-        // Refresh button
+        // Refresh button - force=true bypasses cache to get fresh data
         document.getElementById('refreshPortfolio')?.addEventListener('click', () => {
-            this.loadPortfolioData();
+            this.loadPortfolioData(true);  // Force fresh fetch
         });
 
         // Transaction filter
@@ -227,6 +227,9 @@ class PortfolioDashboard {
             this.showEmptyState();
         }
 
+        // Set global for Neural Terminal and other components
+        window.deployedAgents = this.agents;
+
         console.log('[Portfolio] Loaded', this.agents.length, 'agents');
     }
 
@@ -349,7 +352,11 @@ class PortfolioDashboard {
         alert('Agent deleted successfully!');
     }
 
-    async loadPortfolioData() {
+    /**
+     * Load portfolio data from API or on-chain
+     * @param {boolean} force - If true, bypass all caches and fetch fresh data
+     */
+    async loadPortfolioData(force = false) {
         // Prevent overlapping requests (VPS optimization)
         if (this.isRefreshing) return;
         this.isRefreshing = true;
@@ -368,13 +375,33 @@ class PortfolioDashboard {
             }
 
             // ============================================
-            // TRY FAST AGGREGATED PORTFOLIO API FIRST
+            // HYBRID APPROACH: Show cached first, fresh in background
             // ============================================
-            const fastLoaded = await this.tryFastPortfolioLoad();
-
-            if (!fastLoaded) {
-                // Fallback to old sequential loading
-                await this.loadContractBalances();
+            if (force) {
+                // User clicked Refresh - fetch fresh data directly
+                const fastLoaded = await this.tryFastPortfolioLoad(true);
+                if (!fastLoaded) {
+                    await this.loadContractBalances();
+                }
+            } else {
+                // First load: Try cached (instant), then refresh in background
+                const cachedLoaded = await this.tryFastPortfolioLoad(false);
+                if (cachedLoaded) {
+                    this.updateUI();
+                    // Background refresh after showing cached data
+                    setTimeout(() => {
+                        console.log('[Portfolio] Background refresh started...');
+                        this.tryFastPortfolioLoad(true).then(success => {
+                            if (success) {
+                                this.updateUI();
+                                console.log('[Portfolio] Background refresh complete');
+                            }
+                        });
+                    }, 100);
+                } else {
+                    // No cache, must wait for fresh
+                    await this.loadContractBalances();
+                }
             }
 
             this.updateUI();
@@ -389,8 +416,9 @@ class PortfolioDashboard {
     /**
      * Try to load portfolio data from fast aggregated API
      * Returns true if successful, false if should fallback
+     * @param {boolean} force - If true, bypass cache and fetch fresh data
      */
-    async tryFastPortfolioLoad() {
+    async tryFastPortfolioLoad(force = false) {
         if (!window.connectedWallet) {
             return false;
         }
@@ -399,7 +427,9 @@ class PortfolioDashboard {
             const API_BASE = window.API_BASE || 'http://localhost:8000';
             const startTime = performance.now();
 
-            const response = await fetch(`${API_BASE}/api/portfolio/${window.connectedWallet}`);
+            // Add ?force=true for Refresh button to bypass cache
+            const url = `${API_BASE}/api/portfolio/${window.connectedWallet}${force ? '?force=true' : ''}`;
+            const response = await fetch(url);
 
             if (!response.ok) {
                 console.warn('[Portfolio] Fast API not available, using fallback');
@@ -641,16 +671,40 @@ class PortfolioDashboard {
             // ERC-8004 Smart Account - no separate EOA private key
 
             if (hasAgent) {
-                // Fetch agent's ETH balance from Smart Account
+                // ======= OPTIMIZED: Parallel balance fetching =======
                 const AGENT_ADDRESS = agentAddr;
                 const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
 
-                try {
-                    // Get agent ETH balance (gas funds)
-                    const agentEthBalance = await provider.getBalance(AGENT_ADDRESS);
-                    const agentEthFormatted = Number(agentEthBalance) / 1e18;
+                const additionalTokens = [
+                    { symbol: 'cbBTC', address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', decimals: 8, price: 100000 },
+                    { symbol: 'AERO', address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631', decimals: 18, price: 1.5 },
+                    { symbol: 'SOL', address: '0x1c61629598e4a901136a81bc138e5828dc150d67', decimals: 9, price: 180 }
+                ];
 
-                    // Always show agent ETH if > 0 (for gas)
+                try {
+                    // Create all balance promises in parallel
+                    const balancePromises = [
+                        // ETH balance
+                        provider.getBalance(AGENT_ADDRESS).catch(() => 0n),
+                        // WETH balance
+                        new ethers.Contract(WETH_ADDRESS, ['function balanceOf(address) view returns (uint256)'], provider)
+                            .balanceOf(AGENT_ADDRESS).catch(() => 0n),
+                        // Additional tokens - all in parallel
+                        ...additionalTokens.map(token =>
+                            new ethers.Contract(token.address, ['function balanceOf(address) view returns (uint256)'], provider)
+                                .balanceOf(AGENT_ADDRESS).catch(() => 0n)
+                        )
+                    ];
+
+                    console.log('[Portfolio] Fetching all balances in parallel...');
+                    const startTime = Date.now();
+
+                    const [ethBalanceRaw, wethBalanceRaw, ...tokenBalances] = await Promise.all(balancePromises);
+
+                    console.log(`[Portfolio] All balances fetched in ${Date.now() - startTime}ms`);
+
+                    // Process ETH
+                    const agentEthFormatted = Number(ethBalanceRaw) / 1e18;
                     if (agentEthFormatted > 0.0001) {
                         this.portfolio.holdings.push({
                             asset: 'ETH (Gas)',
@@ -661,13 +715,8 @@ class PortfolioDashboard {
                         });
                     }
 
-                    // Get agent WETH balance
-                    const wethContract = new ethers.Contract(WETH_ADDRESS, [
-                        'function balanceOf(address) view returns (uint256)'
-                    ], provider);
-                    const wethBalance = await wethContract.balanceOf(AGENT_ADDRESS);
-                    const wethFormatted = Number(wethBalance) / 1e18;
-
+                    // Process WETH
+                    const wethFormatted = Number(wethBalanceRaw) / 1e18;
                     if (wethFormatted > 0) {
                         this.portfolio.holdings.push({
                             asset: 'WETH',
@@ -676,27 +725,12 @@ class PortfolioDashboard {
                             change: 0
                         });
                     }
-                } catch (e) {
-                    console.warn('[Portfolio] Agent ETH/WETH balance fetch failed:', e.message);
-                }
 
-                // ==== NEW: Check additional tokens (cbBTC, AERO, SOL) ====
-                const additionalTokens = [
-                    { symbol: 'cbBTC', address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', decimals: 8, price: 100000 },
-                    { symbol: 'AERO', address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631', decimals: 18, price: 1.5 },
-                    { symbol: 'SOL', address: '0x1c61629598e4a901136a81bc138e5828dc150d67', decimals: 9, price: 180 }
-                ];
-
-                for (const token of additionalTokens) {
-                    try {
-                        const tokenContract = new ethers.Contract(token.address, [
-                            'function balanceOf(address) view returns (uint256)'
-                        ], provider);
-                        const tokenBalance = await tokenContract.balanceOf(AGENT_ADDRESS);
-                        const tokenFormatted = Number(tokenBalance) / Math.pow(10, token.decimals);
+                    // Process additional tokens
+                    additionalTokens.forEach((token, idx) => {
+                        const tokenFormatted = Number(tokenBalances[idx]) / Math.pow(10, token.decimals);
                         const tokenValue = tokenFormatted * token.price;
 
-                        // Only show if value > $0.10
                         if (tokenValue > 0.10) {
                             this.portfolio.holdings.push({
                                 asset: token.symbol,
@@ -707,9 +741,10 @@ class PortfolioDashboard {
                             });
                             console.log(`[Portfolio] ${token.symbol}: ${tokenFormatted} ($${tokenValue.toFixed(2)})`);
                         }
-                    } catch (e) {
-                        // Token might not exist or have 0 balance - skip silently
-                    }
+                    });
+
+                } catch (e) {
+                    console.warn('[Portfolio] Parallel balance fetch failed:', e.message);
                 }
 
                 // ==== NEW: Query LP positions from backend (stored for Positions section) ====
@@ -881,9 +916,9 @@ class PortfolioDashboard {
             const data = await response.json();
 
             if (data.success && data.positions && data.positions.length > 0) {
-                // Update portfolio with real data
+                // Update positions only - DON'T override totalValue (that includes holdings too)
                 this.portfolio.positions = data.positions;
-                this.portfolio.totalValue = data.summary.total_value;
+                // totalValue is set by tryFastPortfolioLoad (holdings + positions)
                 this.portfolio.avgApy = data.summary.avg_apy;
 
                 // Calculate P&L
@@ -893,12 +928,11 @@ class PortfolioDashboard {
                 });
                 this.portfolio.totalPnL = totalPnL;
 
-                // Update dashboard stats with real data
-                const totalValueEl = document.getElementById('totalValue');
+                // Update dashboard stats - but DON'T touch totalValue
+                // totalValue is set by tryFastPortfolioLoad (holdings + positions)
                 const totalPnLEl = document.getElementById('totalPnL');
                 const avgApyEl = document.getElementById('avgApy');
 
-                if (totalValueEl) totalValueEl.textContent = `$${data.summary.total_value.toFixed(2)}`;
                 if (totalPnLEl) {
                     const pnlSign = totalPnL >= 0 ? '+' : '';
                     totalPnLEl.textContent = `${pnlSign}$${totalPnL.toFixed(2)}`;
@@ -1066,19 +1100,24 @@ class PortfolioDashboard {
             ? positions.reduce((sum, p) => sum + (p.apy || 0), 0) / positions.length
             : (agent.minApy + agent.maxApy) / 2;
 
+        // DON'T reset totalValue and holdings - they will be set by tryFastPortfolioLoad
+        // Only set structure defaults, preserve any existing real values
+        const existingHoldings = this.portfolio?.holdings || [];
+        const existingTotal = this.portfolio?.totalValue || 0;
+
         this.portfolio = {
-            totalValue: 0,
-            totalPnL: 0,
-            pnlPercent: 0,
+            totalValue: existingTotal,  // Preserve existing value
+            totalPnL: this.portfolio?.totalPnL || 0,
+            pnlPercent: this.portfolio?.pnlPercent || 0,
             avgApy: avgApy,
-            holdings: assets.slice(0, 3).map(asset => ({
+            holdings: existingHoldings.length > 0 ? existingHoldings : assets.slice(0, 3).map(asset => ({
                 asset: asset,
                 balance: 0,
                 value: 0,
                 change: 0
             })),
             positions: positions,
-            transactions: [],
+            transactions: this.portfolio?.transactions || [],
             recommendedPools: recommendedPools
         };
 
@@ -1105,6 +1144,21 @@ class PortfolioDashboard {
             addrEl.textContent = agentAddr ?
                 `${agentAddr.slice(0, 6)}...${agentAddr.slice(-4)}` :
                 'Not deployed';
+
+            // Make address clickable to copy full address
+            if (agentAddr) {
+                addrEl.style.cursor = 'pointer';
+                addrEl.title = `Click to copy: ${agentAddr}`;
+                addrEl.onclick = () => {
+                    navigator.clipboard.writeText(agentAddr).then(() => {
+                        const original = addrEl.textContent;
+                        addrEl.textContent = '✓ Copied!';
+                        setTimeout(() => {
+                            addrEl.textContent = original;
+                        }, 1500);
+                    });
+                };
+            }
         }
 
         if (strategyEl) {
@@ -1799,13 +1853,12 @@ class PortfolioDashboard {
 
         try {
             const API_BASE = window.API_BASE || 'http://localhost:8000';
-            const response = await fetch(`${API_BASE}/api/position/close`, {
+            // Correct path: /api/positions/{position_id}/close
+            const response = await fetch(`${API_BASE}/api/positions/${positionId}/close`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_address: window.connectedWallet,
-                    position_id: positionId,
-                    protocol: protocol,
                     percentage: parseInt(percentage),
                     amount: Math.floor(closeAmount * 1e6)  // Convert to USDC decimals
                 })

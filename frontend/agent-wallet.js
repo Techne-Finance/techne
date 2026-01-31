@@ -513,33 +513,72 @@ const AgentWallet = {
         try {
             Toast?.show('Processing withdrawal...', 'info');
 
-            const response = await fetch(`${API_BASE}/api/agent-wallet/withdraw`, {
+            // Update button to show loading state
+            const btn = document.querySelector('.agent-wallet-modal button[onclick*="executeWithdraw"]');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '⏳ Withdrawing...';
+            }
+
+            // Use Smart Account withdrawal flow (requires MetaMask signature)
+            const response = await fetch(`${API_BASE}/api/agent-wallet/withdraw-smart-account`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_address: window.connectedWallet,
+                    agent_address: this.agentAddress,
                     token: token,
-                    amount: amount,
-                    totp_code: totpCode || null
+                    amount: amount
                 })
             });
 
             const data = await response.json();
+            console.log('[AgentWallet] Withdraw response:', data);
 
-            if (data.success) {
-                if (data.requires_multisig) {
-                    Toast?.show(`⏳ Multi-sig required for large withdrawal. Request ID: ${data.request_id}`, 'warning');
-                } else {
-                    Toast?.show(`✅ Withdrawal of ${amount} ${token} initiated!`, 'success');
-                    document.querySelector('.agent-wallet-modal')?.remove();
-                    await this.refreshBalances();
-                }
+            if (data.success && data.transaction) {
+                // Smart Account requires owner signature via MetaMask
+                Toast?.show('Please confirm withdrawal in MetaMask...', 'info');
+
+                const txHash = await window.ethereum.request({
+                    method: 'eth_sendTransaction',
+                    params: [{
+                        from: window.connectedWallet,
+                        to: data.transaction.to,
+                        data: data.transaction.data,
+                        gas: data.transaction.gas,
+                        value: data.transaction.value || '0x0'
+                    }]
+                });
+
+                console.log('[AgentWallet] Withdraw tx submitted:', txHash);
+                Toast?.show(`✅ Withdrawal submitted! TX: ${txHash.slice(0, 10)}...`, 'success');
+                document.querySelector('.agent-wallet-modal')?.remove();
+
+                // Refresh balances after a short delay
+                setTimeout(() => this.refreshBalances(), 3000);
+            } else if (data.requires_multisig) {
+                Toast?.show(`⏳ Multi-sig required for large withdrawal. Request ID: ${data.request_id}`, 'warning');
             } else {
-                Toast?.show(data.detail || 'Withdrawal failed', 'error');
+                Toast?.show(data.detail || data.error || 'Withdrawal failed', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '📤 Withdraw to My Wallet';
+                }
             }
         } catch (e) {
             console.error('Withdraw error:', e);
-            Toast?.show('Withdrawal failed', 'error');
+            if (e.code === 4001) {
+                Toast?.show('Withdrawal cancelled by user', 'warning');
+            } else {
+                Toast?.show('Withdrawal failed: ' + (e.message || 'Unknown error'), 'error');
+            }
+
+            // Reset button state
+            const btn = document.querySelector('.agent-wallet-modal button[onclick*="executeWithdraw"]');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '📤 Withdraw to My Wallet';
+            }
         }
     },
 

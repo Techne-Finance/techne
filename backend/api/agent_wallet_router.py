@@ -41,10 +41,12 @@ class DepositRequest(BaseModel):
 
 class WithdrawRequest(BaseModel):
     user_address: str
+    agent_address: Optional[str] = None  # Agent wallet to withdraw from
     token: str
     amount: float
     destination: Optional[str] = None
     totp_code: Optional[str] = None  # Required for large withdrawals
+
 
 
 class StrategyDepositRequest(BaseModel):
@@ -137,6 +139,110 @@ async def create_agent_wallet(request: CreateWalletRequest):
         logger.error(f"Smart Account creation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+class DeploySmartAccountRequest(BaseModel):
+    """Request to deploy Smart Account on-chain"""
+    user_address: str
+    agent_id: str
+
+
+@router.post("/deploy-smart-account")
+async def deploy_smart_account(request: DeploySmartAccountRequest):
+    """
+    Build transaction to deploy Smart Account on-chain.
+    
+    Smart Accounts use CREATE2 for deterministic addresses.
+    This returns the TX data for user to sign via MetaMask.
+    """
+    from web3 import Web3
+    import os
+    
+    try:
+        user_address = Web3.to_checksum_address(request.user_address)
+        agent_id = request.agent_id
+        
+        # Factory address
+        FACTORY = "0x557049646BDe5B7C7eE2C08256Aea59A5A48B20f"
+        RPC_URL = os.getenv("ALCHEMY_RPC_URL", "https://mainnet.base.org")
+        
+        w3 = Web3(Web3.HTTPProvider(RPC_URL))
+        
+        # Calculate salt from agent_id
+        agent_bytes = agent_id.encode('utf-8')
+        hash_bytes = w3.keccak(agent_bytes)
+        salt = int.from_bytes(hash_bytes[:32], 'big')
+        
+        # Factory ABI
+        FACTORY_ABI = [
+            {
+                "inputs": [{"name": "owner", "type": "address"}, {"name": "agentSalt", "type": "uint256"}],
+                "name": "createAccount",
+                "outputs": [{"name": "account", "type": "address"}],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "owner", "type": "address"}, {"name": "agentSalt", "type": "uint256"}],
+                "name": "getAddress",
+                "outputs": [{"name": "", "type": "address"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ]
+        
+        factory = w3.eth.contract(address=FACTORY, abi=FACTORY_ABI)
+        
+        # Get predicted address
+        predicted_address = factory.functions.getAddress(user_address, salt).call()
+        
+        # Check if already deployed
+        code = w3.eth.get_code(predicted_address)
+        if len(code) > 2:
+            return {
+                "success": True,
+                "already_deployed": True,
+                "agent_address": predicted_address,
+                "message": "Smart Account already deployed on-chain"
+            }
+        
+        # Build createAccount transaction
+        tx_data = factory.functions.createAccount(user_address, salt).build_transaction({
+            'from': user_address,
+            'gas': 500000,
+            'value': 0,
+            'chainId': 8453
+        })['data']
+        
+        # Estimate gas
+        try:
+            gas_estimate = w3.eth.estimate_gas({
+                'from': user_address,
+                'to': FACTORY,
+                'data': tx_data,
+                'value': 0
+            })
+            gas_estimate = int(gas_estimate * 1.2)  # 20% buffer
+        except:
+            gas_estimate = 350000
+        
+        logger.info(f"[DeploySmartAccount] TX ready for {agent_id[:20]}... → {predicted_address}")
+        
+        return {
+            "success": True,
+            "already_deployed": False,
+            "agent_address": predicted_address,
+            "transaction": {
+                "to": FACTORY,
+                "data": tx_data,
+                "gas": hex(gas_estimate),
+                "value": "0x0"
+            },
+            "message": "Sign this transaction in MetaMask to deploy Smart Account"
+        }
+        
+    except Exception as e:
+        logger.error(f"Deploy Smart Account error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/info")
 async def get_wallet_info(user_address: str = Query(...)):
@@ -273,6 +379,103 @@ async def request_withdrawal(request: WithdrawRequest):
         "remaining_balance": result["remaining_balance"]
     }
 
+
+class SmartAccountWithdrawRequest(BaseModel):
+    """Request for Smart Account (ERC-8004) withdrawal"""
+    user_address: str
+    agent_address: str
+    token: str
+    amount: float
+
+
+@router.post("/withdraw-smart-account")
+async def withdraw_smart_account(request: SmartAccountWithdrawRequest):
+    """
+    Build withdrawal transaction for Smart Account.
+    
+    Smart Accounts (ERC-8004) have NO private key - they're controlled by owner.
+    Returns transaction data for user to sign via MetaMask.
+    """
+    from web3 import Web3
+    from eth_abi import encode
+    import os
+    
+    user_address = request.user_address.lower()
+    agent_address = request.agent_address
+    token = request.token.upper()
+    amount = request.amount
+    
+    logger.info(f"[WithdrawSA] Building withdraw tx: {amount} {token} from {agent_address[:10]}...")
+    
+    # Token addresses on Base mainnet  
+    TOKEN_CONFIGS = {
+        "USDC": ("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 6),
+        "WETH": ("0x4200000000000000000000000000000000000006", 18),
+        "ETH": (None, 18),
+        "CBBTC": ("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", 8),
+        "AERO": ("0x940181a94A35A4569E4529A3CDfB74e38FD98631", 18),
+    }
+    
+    token_config = TOKEN_CONFIGS.get(token)
+    if not token_config:
+        raise HTTPException(status_code=400, detail=f"Unknown token: {token}")
+    
+    token_address, decimals = token_config
+    amount_wei = int(amount * (10 ** decimals))
+    
+    if token == "ETH":
+        # For native ETH: Smart Account execute() directly sends ETH
+        # execute(address to, uint256 value, bytes data)
+        execute_selector = bytes.fromhex("b61d27f6")  # execute(address,uint256,bytes)
+        execute_data = execute_selector + encode(
+            ['address', 'uint256', 'bytes'],
+            [Web3.to_checksum_address(user_address), amount_wei, b'']
+        )
+        
+        return {
+            "success": True,
+            "agent_address": agent_address,
+            "token": token,
+            "amount": amount,
+            "transaction": {
+                "to": agent_address,
+                "data": "0x" + execute_data.hex(),
+                "gas": "0x" + hex(100000)[2:],
+                "value": "0x0"
+            },
+            "message": f"Sign to withdraw {amount} ETH to your wallet"
+        }
+    else:
+        # For ERC20: Smart Account execute() calls token.transfer()
+        # First encode the ERC20 transfer call
+        transfer_selector = bytes.fromhex("a9059cbb")  # transfer(address,uint256)
+        transfer_data = transfer_selector + encode(
+            ['address', 'uint256'],
+            [Web3.to_checksum_address(user_address), amount_wei]
+        )
+        
+        # Then wrap in Smart Account execute()
+        execute_selector = bytes.fromhex("b61d27f6")  # execute(address,uint256,bytes)
+        execute_data = execute_selector + encode(
+            ['address', 'uint256', 'bytes'],
+            [Web3.to_checksum_address(token_address), 0, transfer_data]
+        )
+        
+        logger.info(f"[WithdrawSA] Built tx for {amount} {token}, calldata: {execute_data.hex()[:40]}...")
+        
+        return {
+            "success": True,
+            "agent_address": agent_address,
+            "token": token,
+            "amount": amount,
+            "transaction": {
+                "to": agent_address,
+                "data": "0x" + execute_data.hex(),
+                "gas": "0x" + hex(150000)[2:],
+                "value": "0x0"
+            },
+            "message": f"Sign to withdraw {amount} {token} to your wallet"
+        }
 
 @router.post("/emergency-drain")
 async def emergency_drain(
@@ -802,3 +1005,64 @@ async def get_morpho_best_market():
         logger.error(f"Morpho best market error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ===========================================
+# PRICE ORACLE ENDPOINT
+# ===========================================
+
+@router.get("/prices")
+async def get_prices():
+    """
+    Get live token prices from Pyth Network + Chainlink fallback.
+    Used by frontend for accurate USD valuations.
+    """
+    try:
+        from services.price_oracle import get_oracle
+        
+        oracle = get_oracle()
+        
+        # Get prices for common tokens
+        eth_data = oracle.get_price("ETH/USD")
+        btc_data = oracle.get_price("BTC/USD")
+        usdc_data = oracle.get_price("USDC/USD")
+        
+        return {
+            "success": True,
+            "prices": {
+                "ETH": {
+                    "price": eth_data.get("price", 3000),
+                    "source": eth_data.get("source", "fallback"),
+                    "age_seconds": eth_data.get("age_seconds", 0),
+                    "is_stale": eth_data.get("is_stale", False)
+                },
+                "BTC": {
+                    "price": btc_data.get("price", 60000),
+                    "source": btc_data.get("source", "fallback"),
+                    "age_seconds": btc_data.get("age_seconds", 0),
+                    "is_stale": btc_data.get("is_stale", False)
+                },
+                "USDC": {
+                    "price": usdc_data.get("price", 1.0),
+                    "source": usdc_data.get("source", "fallback"),
+                    "age_seconds": usdc_data.get("age_seconds", 0),
+                    "is_stale": usdc_data.get("is_stale", False)
+                },
+                # Native stables at fixed 1.0
+                "USDT": {"price": 1.0, "source": "fixed", "is_stale": False},
+                "DAI": {"price": 1.0, "source": "fixed", "is_stale": False}
+            },
+            "timestamp": int(__import__("time").time())
+        }
+        
+    except Exception as e:
+        logger.error(f"Price oracle error: {e}")
+        # Return hardcoded fallback if oracle fails
+        return {
+            "success": False,
+            "error": str(e),
+            "prices": {
+                "ETH": {"price": 3300, "source": "fallback", "is_stale": True},
+                "BTC": {"price": 100000, "source": "fallback", "is_stale": True},
+                "USDC": {"price": 1.0, "source": "fallback", "is_stale": True}
+            }
+        }

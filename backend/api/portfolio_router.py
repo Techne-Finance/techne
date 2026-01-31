@@ -4,13 +4,41 @@ Returns all holdings, positions, and LP data in a single call for fast frontend 
 """
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from web3 import Web3
 import asyncio
 import os
 from datetime import datetime
+import time
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
+
+# ========================================
+# CACHE CONFIG - 5 minute TTL to save RPC calls
+# ========================================
+CACHE_TTL_SECONDS = 300  # 5 minutes
+PORTFOLIO_CACHE: Dict[str, Dict[str, Any]] = {}  # {user_address: {"data": ..., "timestamp": ...}}
+
+def get_cached_portfolio(user_address: str) -> Optional[Dict]:
+    """Return cached portfolio if fresh, None if stale/missing"""
+    user_key = user_address.lower()
+    if user_key in PORTFOLIO_CACHE:
+        cached = PORTFOLIO_CACHE[user_key]
+        age = time.time() - cached["timestamp"]
+        if age < CACHE_TTL_SECONDS:
+            print(f"[Portfolio] Cache HIT for {user_key[:10]}... (age: {age:.0f}s)")
+            return cached["data"]
+        else:
+            print(f"[Portfolio] Cache EXPIRED for {user_key[:10]}... (age: {age:.0f}s)")
+    return None
+
+def set_cached_portfolio(user_address: str, data: Dict):
+    """Store portfolio in cache"""
+    PORTFOLIO_CACHE[user_address.lower()] = {
+        "data": data,
+        "timestamp": time.time()
+    }
+    print(f"[Portfolio] Cached data for {user_address[:10]}...")
 
 # Base RPC
 RPC_URL = os.getenv("ALCHEMY_RPC_URL") or os.getenv("BASE_RPC_URL", "https://mainnet.base.org")
@@ -277,14 +305,64 @@ async def fetch_lp_positions(user_address: str, agent_address: str) -> List[Posi
 
 
 @router.get("/{user_address}", response_model=PortfolioResponse)
-async def get_portfolio(user_address: str):
+async def get_portfolio(user_address: str, force: bool = False):
     """
     Get complete portfolio data in a single call.
-    Fetches all balances and positions in parallel for fast loading.
+    Cache priority: 1) In-memory (5min) → 2) Supabase (15min) → 3) Fresh RPC
+    
+    Pass ?force=true to bypass cache and fetch fresh from RPC.
     """
-    import time
     start = time.time()
     
+    # ========================================
+    # CHECK IN-MEMORY CACHE FIRST (fastest)
+    # ========================================
+    if not force:
+        cached = get_cached_portfolio(user_address)
+        if cached:
+            cached["load_time_ms"] = round((time.time() - start) * 1000, 1)
+            cached["cached_at"] = f"{cached.get('cached_at', '')} (memory cache)"
+            return PortfolioResponse(**cached)
+    
+    # ========================================
+    # CHECK SUPABASE CACHE (2nd priority)
+    # ========================================
+    if not force:
+        try:
+            from infrastructure.supabase_client import supabase
+            if supabase.is_available:
+                # Get agent address first
+                user_lower = user_address.lower()
+                from api.agent_config_router import DEPLOYED_AGENTS
+                agents = DEPLOYED_AGENTS.get(user_lower, [])
+                if agents:
+                    agent_addr = agents[0].get("agent_address") or agents[0].get("address")
+                    if agent_addr:
+                        sb_cached = await supabase.get_agent_balances(agent_addr)
+                        if sb_cached:
+                            response_data = {
+                                "success": True,
+                                "holdings": sb_cached.get("holdings", []),
+                                "positions": sb_cached.get("positions", []),
+                                "total_value_usd": sb_cached.get("total_value_usd", 0),
+                                "agent_address": agent_addr,
+                                "cached_at": f"{sb_cached.get('fetched_at', '')} (supabase cache)",
+                                "load_time_ms": round((time.time() - start) * 1000, 1)
+                            }
+                            # Update in-memory cache too
+                            set_cached_portfolio(user_address, response_data)
+                            print(f"[Portfolio] Supabase HIT for {user_address[:10]}... ({response_data['load_time_ms']}ms)")
+                            return PortfolioResponse(**response_data)
+        except Exception as e:
+            print(f"[Portfolio] Supabase cache check failed: {e}")
+    
+    # ========================================
+    # FRESH RPC FETCH (slowest, but authoritative)
+    # ========================================
+    if force:
+        print(f"[Portfolio] Force refresh for {user_address[:10]}...")
+    
+
     # Get agent address from stored agents
     agent_address = None
     try:
@@ -340,15 +418,29 @@ async def get_portfolio(user_address: str):
     load_time = (time.time() - start) * 1000
     print(f"[Portfolio] Loaded in {load_time:.0f}ms - {len(holdings)} holdings, {len(positions)} positions")
     
-    return PortfolioResponse(
-        success=True,
-        holdings=holdings,
-        positions=positions,
-        total_value_usd=round(total, 2),
-        agent_address=agent_address,
-        cached_at=datetime.utcnow().isoformat() + "Z",
-        load_time_ms=round(load_time, 1)
-    )
+    # Build response
+    response_data = {
+        "success": True,
+        "holdings": [h.model_dump() for h in holdings],
+        "positions": [p.model_dump() for p in positions],
+        "total_value_usd": round(total, 2),
+        "agent_address": agent_address,
+        "cached_at": datetime.utcnow().isoformat() + "Z",
+        "load_time_ms": round(load_time, 1)
+    }
+    
+    # ========================================
+    # STORE IN CACHE FOR NEXT REQUEST
+    # Only cache if we have actual data (not empty results)
+    # ========================================
+    has_data = len(holdings) > 0 or len(positions) > 0 or total > 0
+    if agent_address and has_data:
+        set_cached_portfolio(user_address, response_data)
+    elif agent_address and not has_data:
+        print(f"[Portfolio] NOT caching empty result for {user_address[:10]}...")
+    
+    return PortfolioResponse(**response_data)
+
 
 
 class ClosePositionRequest(BaseModel):
