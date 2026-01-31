@@ -761,6 +761,356 @@ class SupabaseClient:
         )
         return result is not None
 
+    # ==========================================
+    # USER AGENTS (Deployed Agent Storage)
+    # ==========================================
+    
+    async def save_user_agent(
+        self,
+        user_address: str,
+        agent_address: str,
+        agent_name: str = "Agent",
+        preset: str = "balanced",
+        chain: str = "base",
+        encrypted_private_key: str = None,
+        settings: dict = None,
+        **kwargs
+    ) -> Optional[dict]:
+        """Save or update a deployed agent"""
+        if not self.is_available:
+            return None
+        
+        # Build agent data
+        data = {
+            "user_address": user_address.lower(),
+            "agent_address": agent_address.lower() if agent_address else None,
+            "agent_name": agent_name,
+            "chain": chain,
+            "preset": preset,
+            "encrypted_private_key": encrypted_private_key,
+            "settings": json.dumps(settings or {}),
+            "is_active": kwargs.get("is_active", True),
+            "pool_type": kwargs.get("pool_type", "single"),
+            "risk_level": kwargs.get("risk_level", "moderate"),
+            "min_apy": kwargs.get("min_apy", 5),
+            "max_apy": kwargs.get("max_apy", 1000),
+            "max_drawdown": kwargs.get("max_drawdown", 20),
+            "protocols": json.dumps(kwargs.get("protocols", ["aerodrome", "aave", "morpho"])),
+            "preferred_assets": json.dumps(kwargs.get("preferred_assets", ["USDC", "WETH"])),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        # Remove None values
+        data = {k: v for k, v in data.items() if v is not None}
+        
+        headers = self._headers()
+        headers["Prefer"] = "return=representation,resolution=merge-duplicates"
+        
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    f"{self.url}/rest/v1/user_agents",
+                    headers=headers,
+                    json=data,
+                    params={"on_conflict": "agent_address"}
+                )
+                if resp.status_code in [200, 201]:
+                    logger.info(f"[Supabase] Agent saved: {agent_address[:10]}... for {user_address[:10]}...")
+                    result = resp.json()
+                    return result[0] if result else data
+                else:
+                    logger.error(f"[Supabase] Save agent failed: {resp.status_code} - {resp.text[:200]}")
+                return None
+        except Exception as e:
+            logger.error(f"[Supabase] Save agent error: {e}")
+            return None
+    
+    async def get_user_agents(self, user_address: str) -> List[dict]:
+        """Get all agents for a user"""
+        result = await self._request(
+            "GET", "user_agents",
+            params={
+                "user_address": f"eq.{user_address.lower()}",
+                "select": "*",
+                "order": "deployed_at.desc"
+            }
+        )
+        return result or []
+    
+    async def get_agent_by_address(self, agent_address: str) -> Optional[dict]:
+        """Get agent by agent_address"""
+        result = await self._request(
+            "GET", "user_agents",
+            params={
+                "agent_address": f"eq.{agent_address.lower()}",
+                "select": "*",
+                "limit": "1"
+            }
+        )
+        return result[0] if result else None
+    
+    async def update_agent_status(
+        self,
+        agent_address: str,
+        is_active: bool = None,
+        status: str = None
+    ) -> bool:
+        """Update agent status (pause/resume)"""
+        data = {"updated_at": datetime.utcnow().isoformat()}
+        if is_active is not None:
+            data["is_active"] = is_active
+        if status is not None:
+            data["status"] = status
+        
+        result = await self._request(
+            "PATCH", "user_agents",
+            data=data,
+            params={"agent_address": f"eq.{agent_address.lower()}"}
+        )
+        return result is not None
+    
+    async def delete_user_agent(self, agent_address: str) -> bool:
+        """Delete an agent by agent_address"""
+        result = await self._request(
+            "DELETE", "user_agents",
+            params={"agent_address": f"eq.{agent_address.lower()}"}
+        )
+        return result is not None
+    
+    async def delete_user_agent_by_id(self, user_address: str, agent_id: str) -> bool:
+        """Delete an agent by user_address and agent_id"""
+        result = await self._request(
+            "DELETE", "user_agents",
+            params={
+                "user_address": f"eq.{user_address.lower()}",
+                "id": f"eq.{agent_id}"
+            }
+        )
+        if result is not None:
+            logger.info(f"[Supabase] Deleted agent by ID: {agent_id} for {user_address[:10]}...")
+        return result is not None
+    
+    async def update_agent_value(
+        self,
+        agent_address: str,
+        total_value: float = None,
+        total_earnings: float = None
+    ) -> bool:
+        """Update agent financial values"""
+        data = {
+            "last_activity": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        if total_value is not None:
+            data["total_value"] = total_value
+        if total_earnings is not None:
+            data["total_earnings"] = total_earnings
+        
+        result = await self._request(
+            "PATCH", "user_agents",
+            data=data,
+            params={"agent_address": f"eq.{agent_address.lower()}"}
+        )
+        return result is not None
+
+    # ==========================================
+    # AGENT TRANSACTIONS (deposit/withdraw/claim history)
+    # ==========================================
+    
+    async def log_agent_transaction(
+        self,
+        user_address: str,
+        agent_address: str,
+        tx_type: str,
+        token: str,
+        amount: float,
+        tx_hash: str = None,
+        destination: str = None,
+        pool_id: str = None,
+        metadata: dict = None
+    ) -> Optional[dict]:
+        """Log an agent transaction (deposit, withdraw, claim, etc)"""
+        if not self.is_available:
+            return None
+        
+        data = {
+            "user_address": user_address.lower(),
+            "agent_address": agent_address.lower(),
+            "tx_type": tx_type,  # deposit, withdraw, strategy_deposit, strategy_withdraw, claim, rebalance
+            "token": token,
+            "amount": amount,
+            "tx_hash": tx_hash,
+            "status": "completed",
+            "destination": destination,
+            "pool_id": pool_id,
+            "metadata": json.dumps(metadata or {})
+        }
+        
+        result = await self._request("POST", "agent_transactions", data=data)
+        if result:
+            logger.info(f"[Supabase] Transaction logged: {tx_type} {amount} {token} for {agent_address[:10]}...")
+        return result[0] if result else None
+    
+    async def get_agent_transactions(
+        self, 
+        agent_address: str, 
+        limit: int = 50
+    ) -> List[dict]:
+        """Get transaction history for an agent"""
+        result = await self._request(
+            "GET", "agent_transactions",
+            params={
+                "agent_address": f"eq.{agent_address.lower()}",
+                "select": "*",
+                "order": "created_at.desc",
+                "limit": str(limit)
+            }
+        )
+        return result or []
+
+    # ==========================================
+    # AGENT POSITIONS (LP positions tracking)
+    # ==========================================
+    
+    async def save_agent_position(
+        self,
+        agent_address: str,
+        user_address: str,
+        protocol: str,
+        entry_value_usd: float,
+        current_value_usd: float,
+        pool_address: str = None,
+        pool_name: str = None,
+        token0: str = None,
+        token1: str = None,
+        apy: float = 0,
+        metadata: dict = None
+    ) -> Optional[dict]:
+        """Save or update an agent's LP position"""
+        if not self.is_available:
+            return None
+        
+        data = {
+            "agent_address": agent_address.lower(),
+            "user_address": user_address.lower(),
+            "protocol": protocol,
+            "pool_address": pool_address,
+            "pool_name": pool_name,
+            "token0": token0,
+            "token1": token1,
+            "entry_value_usd": entry_value_usd,
+            "current_value_usd": current_value_usd,
+            "apy": apy,
+            "status": "active",
+            "metadata": json.dumps(metadata or {})
+        }
+        
+        headers = self._headers()
+        headers["Prefer"] = "return=representation,resolution=merge-duplicates"
+        
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    f"{self.url}/rest/v1/agent_positions",
+                    headers=headers,
+                    json=data,
+                    params={"on_conflict": "agent_address,protocol,pool_address"}
+                )
+                if resp.status_code in [200, 201]:
+                    logger.info(f"[Supabase] Position saved: {protocol} for {agent_address[:10]}...")
+                    return resp.json()[0] if resp.text else data
+            return None
+        except Exception as e:
+            logger.error(f"[Supabase] Save position failed: {e}")
+            return None
+    
+    async def get_agent_positions(
+        self, 
+        agent_address: str,
+        status: str = "active"
+    ) -> List[dict]:
+        """Get all positions for an agent"""
+        params = {
+            "agent_address": f"eq.{agent_address.lower()}",
+            "select": "*",
+            "order": "entry_time.desc"
+        }
+        if status:
+            params["status"] = f"eq.{status}"
+        
+        result = await self._request("GET", "agent_positions", params=params)
+        return result or []
+    
+    async def close_agent_position(
+        self,
+        agent_address: str,
+        protocol: str,
+        pool_address: str = None
+    ) -> bool:
+        """Mark a position as closed"""
+        params = {
+            "agent_address": f"eq.{agent_address.lower()}",
+            "protocol": f"eq.{protocol}"
+        }
+        if pool_address:
+            params["pool_address"] = f"eq.{pool_address}"
+        
+        result = await self._request(
+            "PATCH", "agent_positions",
+            data={
+                "status": "closed",
+                "exit_time": datetime.utcnow().isoformat()
+            },
+            params=params
+        )
+        return result is not None
+
+    # ==========================================
+    # AUDIT TRAIL (reasoning/action log)
+    # ==========================================
+    
+    async def log_audit_trail(
+        self,
+        agent_address: str,
+        user_address: str,
+        action: str,
+        message: str,
+        severity: str = "info",
+        metadata: dict = None
+    ) -> Optional[dict]:
+        """Log an audit trail entry (agent reasoning/actions)"""
+        if not self.is_available:
+            return None
+        
+        data = {
+            "agent_address": agent_address.lower(),
+            "user_address": user_address.lower(),
+            "action": action,  # scan, analyze, deposit, rotate, withdraw, alert
+            "message": message,
+            "severity": severity,  # info, warning, error, success
+            "metadata": json.dumps(metadata or {})
+        }
+        
+        result = await self._request("POST", "audit_trail", data=data)
+        return result[0] if result else None
+    
+    async def get_audit_trail(
+        self,
+        agent_address: str,
+        limit: int = 100
+    ) -> List[dict]:
+        """Get audit trail for an agent (reasoning terminal feed)"""
+        result = await self._request(
+            "GET", "audit_trail",
+            params={
+                "agent_address": f"eq.{agent_address.lower()}",
+                "select": "*",
+                "order": "created_at.desc",
+                "limit": str(limit)
+            }
+        )
+        return result or []
+
 
 # Global instance
 supabase = SupabaseClient()

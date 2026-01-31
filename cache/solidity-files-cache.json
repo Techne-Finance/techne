@@ -1127,8 +1127,8 @@
       ]
     },
     "C:\\Users\\Dell\\.gemini\\antigravity\\scratch\\techne-finance\\contracts\\TechneAgentAccount.sol": {
-      "lastModificationDate": 1769364455795,
-      "contentHash": "f00488ae2f2d3c03f06241a36270c517",
+      "lastModificationDate": 1769818106926,
+      "contentHash": "184615ad1b132eea799a876eeb93be0b",
       "sourceName": "contracts/TechneAgentAccount.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -1160,7 +1160,8 @@
         "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
         "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol",
         "@openzeppelin/contracts/token/ERC20/IERC20.sol",
-        "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"
+        "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
       ],
       "versionPragmas": [
         "^0.8.24"
@@ -1323,8 +1324,8 @@
       ]
     },
     "C:\\Users\\Dell\\.gemini\\antigravity\\scratch\\techne-finance\\contracts\\TechneAgentFactory.sol": {
-      "lastModificationDate": 1769363836645,
-      "contentHash": "e1d529a7a5fcc67c9750e385bcdccc99",
+      "lastModificationDate": 1769817551052,
+      "contentHash": "e0886ae24177300701977b97549ca898",
       "sourceName": "contracts/TechneAgentFactory.sol",
       "solcConfig": {
         "version": "0.8.24",

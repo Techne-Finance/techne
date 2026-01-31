@@ -283,7 +283,8 @@ PROTOCOLS = {
         "supply_sig": "addLiquidity(address,address,bool,uint256,uint256,uint256,uint256,address,uint256)",
         "apy": 18.0,
         "tvl": 85000000,   # $85M TVL
-        "volatility": 12.0 # High volatility (LP pairs)
+        "volatility": 12.0, # High volatility (LP pairs)
+        "implemented": True  # Full integration: addLiquidity, removeLiquidity via SmartAccount
     },
     "uniswap": {
         "address": "0xd0b53D9277642d899DF5C87A3966A349A798F224",  # Uniswap V3 USDC/WETH pool on Base
@@ -333,7 +334,8 @@ PROTOCOLS = {
         "supply_sig": None,  # No direct supply - incentivizes other protocols
         "apy": 15.0,  # Variable based on incentives
         "tvl": 50000000,
-        "volatility": 8.0
+        "volatility": 8.0,
+        "implemented": False  # Merkl is data source only, not execution target
     },
     "curve": {
         "address": "0x417Ac0e078398C154EdFadD9Ef675d30Be60Af93",  # Curve 3pool Base
@@ -364,7 +366,8 @@ PROTOCOLS = {
         "supply_sig": "addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)",
         "apy": 22.0,
         "tvl": 28000000,
-        "volatility": 14.0
+        "volatility": 14.0,
+        "implemented": False  # Coming soon
     },
     "sushiswap": {
         "address": "0xFbc12984689e5f15626Bad03Ad60160Fe98B303C",  # SushiSwap V3 Base
@@ -378,7 +381,8 @@ PROTOCOLS = {
         "supply_sig": "mint(address,int24,int24,uint128,bytes)",
         "apy": 14.0,
         "tvl": 42000000,
-        "volatility": 11.0
+        "volatility": 11.0,
+        "implemented": False  # Coming soon
     },
     "balancer": {
         "address": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",  # Balancer Vault
@@ -393,7 +397,8 @@ PROTOCOLS = {
         "supply_sig": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
         "apy": 10.5,
         "tvl": 65000000,
-        "volatility": 9.0
+        "volatility": 9.0,
+        "implemented": False  # Coming soon
     },
     "velodrome_v2": {
         "address": "0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db",  # Velodrome V2 (Base fork)
@@ -407,7 +412,8 @@ PROTOCOLS = {
         "supply_sig": "addLiquidity(address,address,bool,uint256,uint256,uint256,uint256,address,uint256)",
         "apy": 20.0,
         "tvl": 38000000,
-        "volatility": 13.0
+        "volatility": 13.0,
+        "implemented": False  # Coming soon
     }
 }
 

@@ -194,6 +194,12 @@ def map_technical_to_friendly(entry: Dict[str, Any]) -> Dict[str, Any]:
                     value_str = str(value)
                 message = message.replace(placeholder, value_str)
     
+    # CRITICAL: Remove any remaining unformatted placeholders
+    import re
+    # Match {var} or {var:.2f} style placeholders
+    message = re.sub(r'\{[^}]+\}', '--', message)
+
+    
     # Determine severity color
     category = mapping["category"]
     if category == "SECURITY":

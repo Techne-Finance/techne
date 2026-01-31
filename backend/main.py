@@ -3,13 +3,23 @@ Techne.finance - Multi-Chain Yield Optimizer API
 FastAPI backend with Artisan agent and x402 payments
 """
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
 from typing import Optional, List
 import os
+
+# Initialize Sentry FIRST (before any other imports that could fail)
+try:
+    from sentry_config import init_sentry
+    SENTRY_ENABLED = init_sentry()
+except ImportError as e:
+    print(f"[Sentry] Not available: {e}")
+    SENTRY_ENABLED = False
+
 
 from artisan import get_top_yields, fetch_yields, filter_yields
 from artisan.data_sources import get_aggregated_pools, fetch_geckoterminal_pools, format_gecko_pool, SUPPORTED_CHAINS
@@ -176,6 +186,25 @@ app = FastAPI(
     version="1.1.0"
 )
 
+
+# DEBUG: Log validation errors (422) with full details
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Log 422 validation errors with full details for debugging"""
+    errors = exc.errors()
+    print(f"[VALIDATION ERROR] Path: {request.url.path}")
+    print(f"[VALIDATION ERROR] Body: {exc.body}")
+    for error in errors:
+        print(f"[VALIDATION ERROR] Field: {error.get('loc')}, Type: {error.get('type')}, Msg: {error.get('msg')}")
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": errors,
+            "message": "Validation failed - check the 'detail' field for specific errors",
+            "body_received": str(exc.body)[:500] if exc.body else None
+        }
+    )
 
 # Startup event - launch background monitors
 @app.on_event("startup")

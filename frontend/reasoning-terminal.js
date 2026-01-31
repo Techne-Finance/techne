@@ -86,11 +86,26 @@ class ReasoningTerminal {
     renderLogs() {
         if (!this.logsContainer) return;
 
+        // Check if user has a deployed agent
+        const agents = window.deployedAgents || [];
+        const hasAgent = agents.length > 0;
+
+        if (!hasAgent) {
+            // No agent deployed - show helpful message
+            this.logsContainer.innerHTML = `
+                <div class="terminal-empty">
+                    <span class="empty-icon">${this.getSvgIcon('inbox')}</span>
+                    <span class="empty-text">No agent deployed. Deploy an agent to see reasoning logs.</span>
+                </div>
+            `;
+            return;
+        }
+
         if (this.logs.length === 0) {
             this.logsContainer.innerHTML = `
                 <div class="terminal-empty">
                     <span class="empty-icon">${this.getSvgIcon('inbox')}</span>
-                    <span class="empty-text">No reasoning logs yet. Agent is waiting...</span>
+                    <span class="empty-text">Agent active. Waiting for activity...</span>
                 </div>
             `;
             return;
@@ -102,6 +117,7 @@ class ReasoningTerminal {
         // Auto-scroll to bottom
         this.logsContainer.scrollTop = this.logsContainer.scrollHeight;
     }
+
 
     renderLogEntry(log) {
         const time = this.formatTime(log.timestamp);

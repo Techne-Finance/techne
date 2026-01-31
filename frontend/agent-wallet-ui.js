@@ -8,15 +8,16 @@ const AgentWalletUI = {
     contractAddress: '0xC83E01e39A56Ec8C56Dd45236E58eE7a139cCDD4',
     contractVersion: 'V4.3.3',
 
-    // NEW: Smart Account Factory (Trustless Architecture)
-    factoryAddress: '0x33f5e2F6d194869ACc60C965C2A24eDC5de8a216',
+    // NEW: Smart Account Factory v3 (1-Agent-1-Wallet + ReentrancyGuard)
+    factoryAddress: '0x557049646BDe5B7C7eE2C08256Aea59A5A48B20f',
 
-    // Factory ABI for creating Smart Accounts
+    // Factory ABI v3 - 1 Agent = 1 Smart Account with salt
     FACTORY_ABI: [
-        'function createAccount(bytes32 salt) returns (address account)',
-        'function getAddress(address owner, bytes32 salt) view returns (address)',
-        'function getAccounts(address owner) view returns (address[])',
-        'function getAccountCount(address owner) view returns (uint256)'
+        'function createAccount(address owner, uint256 agentSalt) returns (address account)',
+        'function getAddress(address owner, uint256 agentSalt) view returns (address)',
+        'function hasAccount(address owner, uint256 agentSalt) view returns (bool)',
+        'function getAccountsForOwner(address owner) view returns (address[])',
+        'function accounts(address owner, uint256 agentSalt) view returns (address)'
     ],
 
     // Smart Account ABI (for owner operations)
@@ -133,7 +134,7 @@ const AgentWalletUI = {
     // ============================================
 
     /**
-     * Check if user has a Smart Account
+     * Check if user has a Smart Account (v3 - 1 Agent = 1 Wallet)
      * @returns {Promise<string|null>} Smart Account address or null
      */
     async checkSmartAccount() {
@@ -153,11 +154,12 @@ const AgentWalletUI = {
                 provider
             );
 
-            const accounts = await factory.getAccounts(userAddress);
+            // v3: Use getAccountsForOwner instead of getAccounts
+            const accounts = await factory.getAccountsForOwner(userAddress);
 
             if (accounts.length > 0) {
                 this.userSmartAccount = accounts[0];
-                console.log('[SmartAccount] Found:', this.userSmartAccount);
+                console.log('[SmartAccount] Found:', this.userSmartAccount, `(${accounts.length} total)`);
                 return this.userSmartAccount;
             }
 
@@ -171,10 +173,11 @@ const AgentWalletUI = {
     },
 
     /**
-     * Create a new Smart Account for the user
+     * Create a new Smart Account for a specific agent (v3 - 1 Agent = 1 Wallet)
+     * @param {string} agentId - Optional agent UUID for unique account
      * @returns {Promise<string>} Created account address
      */
-    async createSmartAccount() {
+    async createSmartAccount(agentId = null) {
         if (!window.ethereum) {
             throw new Error('Please connect your wallet first');
         }
@@ -182,6 +185,7 @@ const AgentWalletUI = {
         try {
             const provider = new ethers.BrowserProvider(window.ethereum);
             const signer = await provider.getSigner();
+            const userAddress = await signer.getAddress();
 
             const factory = new ethers.Contract(
                 this.factoryAddress,
@@ -189,24 +193,28 @@ const AgentWalletUI = {
                 signer
             );
 
-            // Generate unique salt
-            const salt = ethers.keccak256(
-                ethers.solidityPacked(
-                    ['address', 'uint256'],
-                    [await signer.getAddress(), Date.now()]
-                )
-            );
+            // v3: Generate agentSalt from agentId (uint256)
+            // If no agentId provided, use timestamp for unique salt
+            let agentSalt;
+            if (agentId) {
+                // Convert UUID to uint256 by hashing
+                agentSalt = BigInt(ethers.keccak256(ethers.toUtf8Bytes(agentId))) % (2n ** 256n);
+            } else {
+                // Default: use timestamp-based salt
+                agentSalt = BigInt(Date.now());
+            }
 
-            console.log('[SmartAccount] Creating with salt:', salt);
+            console.log('[SmartAccount] Creating with owner:', userAddress, 'salt:', agentSalt.toString());
 
-            const tx = await factory.createAccount(salt);
+            // v3: createAccount(owner, agentSalt)
+            const tx = await factory.createAccount(userAddress, agentSalt);
             console.log('[SmartAccount] TX sent:', tx.hash);
 
             const receipt = await tx.wait();
             console.log('[SmartAccount] Created in block:', receipt.blockNumber);
 
             // Get the created account address
-            const accounts = await factory.getAccounts(await signer.getAddress());
+            const accounts = await factory.getAccountsForOwner(userAddress);
             this.userSmartAccount = accounts[accounts.length - 1];
 
             console.log('[SmartAccount] Address:', this.userSmartAccount);
@@ -640,23 +648,30 @@ const AgentWalletUI = {
         if (!select) return;
 
         try {
-            // Get agents from localStorage or API
+            // Get agents from localStorage (synced from portfolio.js)
             const agents = JSON.parse(localStorage.getItem('techne_deployed_agents') || '[]');
+            console.log('[AgentWallet] loadAgentsForSelect - found agents:', agents.length, agents);
 
             if (agents.length === 0) {
                 select.innerHTML = '<option value="">No agents deployed</option>';
                 return;
             }
 
-            select.innerHTML = agents.map((agent, i) => `
-                <option value="${agent.address || agent.smartAccount}" ${i === 0 ? 'selected' : ''}>
-                    ${agent.name || agent.strategy || 'Agent'} - ${(agent.address || agent.smartAccount || '').slice(0, 10)}...
-                </option>
-            `).join('');
+            select.innerHTML = agents.map((agent, i) => {
+                // Handle multiple address field names
+                const agentAddr = agent.agent_address || agent.address || agent.smartAccount || '';
+                const displayName = agent.name || agent.preset || agent.strategy || 'Agent';
+                const displayAddr = agentAddr ? agentAddr.slice(0, 10) + '...' : 'No address';
+
+                return `<option value="${agentAddr}" ${i === 0 ? 'selected' : ''}>
+                    ${displayName} - ${displayAddr}
+                </option>`;
+            }).join('');
 
             // Auto-select first agent
             if (agents.length > 0) {
                 this.selectedAgent = agents[0];
+                console.log('[AgentWallet] Selected first agent:', this.selectedAgent);
             }
         } catch (e) {
             console.warn('[AgentWallet] Failed to load agents:', e);
@@ -669,7 +684,10 @@ const AgentWalletUI = {
      */
     onAgentSelect(address) {
         const agents = JSON.parse(localStorage.getItem('techne_deployed_agents') || '[]');
-        this.selectedAgent = agents.find(a => (a.address || a.smartAccount) === address) || null;
+        this.selectedAgent = agents.find(a => {
+            const agentAddr = a.agent_address || a.address || a.smartAccount || '';
+            return agentAddr === address;
+        }) || null;
         console.log('[AgentWallet] Selected agent:', this.selectedAgent);
     },
 

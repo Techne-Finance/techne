@@ -412,6 +412,55 @@ class AgentBuilderUI {
                 document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.config.duration = parseInt(btn.dataset.days);
+                // Clear custom inputs when preset selected
+                const customValue = document.getElementById('customDurationValue');
+                const customUnit = document.getElementById('customDurationUnit');
+                if (customValue) customValue.value = '';
+                console.log('[AgentBuilder] Duration preset:', this.config.duration, 'days');
+            });
+        });
+
+        // Custom Duration Value + Unit combo
+        const customDurationValue = document.getElementById('customDurationValue');
+        const customDurationUnit = document.getElementById('customDurationUnit');
+
+        const updateCustomDuration = () => {
+            if (!customDurationValue || !customDurationUnit) return;
+            const val = parseInt(customDurationValue.value) || 0;
+            const unit = customDurationUnit.value || 'days';
+
+            if (val > 0) {
+                // Convert to days for config
+                let days = val;
+                switch (unit) {
+                    case 'hours': days = val / 24; break;
+                    case 'days': days = val; break;
+                    case 'weeks': days = val * 7; break;
+                    case 'months': days = val * 30; break;
+                }
+                this.config.duration = days;
+                // Deselect preset buttons
+                document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
+                console.log('[AgentBuilder] Custom duration:', val, unit, '→', days, 'days');
+            }
+        };
+
+        if (customDurationValue) {
+            customDurationValue.addEventListener('change', updateCustomDuration);
+            customDurationValue.addEventListener('input', updateCustomDuration);
+        }
+        if (customDurationUnit) {
+            customDurationUnit.addEventListener('change', updateCustomDuration);
+        }
+
+        // Vault Count buttons
+        document.querySelectorAll('.vault-count-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.vault-count-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const count = btn.dataset.count;
+                this.config.vaultCount = count === 'auto' ? 'auto' : parseInt(count);
+                console.log('[AgentBuilder] Vault count:', this.config.vaultCount);
             });
         });
 
@@ -632,6 +681,52 @@ class AgentBuilderUI {
                     this.config.apyCheckHours = hours;
                     console.log('[AgentBuilder] APY check window (custom):', hours, 'hours');
                 }
+            });
+        }
+
+        // TVL Min/Max Sliders and Inputs
+        const tvlMinSlider = document.getElementById('tvlMinSlider');
+        const tvlMaxSlider = document.getElementById('tvlMaxSlider');
+        const tvlMinInput = document.getElementById('tvlMinInput');
+        const tvlMaxInput = document.getElementById('tvlMaxInput');
+
+        const formatTvl = (val) => {
+            if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+            if (val >= 1000) return `$${(val / 1000).toFixed(0)}K`;
+            return `$${val}`;
+        };
+
+        if (tvlMinSlider) {
+            tvlMinSlider.addEventListener('input', () => {
+                const val = parseInt(tvlMinSlider.value) || 0;
+                this.config.minPoolTvl = val;
+                if (tvlMinInput) tvlMinInput.value = val;
+                const display = document.getElementById('tvlMinValue');
+                if (display) display.textContent = formatTvl(val);
+                console.log('[AgentBuilder] TVL min:', formatTvl(val));
+            });
+        }
+        if (tvlMaxSlider) {
+            tvlMaxSlider.addEventListener('input', () => {
+                const val = parseInt(tvlMaxSlider.value) || 100000000;
+                this.config.maxPoolTvl = val;
+                if (tvlMaxInput) tvlMaxInput.value = val;
+                const display = document.getElementById('tvlMaxValue');
+                if (display) display.textContent = formatTvl(val);
+            });
+        }
+        if (tvlMinInput) {
+            tvlMinInput.addEventListener('change', () => {
+                const val = parseInt(tvlMinInput.value) || 0;
+                this.config.minPoolTvl = val;
+                if (tvlMinSlider) tvlMinSlider.value = val;
+            });
+        }
+        if (tvlMaxInput) {
+            tvlMaxInput.addEventListener('change', () => {
+                const val = parseInt(tvlMaxInput.value) || 100000000;
+                this.config.maxPoolTvl = val;
+                if (tvlMaxSlider) tvlMaxSlider.value = val;
             });
         }
 
@@ -863,20 +958,25 @@ What would you like to configure?`;
                 });
                 console.log('[AgentBuilder] User signed deploy message');
             } catch (signError) {
-                console.warn('[AgentBuilder] Signature declined, continuing without:', signError);
-                // Continue anyway - signature is optional for MVP
+                console.error('[AgentBuilder] Signature declined - deploy cancelled:', signError);
+                btn.innerHTML = '<span class="techne-icon">' + TechneIcons.settings + '</span> Deploy Agent';
+                btn.disabled = false;
+                alert('Signature required to deploy agent. Please sign the message to continue.');
+                return;
             }
 
             // Send deployment config to backend API
-            // NOTE: Backend generates agent wallet - we don't send agent_address
+            // Backend returns transaction data for user to sign (cold deploy)
             const API_BASE = window.API_BASE || '';
+            let deployedAddress = null;
+            let agentId = null;
+
             try {
                 const response = await fetch(`${API_BASE}/api/agent/deploy`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         user_address: window.connectedWallet,
-                        // agent_address: generated by backend with private key
                         signature: signature,
                         sign_message: signMessage,
                         chain: this.config.chain,
@@ -892,7 +992,6 @@ What would you like to configure?`;
                         vault_count: this.config.vaultCount,
                         auto_rebalance: this.config.autoRebalance,
                         only_audited: this.config.onlyAudited,
-                        // Advanced settings - MUST match backend expectations
                         rebalance_threshold: this.config.rebalanceThreshold,
                         max_gas_price: this.config.maxGasPrice,
                         slippage: this.config.slippage,
@@ -900,36 +999,108 @@ What would you like to configure?`;
                         avoid_il: this.config.avoidIL,
                         emergency_exit: this.config.emergencyExit,
                         min_pool_tvl: this.config.minPoolTvl,
+                        max_pool_tvl: this.config.maxPoolTvl,
                         duration: this.config.duration,
                         apy_check_hours: this.config.apyCheckHours,
-                        // Pro mode
+                        trading_style: this.config.tradingStyle,
                         is_pro_mode: isProMode,
                         pro_config: proConfig
                     })
+
                 });
 
                 const result = await response.json();
-                console.log('[AgentBuilder] Backend deployment result:', result);
+                console.log('[AgentBuilder] Backend deployment result:', result, 'status:', response.status);
+
+                // Check HTTP status first (for 401, 400, 500 errors)
+                if (!response.ok) {
+                    const errorMsg = result.detail || result.message || `HTTP ${response.status}`;
+                    throw new Error(errorMsg);
+                }
 
                 if (!result.success) {
-                    throw new Error(result.detail || 'Backend deployment failed');
+                    throw new Error(result.detail || result.message || 'Backend deployment failed');
                 }
+
+                agentId = result.agent_id;
+                deployedAddress = result.agent_address;
+
+                // COLD DEPLOY: If backend wants us to send tx to MetaMask
+                if (result.requires_transaction && result.transaction) {
+                    console.log('[AgentBuilder] Cold deploy - sending tx to MetaMask for user to sign...');
+                    this.addAgentMessage('<span class="techne-icon">' + TechneIcons.code + '</span> Deploying Smart Account on-chain...\n**Please confirm the transaction in MetaMask to pay gas fee.**');
+
+                    try {
+                        // Send transaction via MetaMask - USER PAYS GAS
+                        const txHash = await window.ethereum.request({
+                            method: 'eth_sendTransaction',
+                            params: [{
+                                from: window.connectedWallet,
+                                to: result.transaction.to,
+                                data: result.transaction.data,
+                                gas: result.transaction.gas,
+                                value: result.transaction.value || '0x0'
+                            }]
+                        });
+
+                        console.log('[AgentBuilder] User signed deploy tx:', txHash);
+                        this.addAgentMessage('<span class="techne-icon">' + TechneIcons.code + '</span> Transaction submitted! Waiting for confirmation...');
+
+                        // Wait a moment for tx to be mined (on Base it's fast)
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+
+                        // Confirm deployment with backend (saves agent to storage)
+                        const confirmResponse = await fetch(`${API_BASE}/api/agent/confirm-deploy`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                user_address: window.connectedWallet,
+                                agent_id: agentId,
+                                tx_hash: txHash
+                            })
+                        });
+
+                        const confirmResult = await confirmResponse.json();
+                        console.log('[AgentBuilder] Confirm deploy result:', confirmResult);
+
+                        if (!confirmResult.success) {
+                            throw new Error(confirmResult.detail || 'Failed to confirm deployment');
+                        }
+
+                        deployedAddress = confirmResult.agent_address;
+                        console.log('[AgentBuilder] Agent deployed and confirmed:', deployedAddress);
+
+                    } catch (txError) {
+                        if (txError.code === 4001) {
+                            // User rejected transaction
+                            console.log('[AgentBuilder] User rejected transaction');
+                            throw new Error('Transaction cancelled - you must pay gas to deploy the agent');
+                        }
+                        throw txError;
+                    }
+                } else if (result.already_deployed) {
+                    console.log('[AgentBuilder] Agent already deployed:', deployedAddress);
+                } else {
+                    console.log('[AgentBuilder] Agent deployed (no tx required):', deployedAddress);
+                }
+
+                if (!deployedAddress) {
+                    throw new Error('Backend did not return agent address');
+                }
+                console.log('[AgentBuilder] Final Smart Account address:', deployedAddress);
+
             } catch (apiError) {
-                console.warn('[AgentBuilder] Backend API call failed (continuing with local):', apiError);
-                // Continue anyway - agent will work locally, just not synced with backend
+                console.error('[AgentBuilder] Backend API call failed:', apiError);
+                btn.innerHTML = '<span class="techne-icon">' + TechneIcons.settings + '</span> Deploy Agent';
+                btn.disabled = false;
+                alert('Deployment failed: ' + apiError.message);
+                return;
             }
 
-            // Get agent address - try Smart Account first, fallback to user wallet
-            let address = window.connectedWallet;
-            try {
-                const saResult = await window.NetworkUtils?.getSmartAccount(window.connectedWallet);
-                if (saResult?.success && saResult?.smartAccount) {
-                    address = saResult.smartAccount;
-                    console.log('[AgentBuilder] Using Smart Account:', address);
-                }
-            } catch (e) {
-                console.warn('[AgentBuilder] Smart Account lookup failed, using wallet:', e);
-            }
+
+            // Use address from backend - NO FALLBACK (signature verified, backend required)
+            let address = deployedAddress;
+            console.log('[AgentBuilder] Final agent address:', address);
 
             document.getElementById('agentAddress').textContent =
                 address.slice(0, 6) + '...' + address.slice(-4);

@@ -9,9 +9,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @notice Factory for deploying TechneAgentAccount smart accounts
  * @dev Uses EIP-1167 minimal proxy pattern for gas-efficient deployments
  * 
- * Key Features:
- * - Deterministic addresses (CREATE2 via Clones)
- * - One account per user (enforced)
+ * ERC-8004 ARCHITECTURE (1 Agent = 1 Wallet):
+ * - Each agent gets its own unique Smart Account
+ * - 1 owner (user wallet) can have MULTIPLE agent accounts
+ * - agentSalt = keccak256(agentId) for deterministic CREATE2 addresses
  * - Auto-whitelist common protocols on creation
  * - Gas-efficient: ~100K gas per deployment vs 2M for full contract
  */
@@ -21,8 +22,11 @@ contract TechneAgentFactory is Ownable {
     // ============ State ============
     address public immutable implementation;
     
-    // User -> Smart Account mapping
-    mapping(address => address) public accountOf;
+    // Owner -> AgentSalt -> Smart Account (1 agent = 1 wallet)
+    mapping(address => mapping(uint256 => address)) public accounts;
+    
+    // Owner -> All their agent accounts
+    mapping(address => address[]) public ownerAccounts;
     
     // All deployed accounts (for iteration)
     address[] public allAccounts;
@@ -40,13 +44,12 @@ contract TechneAgentFactory is Ownable {
     event AccountCreated(
         address indexed owner,
         address indexed account,
-        uint256 indexed index
+        uint256 indexed agentSalt
     );
     event DefaultSessionKeySet(address indexed key, uint48 validity, uint256 dailyLimit);
     event DefaultProtocolsUpdated(uint256 count);
 
     // ============ Errors ============
-    error AccountAlreadyExists();
     error InvalidOwner();
     error ZeroAddress();
 
@@ -63,16 +66,26 @@ contract TechneAgentFactory is Ownable {
     // ============ Factory Functions ============
 
     /**
-     * @notice Create a new smart account for a user
-     * @param owner The owner of the new account (usually user's EOA)
+     * @notice Create a new smart account for a specific agent
+     * @param owner The owner of the new account (user's EOA)
+     * @param agentSalt Unique salt per agent (e.g., keccak256(agentId))
      * @return account The deployed smart account address
+     * 
+     * ERC-8004 ARCHITECTURE:
+     * - 1 owner can have MULTIPLE agents
+     * - Each agent has its own Smart Account
+     * - agentSalt = keccak256(agentId) for deterministic addressing
      */
-    function createAccount(address owner) external returns (address account) {
+    function createAccount(address owner, uint256 agentSalt) external returns (address account) {
         if (owner == address(0)) revert InvalidOwner();
-        if (accountOf[owner] != address(0)) revert AccountAlreadyExists();
+        
+        // Check if this specific agent already has account
+        if (accounts[owner][agentSalt] != address(0)) {
+            return accounts[owner][agentSalt]; // Return existing, don't revert
+        }
 
-        // Deploy deterministic clone
-        bytes32 salt = keccak256(abi.encodePacked(owner));
+        // Deploy deterministic clone with combined salt
+        bytes32 salt = keccak256(abi.encodePacked(owner, agentSalt));
         account = implementation.cloneDeterministic(salt);
 
         // Initialize the account
@@ -96,27 +109,64 @@ contract TechneAgentFactory is Ownable {
         }
 
         // Register account
-        accountOf[owner] = account;
+        accounts[owner][agentSalt] = account;
+        ownerAccounts[owner].push(account);
         allAccounts.push(account);
 
-        emit AccountCreated(owner, account, allAccounts.length - 1);
+        emit AccountCreated(owner, account, agentSalt);
     }
 
     /**
-     * @notice Get deterministic address for a user (without deploying)
-     * @param owner The owner address
-     * @return The counterfactual smart account address
+     * @notice Legacy: Create account with default salt (0)
+     * @param owner The owner of the new account
      */
-    function getAddress(address owner) external view returns (address) {
-        bytes32 salt = keccak256(abi.encodePacked(owner));
+    function createAccount(address owner) external returns (address) {
+        return this.createAccount(owner, 0);
+    }
+
+    /**
+     * @notice Get deterministic address for owner + agent (without deploying)
+     * @param owner The owner address
+     * @param agentSalt The agent's unique salt
+     */
+    function getAddress(address owner, uint256 agentSalt) external view returns (address) {
+        bytes32 salt = keccak256(abi.encodePacked(owner, agentSalt));
         return implementation.predictDeterministicAddress(salt, address(this));
     }
 
     /**
-     * @notice Check if account exists for user
+     * @notice Legacy: Get address with default salt
+     */
+    function getAddress(address owner) external view returns (address) {
+        return this.getAddress(owner, 0);
+    }
+
+    /**
+     * @notice Check if specific agent account exists
+     */
+    function hasAccount(address owner, uint256 agentSalt) external view returns (bool) {
+        return accounts[owner][agentSalt] != address(0);
+    }
+
+    /**
+     * @notice Legacy: Check if default account exists
      */
     function hasAccount(address owner) external view returns (bool) {
-        return accountOf[owner] != address(0);
+        return accounts[owner][0] != address(0);
+    }
+
+    /**
+     * @notice Get all accounts for an owner
+     */
+    function getAccountsForOwner(address owner) external view returns (address[] memory) {
+        return ownerAccounts[owner];
+    }
+
+    /**
+     * @notice Get account count for an owner
+     */
+    function getAccountCount(address owner) external view returns (uint256) {
+        return ownerAccounts[owner].length;
     }
 
     /**
@@ -127,6 +177,7 @@ contract TechneAgentFactory is Ownable {
     }
 
     // ============ Admin Functions ============
+
 
     /**
      * @notice Set default session key for new accounts

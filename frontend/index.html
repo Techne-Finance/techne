@@ -34,7 +34,62 @@
         }
         console.log('[Techne] API_BASE:', window.API_BASE, 'WS_BASE:', window.WS_BASE);
     </script>
+
+    <!-- Sentry Error Tracking (Loader Script - auto-configured) -->
+    <script src="https://js-de.sentry-cdn.com/5991c3fde1a2b8427f6627124d5bef18.min.js" crossorigin="anonymous"></script>
+    <script>
+        // Sentry Loader configuration
+        Sentry.onLoad(function () {
+            const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+
+            Sentry.init({
+                environment: isProduction ? 'production' : 'development',
+
+                // Performance tracing
+                tracesSampleRate: isProduction ? 0.2 : 1.0,
+
+                // Release tracking
+                release: 'techne-frontend@1.0.0',
+
+                // Filter errors before sending
+                beforeSend(event, hint) {
+                    const errorMessage = event.exception?.values?.[0]?.value || '';
+
+                    // Filter wallet rejections (expected user behavior)
+                    if (errorMessage.includes('User rejected') ||
+                        errorMessage.includes('User denied') ||
+                        errorMessage.includes('rejected the request')) {
+                        return null;
+                    }
+
+                    // Filter transient network errors
+                    if (errorMessage.includes('Failed to fetch') ||
+                        errorMessage.includes('NetworkError') ||
+                        errorMessage.includes('Load failed')) {
+                        return null;
+                    }
+
+                    return event;
+                },
+
+                // Ignore common benign errors
+                ignoreErrors: [
+                    'ResizeObserver loop limit exceeded',
+                    'ResizeObserver loop completed with undelivered notifications',
+                    'Non-Error promise rejection',
+                    /Loading chunk .* failed/,
+                    'cancelled',
+                    'AbortError',
+                ],
+
+                sendDefaultPii: false,
+            });
+
+            console.log('[Sentry] ✓ Frontend error tracking initialized');
+        });
+    </script>
 </head>
+
 
 <body class="section-verify">
     <div class="app">
@@ -3768,6 +3823,7 @@
     <script src="/telegram-alerts.js"></script>
     <script src="/agent-wallet-ui.js"></script>
     <script src="/agent-service-api.js"></script>
+    <script src="/sentry-utils.js"></script>
 
     <!-- MVP: Engineer & Premium UI -->
     <script src="/engineer-client.js"></script>

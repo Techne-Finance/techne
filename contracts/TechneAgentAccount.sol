@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title TechneAgentAccount
@@ -17,7 +18,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * - Session keys are LIMITED to whitelisted protocols + selectors only
  * - No admin backdoors - owner is the only authority
  */
-contract TechneAgentAccount is Initializable {
+contract TechneAgentAccount is Initializable, ReentrancyGuard {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
     using SafeERC20 for IERC20;
@@ -148,7 +149,7 @@ contract TechneAgentAccount is Initializable {
         address target,
         uint256 value,
         bytes calldata data
-    ) external onlyOwner returns (bytes memory) {
+    ) external onlyOwner nonReentrant returns (bytes memory) {
         return _execute(target, value, data);
     }
 
@@ -162,7 +163,7 @@ contract TechneAgentAccount is Initializable {
         uint256 value,
         bytes calldata data,
         uint256 estimatedValueUSD
-    ) external onlyEntryPoint returns (bytes memory) {
+    ) external onlyEntryPoint nonReentrant returns (bytes memory) {
         _validateSessionKeyCall(sessionKey, target, data, estimatedValueUSD);
         return _execute(target, value, data);
     }
@@ -174,7 +175,7 @@ contract TechneAgentAccount is Initializable {
         address[] calldata targets,
         uint256[] calldata values,
         bytes[] calldata dataArray
-    ) external onlyOwner returns (bytes[] memory results) {
+    ) external onlyOwner nonReentrant returns (bytes[] memory results) {
         require(targets.length == values.length && values.length == dataArray.length, "Length mismatch");
         results = new bytes[](targets.length);
         for (uint256 i = 0; i < targets.length; i++) {

@@ -50,9 +50,10 @@ class PortfolioDashboard {
         const btn = document.getElementById('btnFundAgent');
         if (!btn) return;
 
-        const agents = JSON.parse(localStorage.getItem('techne_deployed_agents') || '[]');
+        // Use this.agents which is synced from backend, not legacy localStorage
+        const hasAgents = this.agents && this.agents.length > 0;
 
-        if (agents.length === 0) {
+        if (!hasAgents) {
             btn.disabled = true;
             btn.style.opacity = '0.4';
             btn.style.cursor = 'not-allowed';
@@ -137,6 +138,9 @@ class PortfolioDashboard {
         const userAddress = window.connectedWallet;
         let backendSyncSuccess = false;
 
+        // Use wallet-specific localStorage key to prevent cross-wallet contamination
+        const storageKey = userAddress ? `techne_agents_${userAddress.toLowerCase()}` : null;
+
         if (userAddress) {
             try {
                 const API_BASE = window.API_BASE || '';
@@ -146,7 +150,7 @@ class PortfolioDashboard {
                 if (data.success) {
                     backendSyncSuccess = true;
                     const agents = data.agents || [];
-                    console.log('[Portfolio] Loaded agents from backend:', agents.length);
+                    console.log('[Portfolio] Loaded agents from backend for wallet:', userAddress.slice(0, 8), '→', agents.length, 'agents');
                     this.agents = agents.map(a => ({
                         ...a,
                         // Map backend fields to frontend format
@@ -154,29 +158,51 @@ class PortfolioDashboard {
                         userAddress: a.user_address,
                         address: a.agent_address
                     }));
-                    // ALWAYS sync to localStorage (even if empty!)
+                    // Save to wallet-specific localStorage
+                    if (storageKey) {
+                        localStorage.setItem(storageKey, JSON.stringify(this.agents));
+                    }
+                    // ALSO sync to legacy key - AgentWalletUI depends on it for modals
                     localStorage.setItem('techne_deployed_agents', JSON.stringify(this.agents));
-                    // Also clear old format
-                    localStorage.removeItem('techne_deployed_agent');
+                    localStorage.removeItem('techne_deployed_agent'); // Only remove single-agent format
                 }
             } catch (e) {
                 console.warn('[Portfolio] Backend sync failed, using localStorage:', e);
             }
         }
 
-        // ONLY fallback to localStorage if backend sync FAILED (not if it returned 0 agents)
-        if (!backendSyncSuccess && (!this.agents || this.agents.length === 0)) {
+        // Fallback to localStorage if backend sync failed OR returned 0 agents
+        if (!this.agents || this.agents.length === 0) {
             try {
-                const saved = localStorage.getItem('techne_deployed_agents');
-                this.agents = saved ? JSON.parse(saved) : [];
+                // Try wallet-specific key first
+                const saved = storageKey ? localStorage.getItem(storageKey) : null;
+                let localAgents = saved ? JSON.parse(saved) : [];
 
-                // Fallback to old format
-                if (this.agents.length === 0) {
-                    const oldFormat = localStorage.getItem('techne_deployed_agent');
-                    if (oldFormat) {
-                        const agent = JSON.parse(oldFormat);
-                        agent.id = agent.id || `agent_${Date.now()}`;
-                        this.agents = [agent];
+                // Also try legacy key
+                if (localAgents.length === 0) {
+                    const legacy = localStorage.getItem('techne_deployed_agents');
+                    localAgents = legacy ? JSON.parse(legacy) : [];
+                }
+
+                this.agents = localAgents;
+
+                // If we have agents in localStorage but backend didn't have them, SYNC them
+                if (this.agents.length > 0 && userAddress) {
+                    console.log('[Portfolio] Found', this.agents.length, 'agents in localStorage, syncing to backend...');
+                    for (const agent of this.agents) {
+                        try {
+                            await fetch(`${API_BASE}/api/agent/sync`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    user_address: userAddress,
+                                    agent: agent
+                                })
+                            });
+                            console.log('[Portfolio] Synced agent to backend:', agent.id);
+                        } catch (syncErr) {
+                            console.warn('[Portfolio] Failed to sync agent:', agent.id, syncErr);
+                        }
                     }
                 }
             } catch (e) {
@@ -186,6 +212,7 @@ class PortfolioDashboard {
         }
 
         this.updateAgentSelector();
+        this.updateFundButtonState(); // Update button state after agents loaded
 
         // Auto-select first active agent
         const activeAgent = this.agents.find(a => a.isActive || a.is_active);
@@ -193,7 +220,10 @@ class PortfolioDashboard {
             this.selectAgent(activeAgent.id);  // This triggers updateRiskIndicators
             const selector = document.getElementById('agentSelector');
             if (selector) selector.value = activeAgent.id;
-        } else if (this.agents.length === 0) {
+        } else if (this.agents.length > 0) {
+            // Select first agent even if not active
+            this.selectAgent(this.agents[0].id);
+        } else {
             this.showEmptyState();
         }
 
@@ -250,7 +280,7 @@ class PortfolioDashboard {
 
         const confirmed = confirm(
             `Are you sure you want to delete "${agent.name || 'Agent'}"?\n\n` +
-            `Address: ${agent.address?.slice(0, 10)}...\n` +
+            `Address: ${(agent.agent_address || agent.address)?.slice(0, 10)}...\n` +
             `Strategy: ${agent.preset}\n\n` +
             `This action cannot be undone.`
         );
@@ -284,11 +314,21 @@ class PortfolioDashboard {
             console.warn('[Portfolio] Backend delete failed:', e);
         }
 
-        // Remove from local storage - BOTH formats!
+        // Remove from local agents array
         this.agents = this.agents.filter(a => a.id !== agent.id);
+
+        // Clear from ALL localStorage keys to prevent re-sync
+        // 1. Wallet-specific key (PRIMARY - used by loadAgents)
+        if (userAddress) {
+            const walletKey = `techne_agents_${userAddress.toLowerCase()}`;
+            localStorage.setItem(walletKey, JSON.stringify(this.agents));
+            console.log('[Portfolio] Updated wallet-specific key:', walletKey);
+        }
+
+        // 2. Legacy key (used by AgentWalletUI modals)
         localStorage.setItem('techne_deployed_agents', JSON.stringify(this.agents));
 
-        // Clear old single-agent format
+        // 3. Clear old single-agent format
         localStorage.removeItem('techne_deployed_agent');
 
         // Clear global window state
@@ -305,7 +345,7 @@ class PortfolioDashboard {
             this.showEmptyState();
         }
 
-        console.log('[Portfolio] Agent deleted:', agent.id);
+        console.log('[Portfolio] Agent deleted:', agent.id, '- cleared from all localStorage keys');
         alert('Agent deleted successfully!');
     }
 
@@ -451,11 +491,26 @@ class PortfolioDashboard {
             const provider = new ethers.BrowserProvider(window.ethereum);
 
             // Check network - must be on Base (chainId 8453)
-            const network = await provider.getNetwork();
-            console.log('[Portfolio] Current network:', network.chainId);
+            // Wrapped in try-catch for wallets that don't support getNetwork() properly
+            let chainId = 8453; // Default to Base
+            try {
+                const network = await provider.getNetwork();
+                chainId = Number(network.chainId);
+                console.log('[Portfolio] Current network:', chainId);
+            } catch (networkError) {
+                console.warn('[Portfolio] Network detection failed (mock wallet?), assuming Base:', networkError.message);
+                // Try getting chainId directly from wallet
+                try {
+                    const hexChainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    chainId = parseInt(hexChainId, 16);
+                    console.log('[Portfolio] Got chainId from wallet directly:', chainId);
+                } catch (e) {
+                    console.warn('[Portfolio] eth_chainId also failed, using default Base (8453)');
+                }
+            }
 
-            if (Number(network.chainId) !== 8453) {
-                console.warn('[Portfolio] ⚠️ Wrong network! Expected Base (8453), got:', network.chainId);
+            if (chainId !== 8453) {
+                console.warn('[Portfolio] ⚠️ Wrong network! Expected Base (8453), got:', chainId);
                 // Try to switch to Base
                 try {
                     await window.ethereum.request({
@@ -1046,8 +1101,9 @@ class PortfolioDashboard {
         }
 
         if (addrEl) {
-            addrEl.textContent = agent.address ?
-                `${agent.address.slice(0, 6)}...${agent.address.slice(-4)}` :
+            const agentAddr = agent.agent_address || agent.address || '';
+            addrEl.textContent = agentAddr ?
+                `${agentAddr.slice(0, 6)}...${agentAddr.slice(-4)}` :
                 'Not deployed';
         }
 
@@ -1078,32 +1134,43 @@ class PortfolioDashboard {
     }
 
     updateRiskIndicators(agent) {
-        // Update Risk Indicators Panel from Pro Mode config
+        // Update Risk Indicators Panel from agent config and Pro Mode config
         const proConfig = agent?.proConfig || agent?.pro_config || {};
 
-        // IL Risk - calculate from positions
+        // IL Risk - check agent pool_type first, then calculate from positions
         const ilRiskEl = document.getElementById('ilRiskValue');
         const positions = this.portfolio.positions || [];
-        let maxIlRisk = 'None';
 
-        for (const pos of positions) {
-            const ilRisk = pos.il_risk || 'None';
-            if (ilRisk === 'High') maxIlRisk = 'High';
-            else if (ilRisk === 'Medium' && maxIlRisk !== 'High') maxIlRisk = 'Medium';
-            else if (ilRisk === 'Low' && maxIlRisk === 'None') maxIlRisk = 'Low';
+        // Dual-sided pools = IL risk active
+        const poolType = agent?.pool_type || agent?.poolType || 'single';
+        const avoidIL = agent?.avoid_il ?? agent?.avoidIL ?? true;
+        let ilRiskStatus = 'None';
+
+        // If agent is configured for dual pools or has IL exposure
+        if (poolType === 'dual' || !avoidIL) {
+            ilRiskStatus = 'Active';
+        } else {
+            // Calculate from actual positions
+            for (const pos of positions) {
+                const ilRisk = pos.il_risk || 'None';
+                if (ilRisk === 'High') { ilRiskStatus = 'High'; break; }
+                else if (ilRisk === 'Medium' && ilRiskStatus !== 'High') ilRiskStatus = 'Medium';
+                else if (ilRisk === 'Low' && ilRiskStatus === 'None') ilRiskStatus = 'Low';
+            }
         }
 
         if (ilRiskEl) {
-            ilRiskEl.textContent = maxIlRisk;
+            ilRiskEl.textContent = ilRiskStatus;
             ilRiskEl.className = 'risk-value ' +
-                (maxIlRisk === 'High' ? 'danger' : maxIlRisk === 'Medium' ? 'warning' : '');
+                (ilRiskStatus === 'High' || ilRiskStatus === 'Active' ? 'warning' : ilRiskStatus === 'Medium' ? 'warning' : '');
         }
 
-        // Stop Loss
+        // Stop Loss - read from agent config (max_drawdown) or proConfig
         const stopLossEl = document.getElementById('stopLossValue');
         if (stopLossEl) {
             const stopLossEnabled = proConfig.stopLossEnabled ?? true;
-            const stopLossPercent = proConfig.stopLossPercent || 15;
+            // Use agent's max_drawdown if available, otherwise proConfig, otherwise default
+            const stopLossPercent = agent?.max_drawdown || agent?.maxDrawdown || proConfig.stopLossPercent || 20;
             stopLossEl.textContent = stopLossEnabled ? `${stopLossPercent}% Active` : 'Off';
             stopLossEl.className = 'risk-value ' + (stopLossEnabled ? 'active' : '');
         }
@@ -1144,10 +1211,10 @@ class PortfolioDashboard {
             let risk = 'Low Risk';
             let riskClass = 'low';
 
-            if (maxIlRisk === 'High' || agent?.paused) {
+            if (ilRiskStatus === 'High' || agent?.paused) {
                 risk = 'High Risk';
                 riskClass = 'high';
-            } else if (maxIlRisk === 'Medium') {
+            } else if (ilRiskStatus === 'Medium' || ilRiskStatus === 'Active') {
                 risk = 'Medium Risk';
                 riskClass = 'medium';
             }
@@ -1644,7 +1711,7 @@ class PortfolioDashboard {
                 body: JSON.stringify({
                     wallet: window.connectedWallet,
                     agentId: agent.id,
-                    agentAddress: agent.address
+                    agentAddress: agent.agent_address || agent.address
                 })
             });
 
@@ -1684,7 +1751,7 @@ class PortfolioDashboard {
                 body: JSON.stringify({
                     wallet: window.connectedWallet,
                     agentId: agent.id,
-                    agentAddress: agent.address,
+                    agentAddress: agent.agent_address || agent.address,
                     strategy: agent.preset
                 })
             });
@@ -1765,29 +1832,41 @@ class PortfolioDashboard {
 
     openFundModal() {
         // Check if user has deployed agents
-        const agents = JSON.parse(localStorage.getItem('techne_deployed_agents') || '[]');
-
-        if (agents.length === 0) {
+        if (!this.agents || this.agents.length === 0) {
             this.showToast('No agents deployed. Deploy an agent in Build section first!', 'warning');
             return;
         }
 
-        // Open Agent Wallet deposit modal
+        // Get selected agent
+        const agent = this.agents.find(a => a.id === this.selectedAgentId);
+        if (!agent) {
+            this.showToast('Please select an agent first', 'warning');
+            return;
+        }
+
+        // Open Agent Wallet deposit modal with selected agent address
         if (window.AgentWalletUI) {
-            window.AgentWalletUI.showDepositModal();
+            window.AgentWalletUI.showDepositModal(agent.address || agent.agent_address);
         } else {
             this.showToast('Agent Wallet not initialized. Go to Build section first.', 'warning');
         }
     }
 
     confirmWithdrawAll() {
+        // Get selected agent
+        const agent = this.agents.find(a => a.id === this.selectedAgentId);
+        if (!agent) {
+            this.showToast('Please select an agent first', 'warning');
+            return;
+        }
+
         if (!window.AgentWalletUI) {
             this.showToast('Agent Wallet not initialized', 'warning');
             return;
         }
 
         if (confirm('Are you sure you want to withdraw all funds from the Agent Vault?')) {
-            window.AgentWalletUI.showWithdrawModal();
+            window.AgentWalletUI.showWithdrawModal(agent.address || agent.agent_address);
         }
     }
 

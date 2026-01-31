@@ -28,6 +28,7 @@ router = APIRouter(prefix="/api/agent-wallet", tags=["Agent Wallet"])
 
 class CreateWalletRequest(BaseModel):
     user_address: str
+    agent_id: Optional[str] = None  # Agent UUID for 1-agent-1-wallet
     signature: str  # User's signature for verification
 
 
@@ -87,19 +88,23 @@ class ApproveMultiSigRequest(BaseModel):
 @router.post("/create")
 async def create_agent_wallet(request: CreateWalletRequest):
     """
-    Create a new ERC-8004 Smart Account for user.
+    Create a new ERC-8004 Smart Account for a specific agent.
     
-    ERC-8004 ARCHITECTURE:
-    - Smart Account is deployed on-chain via factory contract
-    - User's connected wallet is the owner - NO private key needed
-    - User can withdraw funds directly using their wallet signature
+    ERC-8004 ARCHITECTURE (1 Agent = 1 Wallet):
+    - Each agent gets its own Smart Account
+    - User's wallet is owner of ALL their agent accounts
+    - agent_id is used as CREATE2 salt for deterministic addressing
     """
     try:
-        # For ERC-8004, we use SmartAccountService instead of EOA generation
         from services.smart_account_service import get_smart_account_service
         
         smart_account_service = get_smart_account_service()
-        result = smart_account_service.create_account(request.user_address)
+        
+        # Pass agent_id for unique Smart Account per agent
+        result = smart_account_service.create_account(
+            user_address=request.user_address,
+            agent_id=request.agent_id
+        )
         
         if result.get("success"):
             agent_address = result.get("account_address")
@@ -110,27 +115,22 @@ async def create_agent_wallet(request: CreateWalletRequest):
                 user_id=request.user_address,
                 contract_address="smart_account_factory",
                 function_name="create_account",
-                parameters={"agent_address": agent_address},
+                parameters={
+                    "agent_address": agent_address,
+                    "agent_id": request.agent_id
+                },
                 tx_hash=tx_hash
             )
             
             return {
                 "success": True,
                 "agent_address": agent_address,
+                "agent_id": request.agent_id,
                 "account_type": "erc8004",
                 "tx_hash": tx_hash,
-                "message": "✅ ERC-8004 Smart Account created! Your wallet controls this account - no private key needed."
+                "message": f"✅ Smart Account created for agent {request.agent_id[:8] if request.agent_id else 'default'}..."
             }
         else:
-            # Account may already exist
-            existing = smart_account_service.get_account(request.user_address)
-            if existing:
-                return {
-                    "success": True,
-                    "agent_address": existing,
-                    "account_type": "erc8004",
-                    "message": "Smart Account already exists for this wallet"
-                }
             raise Exception(result.get("message", "Smart Account creation failed"))
             
     except Exception as e:

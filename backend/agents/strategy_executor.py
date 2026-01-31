@@ -861,7 +861,9 @@ class StrategyExecutor:
                 apy = pool.get("apy", 0)
                 if apy < agent.get("min_apy", 0):
                     continue
-                if apy > agent.get("max_apy", 1000):
+                # If max_apy is 500 or higher, treat as "unlimited" (no upper limit)
+                max_apy_setting = agent.get("max_apy", 1000)
+                if max_apy_setting < 500 and apy > max_apy_setting:
                     continue
                 
                 # Check protocols

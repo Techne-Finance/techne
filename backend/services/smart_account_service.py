@@ -25,19 +25,81 @@ RPC_URL = os.getenv("ALCHEMY_RPC_URL", "https://base-mainnet.g.alchemy.com/v2/Aq
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 BUNDLER_URL = os.getenv("PIMLICO_BUNDLER_URL", "https://api.pimlico.io/v2/8453/rpc?apikey=pim_demo_key")
 
-# Contract addresses (update after deployment)
-FACTORY_ADDRESS = os.getenv("TECHNE_FACTORY_ADDRESS", "0xc1ee3090330ad3f946eee995f975e9fe541aa676")
+# Contract addresses - Factory v3 (1 Agent = 1 Wallet + ReentrancyGuard)
+FACTORY_ADDRESS = os.getenv("TECHNE_FACTORY_ADDRESS", "0x557049646BDe5B7C7eE2C08256Aea59A5A48B20f")
 ENTRYPOINT_V07 = "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
 
-# Factory ABI (minimal)
+# Factory ABI (with salt support for 1 agent = 1 smart account)
 FACTORY_ABI = [
+    # Create account with salt (1 agent = 1 wallet)
     {
-        "inputs": [{"name": "owner", "type": "address"}],
+        "inputs": [
+            {"name": "owner", "type": "address"},
+            {"name": "agentSalt", "type": "uint256"}
+        ],
         "name": "createAccount",
         "outputs": [{"name": "account", "type": "address"}],
         "stateMutability": "nonpayable",
         "type": "function"
     },
+    # Get address with salt
+    {
+        "inputs": [
+            {"name": "owner", "type": "address"},
+            {"name": "agentSalt", "type": "uint256"}
+        ],
+        "name": "getAddress",
+        "outputs": [{"name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    # accounts mapping (owner -> agentSalt -> account)
+    {
+        "inputs": [
+            {"name": "owner", "type": "address"},
+            {"name": "agentSalt", "type": "uint256"}
+        ],
+        "name": "accounts",
+        "outputs": [{"name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    # Check if account exists with salt
+    {
+        "inputs": [
+            {"name": "owner", "type": "address"},
+            {"name": "agentSalt", "type": "uint256"}
+        ],
+        "name": "hasAccount",
+        "outputs": [{"name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    # Get all accounts for owner
+    {
+        "inputs": [{"name": "owner", "type": "address"}],
+        "name": "getAccountsForOwner",
+        "outputs": [{"name": "", "type": "address[]"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    # Get account count for owner
+    {
+        "inputs": [{"name": "owner", "type": "address"}],
+        "name": "getAccountCount",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    # Legacy: create with default salt
+    {
+        "inputs": [{"name": "owner", "type": "address"}],
+        "name": "createAccount",
+        "outputs": [{"name": "", "type": "address"}],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    # Legacy: get address with default salt
     {
         "inputs": [{"name": "owner", "type": "address"}],
         "name": "getAddress",
@@ -45,17 +107,11 @@ FACTORY_ABI = [
         "stateMutability": "view",
         "type": "function"
     },
+    # Legacy: has account with default salt
     {
         "inputs": [{"name": "owner", "type": "address"}],
         "name": "hasAccount",
         "outputs": [{"name": "", "type": "bool"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [{"name": "", "type": "address"}],
-        "name": "accountOf",
-        "outputs": [{"name": "", "type": "address"}],
         "stateMutability": "view",
         "type": "function"
     }
@@ -145,84 +201,184 @@ class SmartAccountService:
             return None
         return account
     
-    def create_account(self, user_address: str) -> dict:
+    def _agent_id_to_salt(self, agent_id: str) -> int:
+        """Convert agent_id (UUID string) to uint256 salt for CREATE2"""
+        if not agent_id:
+            return 0  # Default salt for legacy accounts
+        # Hash the agent_id to get a deterministic uint256
+        agent_bytes = agent_id.encode('utf-8')
+        hash_bytes = Web3.keccak(agent_bytes)
+        return int.from_bytes(hash_bytes[:32], 'big')
+    
+    def get_account_for_agent(self, user_address: str, agent_id: str) -> str:
         """
-        Deploy a new smart account for a user.
+        Get deterministic smart account address for a specific agent.
+        Uses agent_id as CREATE2 salt for unique address per agent.
+        """
+        if not self.factory:
+            raise ValueError("Factory not configured")
+        
+        user = Web3.to_checksum_address(user_address)
+        salt = self._agent_id_to_salt(agent_id)
+        
+        try:
+            # Use salt-based getAddress for unique address per agent
+            return self.factory.functions.getAddress(user, salt).call()
+        except Exception as e:
+            logger.error(f"[SmartAccount] getAddress failed for agent: {e}")
+            raise ValueError(f"Cannot get address for agent: {e}")
+    
+    def create_account(self, user_address: str, agent_id: str = None) -> dict:
+        """
+        Get counterfactual smart account address for a user/agent pair.
+        
+        Uses CREATE2 to calculate the address deterministically WITHOUT on-chain deployment.
+        Actual deployment happens lazily on first deposit (gas-efficient pattern).
+        
+        Args:
+            user_address: Owner wallet address
+            agent_id: Unique agent ID (used as CREATE2 salt for unique address)
         
         Returns:
             {
                 "success": bool,
                 "account_address": str,
-                "tx_hash": str,
+                "tx_hash": str (always None for counterfactual),
                 "message": str
             }
         """
-        if not self.factory or not self.signer:
+        if not self.factory:
             return {
                 "success": False,
                 "account_address": None,
                 "tx_hash": None,
-                "message": "Factory or signer not configured"
-            }
-        
-        user = Web3.to_checksum_address(user_address)
-        
-        # Check if already exists
-        if self.has_account(user):
-            existing = self.get_account(user)
-            return {
-                "success": True,
-                "account_address": existing,
-                "tx_hash": None,
-                "message": "Account already exists"
+                "message": "Factory not configured"
             }
         
         try:
-            # Build transaction
-            tx = self.factory.functions.createAccount(user).build_transaction({
-                "from": self.signer.address,
-                "nonce": self.w3.eth.get_transaction_count(self.signer.address),
-                "gas": 500000,  # Account creation uses ~400K gas
-                "maxFeePerGas": self.w3.eth.gas_price * 2,
-                "maxPriorityFeePerGas": self.w3.to_wei(0.01, 'gwei'),
-                "chainId": 8453
-            })
+            user = Web3.to_checksum_address(user_address)
+            salt = self._agent_id_to_salt(agent_id)
             
-            # Sign and send
-            signed = self.signer.sign_transaction(tx)
-            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            # Get counterfactual address using CREATE2 (no gas needed!)
+            predicted_address = self.factory.functions.getAddress(user, salt).call()
             
-            # Wait for receipt
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+            # Check if already deployed on-chain (optional info)
+            code = self.w3.eth.get_code(predicted_address)
+            is_deployed = code and len(code) > 2
             
-            if receipt['status'] != 1:
-                return {
-                    "success": False,
-                    "account_address": None,
-                    "tx_hash": tx_hash.hex(),
-                    "message": "Transaction failed"
-                }
-            
-            # Get created account from event logs
-            account_address = self.get_account(user)
-            
-            logger.info(f"[SmartAccount] Created account for {user[:10]}... → {account_address}")
+            logger.info(f"[SmartAccount] Counterfactual address for agent {agent_id[:20] if agent_id else 'default'}... → {predicted_address} (deployed: {is_deployed})")
             
             return {
                 "success": True,
-                "account_address": account_address,
-                "tx_hash": tx_hash.hex(),
-                "message": "Account created successfully"
+                "account_address": predicted_address,
+                "tx_hash": None,  # No on-chain tx - counterfactual only
+                "message": f"Counterfactual address generated. Actual deployment on first deposit.",
+                "is_deployed_onchain": is_deployed
             }
             
         except Exception as e:
-            logger.error(f"[SmartAccount] Failed to create account: {e}")
+            logger.error(f"[SmartAccount] Failed to get counterfactual address: {e}")
             return {
                 "success": False,
                 "account_address": None,
                 "tx_hash": None,
                 "message": str(e)
             }
+    
+    def build_deploy_transaction(self, user_address: str, agent_id: str = None) -> dict:
+        """
+        Build unsigned transaction for user to deploy their agent smart account.
+        Returns raw tx data for MetaMask - USER PAYS GAS.
+        
+        Args:
+            user_address: Owner wallet address (will sign and pay gas)
+            agent_id: Unique agent ID (used as CREATE2 salt)
+        
+        Returns:
+            {
+                "success": bool,
+                "transaction": {
+                    "to": factory_address,
+                    "data": calldata,
+                    "gas": hex_gas_estimate,
+                    "value": "0x0"
+                },
+                "predicted_address": str,
+                "message": str
+            }
+        """
+        if not self.factory:
+            return {
+                "success": False,
+                "transaction": None,
+                "predicted_address": None,
+                "message": "Factory not configured"
+            }
+        
+        try:
+            user = Web3.to_checksum_address(user_address)
+            salt = self._agent_id_to_salt(agent_id)
+            
+            # Get predicted address first
+            predicted_address = self.factory.functions.getAddress(user, salt).call()
+            
+            # Check if already deployed
+            code = self.w3.eth.get_code(predicted_address)
+            if code and len(code) > 2:
+                return {
+                    "success": True,
+                    "transaction": None,  # No tx needed - already deployed
+                    "predicted_address": predicted_address,
+                    "message": "Agent already deployed on-chain",
+                    "already_deployed": True
+                }
+            
+            # Build createAccount transaction
+            tx_data = self.factory.functions.createAccount(user, salt).build_transaction({
+                "from": user,
+                "gas": 500000,  # Will be overridden by estimate
+                "value": 0,
+                "chainId": 8453  # Base mainnet
+            })
+            
+            # Estimate gas
+            try:
+                gas_estimate = self.w3.eth.estimate_gas({
+                    "from": user,
+                    "to": self.factory.address,
+                    "data": tx_data["data"],
+                    "value": 0
+                })
+                # Add 20% buffer for safety
+                gas_estimate = int(gas_estimate * 1.2)
+            except Exception as e:
+                logger.warning(f"[SmartAccount] Gas estimation failed, using default: {e}")
+                gas_estimate = 350000  # Default for createAccount
+            
+            logger.info(f"[SmartAccount] Built deploy tx for agent {agent_id[:20] if agent_id else 'default'}... → {predicted_address}, gas: {gas_estimate}")
+            
+            return {
+                "success": True,
+                "transaction": {
+                    "to": self.factory.address,
+                    "data": tx_data["data"],
+                    "gas": hex(gas_estimate),
+                    "value": "0x0"
+                },
+                "predicted_address": predicted_address,
+                "message": "Transaction ready - user must sign and pay gas",
+                "already_deployed": False
+            }
+            
+        except Exception as e:
+            logger.error(f"[SmartAccount] Failed to build deploy transaction: {e}")
+            return {
+                "success": False,
+                "transaction": None,
+                "predicted_address": None,
+                "message": str(e)
+            }
+
     
     def execute_for_user(
         self,
