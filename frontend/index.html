@@ -199,6 +199,43 @@
                     </div>
                 </div>
 
+                <!-- ERC-8004 Agent Identity -->
+                <div class="agent-panel erc8004-panel" id="erc8004Panel" style="display: none;">
+                    <div class="agent-header">
+                        <span class="agent-pulse" style="background: #00ff88;"></span>
+                        <span class="agent-title">Agent Identity</span>
+                        <span class="erc8004-badge"
+                            style="font-size: 0.6rem; padding: 2px 6px; background: rgba(0,255,136,0.15); color: #00ff88; border-radius: 10px; margin-left: auto;">ERC-8004</span>
+                    </div>
+                    <div class="agent-status">
+                        <div class="agent-row">
+                            <span class="agent-name">🤖 Token ID</span>
+                            <span class="agent-state" id="erc8004TokenId" style="color: var(--gold);">#---</span>
+                        </div>
+                        <div class="agent-row">
+                            <span class="agent-name">📊 Trust Score</span>
+                            <span class="agent-state active" id="erc8004TrustScore">---%</span>
+                        </div>
+                        <div class="agent-row">
+                            <span class="agent-name">✓ Executions</span>
+                            <span class="agent-state" id="erc8004Executions">0</span>
+                        </div>
+                        <div class="agent-row">
+                            <span class="agent-name">💰 Value Managed</span>
+                            <span class="agent-state" id="erc8004Value" style="color: var(--gold);">$0</span>
+                        </div>
+                        <!-- Trust Score Bar -->
+                        <div style="margin-top: 10px; padding: 0 4px;">
+                            <div
+                                style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                <div id="erc8004TrustBar"
+                                    style="height: 100%; width: 0%; background: linear-gradient(90deg, #00ff88, #3b82f6); border-radius: 3px; transition: width 0.5s ease;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Reasoning Terminal (Neural Terminal v2.0) -->
                 <div id="reasoning-terminal-container" class="sidebar-terminal"></div>
 

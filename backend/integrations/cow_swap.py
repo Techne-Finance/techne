@@ -210,6 +210,66 @@ class CowSwapClient:
             print(f"[CowSwap] Status error: {e}")
             return None
     
+    async def wait_for_fill(
+        self,
+        order_uid: str,
+        poll_interval: int = 10,
+        timeout: int = 300
+    ) -> Optional[Dict]:
+        """
+        Wait for a CoW order to be filled.
+        
+        Args:
+            order_uid: The order UID returned from create_order
+            poll_interval: Seconds between status checks (default 10s)
+            timeout: Maximum wait time in seconds (default 5 min)
+            
+        Returns:
+            Order details if filled, None if cancelled/expired/timeout
+        """
+        import asyncio
+        
+        elapsed = 0
+        print(f"[CowSwap] Waiting for order {order_uid[:20]}... to be filled")
+        
+        while elapsed < timeout:
+            status = await self.get_order_status(order_uid)
+            
+            if status is None:
+                print(f"[CowSwap] Failed to get order status")
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
+                continue
+            
+            order_status = status.get("status", "unknown")
+            
+            if order_status == "fulfilled":
+                print(f"[CowSwap] ✅ Order FILLED!")
+                print(f"  Executed sell: {status.get('executedSellAmount', 'N/A')}")
+                print(f"  Executed buy: {status.get('executedBuyAmount', 'N/A')}")
+                return status
+            
+            elif order_status == "cancelled":
+                print(f"[CowSwap] ❌ Order CANCELLED")
+                return None
+            
+            elif order_status == "expired":
+                print(f"[CowSwap] ⏰ Order EXPIRED")
+                return None
+            
+            elif order_status in ["open", "pending"]:
+                print(f"[CowSwap] ⏳ Order {order_status}... ({elapsed}s)")
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
+            
+            else:
+                print(f"[CowSwap] Unknown status: {order_status}")
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
+        
+        print(f"[CowSwap] ⏰ Timeout waiting for fill after {timeout}s")
+        return None
+    
     async def swap(
         self,
         sell_token: str,

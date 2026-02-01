@@ -1,5 +1,6 @@
 require("dotenv").config();
 require("@nomicfoundation/hardhat-ethers");
+require("@nomicfoundation/hardhat-verify");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -32,6 +33,21 @@ module.exports = {
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
             chainId: 84532
         }
+    },
+    etherscan: {
+        apiKey: {
+            base: process.env.BASESCAN_API_KEY || ""
+        },
+        customChains: [
+            {
+                network: "base",
+                chainId: 8453,
+                urls: {
+                    apiURL: "https://api.basescan.org/api",
+                    browserURL: "https://basescan.org"
+                }
+            }
+        ]
     },
     paths: {
         sources: "./contracts",

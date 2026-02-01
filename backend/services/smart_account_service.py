@@ -25,8 +25,8 @@ RPC_URL = os.getenv("ALCHEMY_RPC_URL", "https://base-mainnet.g.alchemy.com/v2/Aq
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 BUNDLER_URL = os.getenv("PIMLICO_BUNDLER_URL", "https://api.pimlico.io/v2/8453/rpc?apikey=pim_demo_key")
 
-# Contract addresses - Factory V2 (executeWithSessionKey - no bundler!) 2026-02-01
-FACTORY_ADDRESS = os.getenv("TECHNE_FACTORY_ADDRESS", "0x9192DC52445E3d6e85EbB53723cFC2Eb9dD6e02A")
+# Contract addresses - Factory V4 (with ERC-8004 identity minting) 2026-02-01
+FACTORY_ADDRESS = os.getenv("TECHNE_FACTORY_ADDRESS", "0x6f93C211695c2ea7D81c7A9139590835ef7A2364")
 ENTRYPOINT_V07 = "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
 
 # Factory ABI (with salt support for 1 agent = 1 smart account)

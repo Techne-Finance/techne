@@ -40,6 +40,7 @@ class PortfolioDashboard {
         this.connectWebSocket();
         this.initPerformanceChart();
         this.updateFundButtonState(); // Check if agents exist
+        this.loadERC8004Identity();  // Load ERC-8004 agent identity
         console.log('[Portfolio] Dashboard initialized');
     }
 
@@ -2450,6 +2451,77 @@ class PortfolioDashboard {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Load ERC-8004 Agent Identity data from API
+     * Updates the sidebar panel with trust score and identity info
+     */
+    async loadERC8004Identity() {
+        if (!window.connectedWallet) return;
+
+        const panel = document.getElementById('erc8004Panel');
+        if (!panel) return;
+
+        try {
+            // Get deployed agent
+            const deployedAgent = this.getDeployedAgent();
+            if (!deployedAgent) {
+                panel.style.display = 'none';
+                return;
+            }
+
+            const smartAccount = deployedAgent.agent_address || deployedAgent.address;
+            if (!smartAccount) {
+                panel.style.display = 'none';
+                return;
+            }
+
+            // Fetch ERC-8004 data from API
+            const API_BASE = window.API_BASE || '';
+            const response = await fetch(`${API_BASE}/api/agent-trust-score/${smartAccount}`);
+
+            if (!response.ok) {
+                console.log('[ERC-8004] No identity found for this agent');
+                panel.style.display = 'none';
+                return;
+            }
+
+            const data = await response.json();
+
+            if (!data.registered) {
+                // Agent not yet registered with ERC-8004
+                panel.style.display = 'none';
+                return;
+            }
+
+            // Show panel and update values
+            panel.style.display = 'block';
+
+            const tokenIdEl = document.getElementById('erc8004TokenId');
+            const trustScoreEl = document.getElementById('erc8004TrustScore');
+            const executionsEl = document.getElementById('erc8004Executions');
+            const valueEl = document.getElementById('erc8004Value');
+            const trustBarEl = document.getElementById('erc8004TrustBar');
+
+            if (tokenIdEl) tokenIdEl.textContent = `#${data.token_id || 0}`;
+            if (trustScoreEl) trustScoreEl.textContent = `${(data.trust_score || 0).toFixed(1)}%`;
+            if (executionsEl) executionsEl.textContent = data.total_executions || 0;
+            if (valueEl) valueEl.textContent = `$${this.formatCompact(data.total_value_managed_usd || 0)}`;
+            if (trustBarEl) trustBarEl.style.width = `${data.trust_score || 0}%`;
+
+            console.log('[ERC-8004] Identity loaded:', data);
+
+        } catch (e) {
+            console.warn('[ERC-8004] Failed to load identity:', e.message);
+            panel.style.display = 'none';
+        }
+    }
+
+    formatCompact(num) {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return num.toFixed(0);
     }
 }
 

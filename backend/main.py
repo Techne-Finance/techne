@@ -179,6 +179,22 @@ except ImportError as e:
     print(f"[Warning] Agent service router not available: {e}")
     AGENT_SERVICE_AVAILABLE = False
 
+# Import premium router (Artisan Agent - $50/mo subscription)
+try:
+    from api.premium_router import router as premium_router
+    PREMIUM_ROUTER_AVAILABLE = True
+except ImportError as e:
+    print(f"[Warning] Premium router not available: {e}")
+    PREMIUM_ROUTER_AVAILABLE = False
+
+# Import ERC-8004 router (Agent Identity & Reputation)
+try:
+    from api.erc8004_router import router as erc8004_router
+    ERC8004_ROUTER_AVAILABLE = True
+except ImportError as e:
+    print(f"[Warning] ERC-8004 router not available: {e}")
+    ERC8004_ROUTER_AVAILABLE = False
+
 
 app = FastAPI(
     title="Techne.finance API",
@@ -352,6 +368,11 @@ if PORTFOLIO_DATA_ROUTER_AVAILABLE:
 if AGENT_SERVICE_AVAILABLE:
     app.include_router(agent_service_router)
     print("[AgentService] Scalable agent management API loaded - /api/agents")
+
+# Include Premium routes (Artisan Agent - $50/mo subscription)
+if PREMIUM_ROUTER_AVAILABLE:
+    app.include_router(premium_router)
+    print("[Premium] Artisan Agent subscription API loaded - /api/premium")
 
 
 # Include Telegram bot API routes

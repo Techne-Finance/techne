@@ -24,8 +24,8 @@ const BASE_USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 // Techne Agent Vault V4.3.3 on Base 
 const TECHNE_VAULT_ADDRESS = '0x1ff18a7b56d7fd3b07ce789e47ac587de2f14e0d';
 
-// Smart Account Factory V3 (with executeWithSessionKey - no bundler!) - deployed 2026-02-01
-const TECHNE_FACTORY_ADDRESS = '0x36945Cc50Aa50E7473231Eb57731dbffEf60C3a4';
+// Smart Account Factory V4 (with ERC-8004 identity minting) - deployed 2026-02-01
+const TECHNE_FACTORY_ADDRESS = '0x6f93C211695c2ea7D81c7A9139590835ef7A2364';
 const TECHNE_IMPLEMENTATION_ADDRESS = '0xde70b3300f5fe05F4D698FEFe231cf8d874a6575';
 
 /**
