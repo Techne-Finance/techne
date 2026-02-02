@@ -195,6 +195,14 @@ except ImportError as e:
     print(f"[Warning] ERC-8004 router not available: {e}")
     ERC8004_ROUTER_AVAILABLE = False
 
+# Import Artisan router (OpenClaw MCP Integration - $99 Premium Bot)
+try:
+    from api.artisan_router import router as artisan_router
+    ARTISAN_ROUTER_AVAILABLE = True
+except ImportError as e:
+    print(f"[Warning] Artisan router not available: {e}")
+    ARTISAN_ROUTER_AVAILABLE = False
+
 
 app = FastAPI(
     title="Techne.finance API",
@@ -369,11 +377,15 @@ if AGENT_SERVICE_AVAILABLE:
     app.include_router(agent_service_router)
     print("[AgentService] Scalable agent management API loaded - /api/agents")
 
-# Include Premium routes (Artisan Agent - $50/mo subscription)
+# Include Premium routes (Artisan Agent - $99/mo subscription)
 if PREMIUM_ROUTER_AVAILABLE:
     app.include_router(premium_router)
     print("[Premium] Artisan Agent subscription API loaded - /api/premium")
 
+# Include Artisan routes (OpenClaw MCP Integration - Session Key Execution)
+if ARTISAN_ROUTER_AVAILABLE:
+    app.include_router(artisan_router)
+    print("[Artisan] OpenClaw MCP bot API loaded - /api/artisan")
 
 # Include Telegram bot API routes
 try:

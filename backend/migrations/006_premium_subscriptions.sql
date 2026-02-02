@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS premium_subscriptions (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     expires_at TIMESTAMPTZ,
     x402_payment_id TEXT,
-    monthly_price_usd DECIMAL(10,2) DEFAULT 50.00,
+    monthly_price_usd DECIMAL(10,2) DEFAULT 99.00,
     UNIQUE(user_address)
 );
 

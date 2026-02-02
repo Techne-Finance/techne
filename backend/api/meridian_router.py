@@ -34,6 +34,14 @@ CREDITS_PACKAGE = {
     "price_display": "0.10"
 }
 
+# Premium subscription pricing ($99/mo)
+PREMIUM_PACKAGE = {
+    "price_usdc": "99000000",  # 99 USDC (6 decimals)
+    "price_display": "99.00",
+    "duration_days": 30,
+    "product": "Artisan Bot"
+}
+
 
 class PaymentRequest(BaseModel):
     """Request with signed payment payload from frontend"""
@@ -73,6 +81,35 @@ async def get_payment_requirements():
         "priceDisplay": CREDITS_PACKAGE["price_display"],
         "usdcAddress": USDC_ADDRESS,
         "recipientAddress": MERIDIAN_CONTRACT  # Must match authorization.to
+    }
+
+
+@router.get("/premium-requirements")
+async def get_premium_requirements():
+    """
+    Get payment requirements for $99 Artisan Bot subscription.
+    Uses same x402 flow as credits but different amount.
+    """
+    import time
+    
+    return {
+        "amount": PREMIUM_PACKAGE["price_usdc"],
+        "recipient": MERIDIAN_CONTRACT,
+        "network": NETWORK,
+        "asset": USDC_ADDRESS,
+        "scheme": "exact",
+        "maxAmountRequired": PREMIUM_PACKAGE["price_usdc"],
+        "maxTimeoutSeconds": 3600,
+        "resource": "https://techne.finance/premium",
+        "description": "Artisan Bot - 30 day subscription",
+        "mimeType": "application/json",
+        "id": f"premium-{int(time.time() * 1000)}",
+        # Extra info for frontend
+        "priceDisplay": PREMIUM_PACKAGE["price_display"],
+        "usdcAddress": USDC_ADDRESS,
+        "recipientAddress": MERIDIAN_CONTRACT,
+        "product": PREMIUM_PACKAGE["product"],
+        "durationDays": PREMIUM_PACKAGE["duration_days"]
     }
 
 

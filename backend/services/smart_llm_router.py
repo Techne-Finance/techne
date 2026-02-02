@@ -3,10 +3,11 @@ Smart LLM Router for Artisan Agent
 Automatically routes queries to the most cost-effective model
 
 Tier System:
-- Tier 1 (Free/Cheap): Groq Llama 3.3 70B - simple queries
+- Tier 1 (Free/Cheap): Groq Llama 3.3 70B or OpenRouter - simple queries
 - Tier 2 (Low Cost): GPT-4o-mini or DeepSeek - medium complexity  
 - Tier 3 (Premium): Kimi K2.5 - complex analysis, multi-step reasoning
 
+OpenRouter: Single API for multiple cheap models (Llama, Mistral, Gemma, etc.)
 Cost savings: ~80% of queries can use Tier 1-2
 """
 
@@ -29,10 +30,11 @@ class QueryComplexity(Enum):
 
 class LLMTier(Enum):
     """LLM tiers by cost"""
-    GROQ = "groq"           # Free/cheap - Llama 3.3 70B
-    DEEPSEEK = "deepseek"   # Very cheap - DeepSeek V3
-    GPT4_MINI = "gpt4-mini" # Low cost - GPT-4o-mini
-    KIMI = "kimi"           # Premium - Kimi K2.5
+    GROQ = "groq"             # Free/cheap - Llama 3.3 70B
+    OPENROUTER = "openrouter" # Cheap - Many models via one API
+    DEEPSEEK = "deepseek"     # Very cheap - DeepSeek V3
+    GPT4_MINI = "gpt4-mini"   # Low cost - GPT-4o-mini
+    KIMI = "kimi"             # Premium - Kimi K2.5
 
 
 # Complexity detection patterns
@@ -78,6 +80,7 @@ class SmartLLMRouter:
     def __init__(self):
         # API Keys
         self.groq_key = os.getenv("GROQ_API_KEY")
+        self.openrouter_key = os.getenv("OPENROUTER_API_KEY")
         self.deepseek_key = os.getenv("DEEPSEEK_API_KEY")
         self.openai_key = os.getenv("OPENAI_API_KEY")
         self.kimi_key = os.getenv("KIMI_API_KEY") or os.getenv("MOONSHOT_API_KEY")
@@ -89,6 +92,7 @@ class SmartLLMRouter:
         # Usage tracking
         self.usage_stats = {
             "groq": {"calls": 0, "tokens": 0, "cost": 0.0},
+            "openrouter": {"calls": 0, "tokens": 0, "cost": 0.0},
             "deepseek": {"calls": 0, "tokens": 0, "cost": 0.0},
             "gpt4-mini": {"calls": 0, "tokens": 0, "cost": 0.0},
             "kimi": {"calls": 0, "tokens": 0, "cost": 0.0}
@@ -100,6 +104,17 @@ class SmartLLMRouter:
             self.clients[LLMTier.GROQ] = httpx.AsyncClient(
                 base_url="https://api.groq.com/openai/v1",
                 headers={"Authorization": f"Bearer {self.groq_key}"},
+                timeout=60.0
+            )
+        
+        if self.openrouter_key:
+            self.clients[LLMTier.OPENROUTER] = httpx.AsyncClient(
+                base_url="https://openrouter.ai/api/v1",
+                headers={
+                    "Authorization": f"Bearer {self.openrouter_key}",
+                    "HTTP-Referer": "https://techne.finance",
+                    "X-Title": "Techne Finance"
+                },
                 timeout=60.0
             )
         
@@ -171,10 +186,12 @@ class SmartLLMRouter:
             elif LLMTier.GPT4_MINI in self.clients:
                 return LLMTier.GPT4_MINI
         
-        # Simple queries prefer Groq (free)
+        # Simple queries prefer Groq (free) or OpenRouter
         if complexity == QueryComplexity.SIMPLE:
             if LLMTier.GROQ in self.clients:
                 return LLMTier.GROQ
+            elif LLMTier.OPENROUTER in self.clients:
+                return LLMTier.OPENROUTER
             elif LLMTier.DEEPSEEK in self.clients:
                 return LLMTier.DEEPSEEK
         
@@ -186,8 +203,8 @@ class SmartLLMRouter:
             elif LLMTier.KIMI in self.clients:
                 return LLMTier.KIMI
         
-        # Fallback chain: DeepSeek → GPT-4o-mini → Groq → Kimi
-        for tier in [LLMTier.DEEPSEEK, LLMTier.GPT4_MINI, LLMTier.GROQ, LLMTier.KIMI]:
+        # Fallback chain: OpenRouter → DeepSeek → GPT-4o-mini → Groq → Kimi
+        for tier in [LLMTier.OPENROUTER, LLMTier.DEEPSEEK, LLMTier.GPT4_MINI, LLMTier.GROQ, LLMTier.KIMI]:
             if tier in self.clients:
                 return tier
         
@@ -285,6 +302,7 @@ class SmartLLMRouter:
         """Get model name for tier"""
         return {
             LLMTier.GROQ: "llama-3.3-70b-versatile",
+            LLMTier.OPENROUTER: "meta-llama/llama-3.3-70b-instruct",  # Cheap via OpenRouter
             LLMTier.DEEPSEEK: "deepseek-chat",
             LLMTier.GPT4_MINI: "gpt-4o-mini",
             LLMTier.KIMI: "moonshot-v1-auto"
@@ -293,7 +311,8 @@ class SmartLLMRouter:
     def _get_fallback_tier(self, current: LLMTier) -> Optional[LLMTier]:
         """Get fallback tier if current fails"""
         fallback_chain = {
-            LLMTier.GROQ: LLMTier.DEEPSEEK,
+            LLMTier.GROQ: LLMTier.OPENROUTER,
+            LLMTier.OPENROUTER: LLMTier.DEEPSEEK,
             LLMTier.DEEPSEEK: LLMTier.GPT4_MINI,
             LLMTier.GPT4_MINI: LLMTier.KIMI,
             LLMTier.KIMI: None
@@ -311,7 +330,8 @@ class SmartLLMRouter:
         
         # Approximate costs per 1M tokens
         costs = {
-            "groq": 0.0,      # Free tier
+            "groq": 0.0,        # Free tier
+            "openrouter": 0.10, # Very cheap via OpenRouter
             "deepseek": 0.14,
             "gpt4-mini": 0.15,
             "kimi": 0.55

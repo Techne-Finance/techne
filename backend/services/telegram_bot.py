@@ -27,12 +27,34 @@ from telegram.ext import (
 import httpx
 
 from services.kimi_client import get_kimi_client, ARTISAN_TOOLS
+from services.supermemory import get_memory, extract_facts_from_response
 
 logger = logging.getLogger("ArtisanBot")
 
 # Configuration
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_ARTISAN_BOT_TOKEN")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+
+# SAFETY: Owner ID Lock - ONLY these users can control the bot
+# Set via env or leave empty to use subscription-based auth
+OWNER_TELEGRAM_IDS = [
+    int(x.strip()) for x in os.getenv("OWNER_TELEGRAM_IDS", "").split(",") 
+    if x.strip().isdigit()
+]
+
+# SAFETY: Allowed groups (empty = no groups allowed - recommended!)
+ALLOWED_GROUP_IDS = [
+    int(x.strip()) for x in os.getenv("ALLOWED_GROUP_IDS", "").split(",") 
+    if x.strip().isdigit()
+]
+
+# SAFETY: Trade limits per autonomy mode
+TRADE_LIMITS = {
+    "observer": 0,         # No trading
+    "advisor": 0,          # Needs confirmation
+    "copilot": 1000,       # Auto-trade up to $1000
+    "full_auto": 10000     # Auto-trade up to $10000
+}
 
 
 class ArtisanBot:
@@ -61,6 +83,8 @@ class ArtisanBot:
         self.app.add_handler(CommandHandler("status", self.status_command))
         self.app.add_handler(CommandHandler("disconnect", self.disconnect_command))
         self.app.add_handler(CommandHandler("help", self.help_command))
+        self.app.add_handler(CommandHandler("import", self.import_command))
+        self.app.add_handler(CommandHandler("create", self.create_command))
         self.app.add_handler(CallbackQueryHandler(self.button_callback))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.message_handler))
     
@@ -88,19 +112,19 @@ class ArtisanBot:
             success = await self._validate_code(code, chat_id, update.effective_user.username)
             
             if success.get("success"):
-                # Show mode selection
+                # Show agent selection (import vs create)
                 keyboard = [
-                    [InlineKeyboardButton("👁️ Observer (View Only)", callback_data="mode_observer")],
-                    [InlineKeyboardButton("💡 Advisor (Suggest + Confirm)", callback_data="mode_advisor")],
-                    [InlineKeyboardButton("🤝 Co-pilot (Auto < $1000)", callback_data="mode_copilot")],
-                    [InlineKeyboardButton("🤖 Full Auto (All Autonomous)", callback_data="mode_full_auto")]
+                    [InlineKeyboardButton("📥 Import Existing Agent", callback_data="agent_import")],
+                    [InlineKeyboardButton("🆕 Create New Agent", callback_data="agent_create")]
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
                 await update.message.reply_text(
                     f"🎉 *Welcome to Artisan Agent!*\n\n"
                     f"Your wallet: `{success['user_address'][:10]}...`\n\n"
-                    f"Choose your autonomy mode:",
+                    f"*Step 1:* Connect your agent:\n"
+                    f"• Have an agent? Import it\n"
+                    f"• New user? Create one on website",
                     parse_mode="Markdown",
                     reply_markup=reply_markup
                 )
@@ -239,6 +263,8 @@ class ArtisanBot:
             "*Commands:*\n"
             "/status - Portfolio summary\n"
             "/mode - Change autonomy mode\n"
+            "/import - Connect existing agent\n"
+            "/create - Create new agent\n"
             "/disconnect - Cancel subscription\n\n"
             "*Natural language:*\n"
             "Just type what you want!\n\n"
@@ -251,6 +277,116 @@ class ArtisanBot:
             "_Your mode determines what I can do automatically._",
             parse_mode="Markdown"
         )
+    
+    async def import_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Import existing agent - /import 0x1234..."""
+        chat_id = update.effective_chat.id
+        args = context.args
+        
+        # Check subscription
+        sub = await self._get_subscription(chat_id)
+        if not sub or not sub.get("found"):
+            await update.message.reply_text(
+                "❌ Not connected. First activate with:\n"
+                "`/start ARTISAN-XXXX-XXXX`",
+                parse_mode="Markdown"
+            )
+            return
+        
+        # Check if agent address provided
+        if not args:
+            await update.message.reply_text(
+                "*📥 Import Existing Agent*\n\n"
+                "Send your agent address:\n"
+                "`/import 0x1234...abcd`\n\n"
+                "Where to find it:\n"
+                "• techne.finance/portfolio → Agent Settings\n"
+                "• Or check your wallet for Smart Account address",
+                parse_mode="Markdown"
+            )
+            return
+        
+        agent_address = args[0].strip()
+        
+        # Validate address format
+        if not agent_address.startswith("0x") or len(agent_address) != 42:
+            await update.message.reply_text(
+                "❌ Invalid address format.\n"
+                "Must be: 0x followed by 40 hex characters\n\n"
+                f"You sent: `{agent_address[:20]}...`",
+                parse_mode="Markdown"
+            )
+            return
+        
+        # Link agent to subscription
+        try:
+            response = await self.http.post(
+                "/api/artisan/link-agent",
+                json={
+                    "chat_id": chat_id,
+                    "agent_address": agent_address,
+                    "user_address": sub["user_address"]
+                }
+            )
+            result = response.json()
+            
+            if result.get("success"):
+                # Show mode selection after agent linked
+                keyboard = [
+                    [InlineKeyboardButton("👁️ Observer (View Only)", callback_data="select_mode_observer")],
+                    [InlineKeyboardButton("💡 Advisor (Suggest + Confirm)", callback_data="select_mode_advisor")],
+                    [InlineKeyboardButton("🤝 Co-pilot (Auto < $1000)", callback_data="select_mode_copilot")],
+                    [InlineKeyboardButton("🤖 Full Auto (All Autonomous)", callback_data="select_mode_full_auto")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(
+                    "✅ *Agent Connected!*\n\n"
+                    f"Agent: `{agent_address[:10]}...{agent_address[-6:]}`\n\n"
+                    "*Step 2:* Choose your autonomy mode:",
+                    parse_mode="Markdown",
+                    reply_markup=reply_markup
+                )
+            else:
+                await update.message.reply_text(
+                    f"❌ Failed to connect: {result.get('error', 'Unknown error')}"
+                )
+        except Exception as e:
+            logger.error(f"Import agent error: {e}")
+            await update.message.reply_text(f"❌ Error: {e}")
+    
+    async def create_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Redirect to website for creating new agent"""
+        chat_id = update.effective_chat.id
+        
+        # Check subscription
+        sub = await self._get_subscription(chat_id)
+        if not sub or not sub.get("found"):
+            await update.message.reply_text(
+                "❌ Not connected. First activate with:\n"
+                "`/start ARTISAN-XXXX-XXXX`",
+                parse_mode="Markdown"
+            )
+            return
+        
+        user_address = sub.get("user_address", "")
+        
+        await update.message.reply_text(
+            "*🆕 Create New Agent*\n\n"
+            "Creating an agent requires a wallet signature.\n\n"
+            "*Step-by-step:*\n"
+            "1️⃣ Open: techne.finance/build\n"
+            "2️⃣ Connect wallet (same as subscription)\n"
+            "3️⃣ Click \"Deploy Agent\"\n"
+            "4️⃣ Approve transaction in MetaMask\n"
+            "5️⃣ Copy agent address\n"
+            "6️⃣ Return here: `/import 0xYOUR_AGENT`\n\n"
+            "*Tutorial video:*\n"
+            "🎥 youtu.be/techne-agent-setup\n\n"
+            f"_Your wallet: {user_address[:10]}..._",
+            parse_mode="Markdown"
+        )
+
     
     async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle button clicks"""
@@ -291,11 +427,83 @@ class ArtisanBot:
         
         elif data == "cancel_disconnect":
             await query.edit_message_text("✅ Cancelled. Still connected!")
+        
+        elif data == "agent_import":
+            # User wants to import existing agent
+            await query.edit_message_text(
+                "*📥 Import Existing Agent*\n\n"
+                "Send your agent address:\n"
+                "`/import 0x1234...abcd`\n\n"
+                "*Where to find it:*\n"
+                "• techne.finance/portfolio → Agent Settings\n"
+                "• Or check your wallet txs for Smart Account",
+                parse_mode="Markdown"
+            )
+        
+        elif data == "agent_create":
+            # User needs to create new agent on website
+            sub = await self._get_subscription(chat_id)
+            user_address = sub.get("user_address", "")[:10] if sub else ""
+            
+            await query.edit_message_text(
+                "*🆕 Create New Agent*\n\n"
+                "Creating an agent requires a wallet signature.\n\n"
+                "*Step-by-step:*\n"
+                "1️⃣ Open: techne.finance/build\n"
+                "2️⃣ Connect wallet (same as subscription)\n"
+                "3️⃣ Click \"Deploy Agent\"\n"
+                "4️⃣ Approve transaction in MetaMask\n"
+                "5️⃣ Copy agent address\n"
+                "6️⃣ Return here: `/import 0xYOUR_AGENT`\n\n"
+                "*Tutorial video:*\n"
+                "🎥 youtu.be/techne-agent-setup\n\n"
+                f"_Your wallet: {user_address}..._",
+                parse_mode="Markdown"
+            )
+        
+        elif data.startswith("select_mode_"):
+            # Mode selection after agent is linked
+            mode = data.replace("select_mode_", "")
+            sub = await self._get_subscription(chat_id)
+            
+            if sub and sub.get("found"):
+                await self._change_mode(sub["user_address"], mode)
+                
+                mode_emojis = {
+                    "observer": "👁️",
+                    "advisor": "💡",
+                    "copilot": "🤝",
+                    "full_auto": "🤖"
+                }
+                
+                await query.edit_message_text(
+                    f"{mode_emojis.get(mode, '🤖')} *Mode set to: {mode.upper()}*\n\n"
+                    f"I'm ready! Send me a message or use /help",
+                    parse_mode="Markdown"
+                )
     
     async def message_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle natural language messages"""
         chat_id = update.effective_chat.id
+        user_id = update.effective_user.id
         text = update.message.text.strip()
+        
+        # SAFETY: Block groups (unless explicitly allowed)
+        if update.effective_chat.type in ["group", "supergroup"]:
+            if ALLOWED_GROUP_IDS and chat_id not in ALLOWED_GROUP_IDS:
+                logger.warning(f"BLOCKED: Group {chat_id} not in allowed list")
+                return  # Silent block - don't respond
+            if not ALLOWED_GROUP_IDS:
+                logger.warning(f"BLOCKED: Groups disabled, ignoring {chat_id}")
+                return
+        
+        # SAFETY: Owner ID lock (if configured)
+        if OWNER_TELEGRAM_IDS and user_id not in OWNER_TELEGRAM_IDS:
+            logger.warning(f"BLOCKED: User {user_id} not in owner list")
+            await update.message.reply_text(
+                "⛔ Access denied. This bot is restricted."
+            )
+            return
         
         # Check for activation code pattern
         if text.upper().startswith("ARTISAN-"):
@@ -321,30 +529,31 @@ class ArtisanBot:
             )
             return
         
-        # Get/create conversation history
-        if chat_id not in self.conversations:
-            self.conversations[chat_id] = []
+        # SUPERMEMORY: Load persistent memory for this user
+        memory = await get_memory(sub["user_address"])
         
-        # Add user message
-        self.conversations[chat_id].append({
-            "role": "user",
-            "content": text
-        })
+        # Add user message to memory
+        memory.add_message("user", text)
+        
+        # Build conversation history with memory context
+        conversation = memory.get_history(last_n=15)
         
         # Show typing indicator
         await update.message.chat.send_action("typing")
         
         # Process with Kimi
         try:
+            # Include memory context in user_context
             user_context = {
                 "wallet_address": sub["user_address"],
                 "autonomy_mode": sub["autonomy_mode"],
-                "portfolio_value": 0  # TODO: Get from portfolio API
+                "portfolio_value": 0,  # TODO: Get from portfolio API
+                "memory_context": memory.get_context_prompt()  # User preferences & facts
             }
             
             response = await self.kimi.process_command(
                 user_message=text,
-                conversation_history=self.conversations[chat_id],
+                conversation_history=conversation,
                 tools=ARTISAN_TOOLS,
                 user_context=user_context
             )
@@ -358,35 +567,30 @@ class ArtisanBot:
                     sub["autonomy_mode"]
                 )
                 
-                # Let Kimi summarize results
-                self.conversations[chat_id].append({
-                    "role": "assistant",
-                    "content": response.get("content", ""),
-                    "tool_calls": response["tool_calls"]
-                })
-                self.conversations[chat_id].append({
-                    "role": "tool",
-                    "content": str(results)
-                })
+                # Add tool response to memory
+                memory.add_message("assistant", response.get("content", ""))
+                memory.add_message("tool", str(results))
                 
-                # Get final response
+                # Get final response from Kimi
+                final_conversation = memory.get_history(last_n=20)
                 final_response = await self.kimi.chat(
-                    self.conversations[chat_id],
+                    final_conversation,
                     temperature=0.7
                 )
                 reply_text = final_response.get("content", "Done!")
             else:
                 reply_text = response.get("content", "I'm not sure how to help with that.")
             
-            # Add to history
-            self.conversations[chat_id].append({
-                "role": "assistant",
-                "content": reply_text
-            })
+            # SUPERMEMORY: Save response and extract facts
+            memory.add_message("assistant", reply_text)
             
-            # Keep history manageable
-            if len(self.conversations[chat_id]) > 20:
-                self.conversations[chat_id] = self.conversations[chat_id][-20:]
+            # Extract long-term facts from conversation
+            facts = await extract_facts_from_response(text, reply_text)
+            for fact in facts:
+                memory.add_fact(fact)
+            
+            # Persist to Supabase
+            await memory.save()
             
             await update.message.reply_text(reply_text)
             
@@ -465,31 +669,40 @@ class ArtisanBot:
             
             logger.info(f"Executing tool: {func_name} with args: {args}")
             
-            # Check autonomy for action tools
+            # SAFETY SANDBOX: Check trade limits for action tools
             action_tools = ["execute_trade", "exit_position", "emergency_exit_all"]
             if func_name in action_tools:
-                if autonomy_mode == "observer":
+                trade_limit = TRADE_LIMITS.get(autonomy_mode, 0)
+                amount = args.get("amount_usd", 0) if func_name == "execute_trade" else 0
+                
+                if trade_limit == 0:
                     results.append({
                         "tool": func_name,
-                        "result": "Action blocked - Observer mode. Switch to Advisor or higher to enable actions."
+                        "result": f"⛔ Action blocked - {autonomy_mode} mode doesn't allow trading. Switch to copilot or full_auto.",
+                        "blocked": True
                     })
+                    logger.warning(f"SANDBOX BLOCKED: {func_name} in {autonomy_mode} mode")
                     continue
                 
-                if autonomy_mode == "advisor":
+                if amount > trade_limit:
                     results.append({
                         "tool": func_name,
-                        "result": "Action requires confirmation in Advisor mode. (Not implemented yet)"
+                        "result": f"⛔ Trade of ${amount:,.0f} exceeds {autonomy_mode} limit (${trade_limit:,.0f}). Requires confirmation.",
+                        "blocked": True,
+                        "needs_confirmation": True,
+                        "amount": amount
                     })
+                    logger.warning(f"SANDBOX BLOCKED: {func_name} ${amount} > ${trade_limit} limit")
                     continue
                 
-                if autonomy_mode == "copilot" and func_name == "execute_trade":
-                    amount = args.get("amount_usd", 0)
-                    if amount > 1000:
-                        results.append({
-                            "tool": func_name,
-                            "result": f"Trade of ${amount} requires confirmation in Co-pilot mode (>$1000 threshold)."
-                        })
-                        continue
+                # EMERGENCY: Extra confirmation for emergency_exit_all
+                if func_name == "emergency_exit_all":
+                    results.append({
+                        "tool": func_name,
+                        "result": "⚠️ Emergency exit ALL positions requires explicit confirmation. Reply 'CONFIRM EXIT ALL' to proceed.",
+                        "needs_confirmation": True
+                    })
+                    continue
             
             # Execute tool via backend API
             try:

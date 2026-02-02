@@ -7,11 +7,11 @@
 const PREMIUM_CONFIG = {
     TREASURY_ADDRESS: '0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00', // Replace with actual treasury
     USDC_ADDRESS_BASE: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base
-    SUBSCRIPTION_PRICE: 10 * 1e6, // 10 USDC (6 decimals)
+    SUBSCRIPTION_PRICE: 99 * 1e6, // 99 USDC (6 decimals) - Artisan Bot
     CREDIT_PACK_PRICE: 0.1 * 1e6, // 0.10 USDC (6 decimals)
     CREDIT_PACK_SEARCHES: 15, // 15 searches per pack
     PREMIUM_DAILY_LIMIT: 200, // 200 searches/day for premium
-    TELEGRAM_BOT: 'TechneAlertBot',
+    TELEGRAM_BOT: 'TechneArtisanBot',
     SUBSCRIPTION_DAYS: 30
 };
 
@@ -110,7 +110,7 @@ function updatePremiumUI() {
     const planName = document.getElementById('current-plan-name');
     if (planName) {
         if (premiumState.isPremium) {
-            planName.innerHTML = '<span style="color: #d4af37;">⭐ Premium Plus</span>';
+            planName.innerHTML = '<span style="color: #d4af37;">🤖 Artisan Bot</span>';
         } else if (premiumState.searchCredits > 0) {
             planName.textContent = 'Pay-per-use';
         } else {
@@ -253,69 +253,228 @@ async function handleBuyCredits() {
 }
 
 /**
- * Handle subscribe button click
+ * Handle subscribe button click - x402 Meridian Payment ($99)
  */
 async function handleSubscribe() {
+    const btn = document.getElementById('subscribe-btn');
+
+    // Must have wallet connected
     if (!window.connectedWallet) {
         Toast?.show('Please connect your wallet first', 'warning');
+        if (typeof connectWallet === 'function') connectWallet();
         return;
     }
 
-    try {
-        Toast?.show('Initiating USDC payment...', 'info');
+    // Check ethers library
+    if (typeof ethers === 'undefined') {
+        Toast?.show('Payment library not loaded. Please refresh.', 'error');
+        return;
+    }
 
-        // Check if on Base network
+    if (btn) {
+        btn.innerHTML = '<span>⏳</span> Preparing...';
+        btn.disabled = true;
+    }
+
+    try {
+        // Check Base network
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        if (chainId !== '0x2105') { // Base mainnet
-            Toast?.show('Please switch to Base network', 'warning');
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x2105' }]
-                });
-            } catch (e) {
-                console.error('Failed to switch network:', e);
-                return;
-            }
+        if (chainId !== '0x2105') {
+            Toast?.show('Switching to Base network...', 'info');
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0x2105' }]
+            });
         }
 
-        // USDC transfer (ERC20)
-        const usdcInterface = new ethers.Interface([
-            'function transfer(address to, uint256 amount) returns (bool)'
-        ]);
+        // Step 1: Get payment requirements from Meridian x402 (same as credits)
+        const reqResponse = await fetch('/api/meridian/premium-requirements');
+        if (!reqResponse.ok) throw new Error('Failed to get payment requirements');
+        const paymentReq = await reqResponse.json();
 
-        const data = usdcInterface.encodeFunctionData('transfer', [
-            PREMIUM_CONFIG.TREASURY_ADDRESS,
-            PREMIUM_CONFIG.SUBSCRIPTION_PRICE
-        ]);
+        console.log('[Premium] Payment requirements:', paymentReq);
 
-        const tx = await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [{
-                from: window.connectedWallet,
-                to: PREMIUM_CONFIG.USDC_ADDRESS_BASE,
-                data: data
-            }]
+        // Step 2: Build EIP-712 typed data for TransferWithAuthorization
+        const USDC_ADDRESS = paymentReq.usdcAddress || PREMIUM_CONFIG.USDC_ADDRESS_BASE;
+        const recipient = paymentReq.recipientAddress || PREMIUM_CONFIG.TREASURY_ADDRESS;
+        const amount = paymentReq.amount || String(PREMIUM_CONFIG.SUBSCRIPTION_PRICE); // $99 = 99000000
+        const now = Math.floor(Date.now() / 1000);
+        const validAfter = now - 3600;
+        const validBefore = now + 3600;
+        const nonce = '0x' + [...crypto.getRandomValues(new Uint8Array(32))].map(b => b.toString(16).padStart(2, '0')).join('');
+
+        const domain = {
+            name: 'USD Coin',
+            version: '2',
+            chainId: 8453, // Base
+            verifyingContract: USDC_ADDRESS
+        };
+
+        const types = {
+            TransferWithAuthorization: [
+                { name: 'from', type: 'address' },
+                { name: 'to', type: 'address' },
+                { name: 'value', type: 'uint256' },
+                { name: 'validAfter', type: 'uint256' },
+                { name: 'validBefore', type: 'uint256' },
+                { name: 'nonce', type: 'bytes32' }
+            ]
+        };
+
+        const message = {
+            from: window.connectedWallet,
+            to: recipient,
+            value: amount,
+            validAfter: validAfter,
+            validBefore: validBefore,
+            nonce: nonce
+        };
+
+        // Step 3: Request signature
+        if (btn) btn.innerHTML = '<span>✍️</span> Sign in wallet...';
+        Toast?.show('Please sign the payment in your wallet', 'info');
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const signature = await signer.signTypedData(domain, types, message);
+
+        console.log('[Premium] Signature obtained');
+
+        // Step 4: Build x402 payment payload
+        const paymentPayload = {
+            x402Version: 1,
+            scheme: "exact",
+            network: "base",
+            payload: {
+                signature: signature,
+                authorization: {
+                    from: window.connectedWallet,
+                    to: recipient,
+                    value: amount,
+                    validAfter: validAfter.toString(),
+                    validBefore: validBefore.toString(),
+                    nonce: nonce
+                }
+            }
+        };
+
+        // Step 5: Settle via Meridian (same as credits)
+        if (btn) btn.innerHTML = '<span>⏳</span> Processing payment...';
+
+        const settleResponse = await fetch('/api/meridian/settle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentPayload })
         });
 
-        Toast?.show('Payment submitted! Activating subscription...', 'info');
+        const settleResult = await settleResponse.json();
+        console.log('[Premium] Meridian settle result:', settleResult);
 
-        // Activate subscription
-        premiumState.isPremium = true;
-        premiumState.subscriptionExpires = new Date(Date.now() + PREMIUM_CONFIG.SUBSCRIPTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-        savePremiumState();
-        updatePremiumUI();
+        if (!settleResult.success) {
+            throw new Error(settleResult.error || 'Payment settlement failed');
+        }
 
-        Toast?.show('🎉 Premium Plus activated! Welcome to unlimited access.', 'success');
+        // Step 6: Create subscription in backend
+        const subResponse = await fetch('/api/premium/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                wallet_address: window.connectedWallet,
+                paymentPayload,
+                meridian_tx: settleResult.transaction
+            })
+        });
+
+        const result = await subResponse.json();
+        console.log('[Premium] Subscribe result:', result);
+
+        if (result.success) {
+            // Update local state
+            premiumState.isPremium = true;
+            premiumState.subscriptionExpires = result.expires_at;
+            premiumState.telegramConnected = false;
+            savePremiumState();
+            updatePremiumUI();
+
+            if (btn) {
+                btn.innerHTML = '<span>✓</span> Subscribed!';
+                btn.style.background = 'var(--success, #10b981)';
+            }
+
+            // Show activation code
+            const activationCode = result.activation_code;
+            Toast?.show(`🎉 Artisan Bot activated! Code: ${activationCode}`, 'success');
+
+            // Show TG connect modal
+            showActivationModal(activationCode);
+        } else {
+            throw new Error(result.error || 'Subscription failed');
+        }
 
     } catch (error) {
-        console.error('Subscription error:', error);
-        if (error.code === 4001) {
-            Toast?.show('Transaction cancelled', 'info');
-        } else {
-            Toast?.show('Payment failed: ' + (error.message || 'Unknown error'), 'error');
+        console.error('[Premium] Subscription error:', error);
+
+        let errorMsg = error.message;
+        if (error.code === 4001 || error.message.includes('rejected')) {
+            errorMsg = 'Transaction cancelled';
+        } else if (error.message.includes('insufficient')) {
+            errorMsg = 'Insufficient USDC balance (need 99 USDC on Base)';
+        }
+
+        Toast?.show('Payment failed: ' + errorMsg, 'error');
+
+        if (btn) {
+            btn.innerHTML = '💳 Subscribe with USDC';
+            btn.disabled = false;
+            btn.style.background = '';
         }
     }
+}
+
+/**
+ * Show activation code modal after successful payment
+ */
+function showActivationModal(activationCode) {
+    const existing = document.querySelector('.activation-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.className = 'activation-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;">
+            <div class="modal-content" style="background:#1a1d29;border:1px solid #d4af37;border-radius:16px;padding:32px;max-width:420px;text-align:center;">
+                <div style="font-size:48px;margin-bottom:16px;">🎉</div>
+                <h2 style="color:#d4af37;margin-bottom:8px;">Artisan Bot Activated!</h2>
+                <p style="color:#9ca3af;margin-bottom:24px;">Send this code to @TechneArtisanBot on Telegram:</p>
+                
+                <div style="background:#0f1117;border:2px dashed #d4af37;border-radius:8px;padding:16px;margin-bottom:24px;">
+                    <code style="font-size:24px;letter-spacing:4px;color:#ffffff;font-weight:bold;">${activationCode}</code>
+                </div>
+                
+                <button onclick="navigator.clipboard.writeText('${activationCode}');this.textContent='✓ Copied!';" 
+                    style="background:#d4af37;color:#000;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:16px;">
+                    📋 Copy Code
+                </button>
+                
+                <br>
+                
+                <a href="https://t.me/${PREMIUM_CONFIG.TELEGRAM_BOT}?start=${activationCode}" target="_blank"
+                    style="display:inline-block;background:#0088cc;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">
+                    📱 Open Telegram
+                </a>
+                
+                <p style="margin-top:24px;font-size:12px;color:#6b7280;">
+                    After activation, choose your autonomy mode and start trading!
+                </p>
+                
+                <button onclick="this.closest('.activation-modal').remove();" 
+                    style="margin-top:16px;background:transparent;border:1px solid #4b5563;color:#9ca3af;padding:8px 16px;border-radius:6px;cursor:pointer;">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 /**
@@ -367,10 +526,10 @@ function showUpgradeModal() {
             
             <button onclick="document.querySelector('.upgrade-modal').remove(); document.querySelector('[data-section=premium]')?.click();" class="btn-greek-option premium">
                 <div class="option-info">
-                    <span class="option-title">⭐ Premium Plus</span>
-                    <span class="option-sub">200/day + TG Signals</span>
+                    <span class="option-title">🤖 Artisan Bot</span>
+                    <span class="option-sub">AI Trading Agent + TG</span>
                 </div>
-                <span class="option-price">$10/mo</span>
+                <span class="option-price">$99/mo</span>
             </button>
             
             <button onclick="document.querySelector('.upgrade-modal').remove();" class="btn-greek-cancel">
