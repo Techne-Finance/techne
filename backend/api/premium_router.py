@@ -383,33 +383,39 @@ async def change_autonomy_mode(request: ChangeAutonomyRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/disconnect")
-async def disconnect_subscription(request: DisconnectRequest):
-    """Disconnect Telegram and cancel subscription"""
+@router.post("/unsubscribe")
+async def unsubscribe(request: DisconnectRequest):
+    """Unsubscribe - cancel subscription but keep data for 30 days"""
     try:
         supabase = get_supabase()
         user_address = request.user_address.lower()
         
+        # Set data retention: 30 days from now
+        from datetime import datetime, timedelta
+        data_expires_at = (datetime.utcnow() + timedelta(days=30)).isoformat()
+        
         result = supabase.table("premium_subscriptions").update({
             "status": "cancelled",
             "telegram_chat_id": None,
-            "telegram_username": None
+            "telegram_username": None,
+            "data_expires_at": data_expires_at
         }).eq("user_address", user_address).execute()
         
         if not result.data:
             raise HTTPException(status_code=404, detail="No subscription found")
         
-        logger.info(f"[Premium] Disconnected: {user_address[:10]}...")
+        logger.info(f"[Premium] Unsubscribed: {user_address[:10]}... (data kept until {data_expires_at[:10]})")
         
         return {
             "success": True,
-            "message": "Subscription cancelled. You can resubscribe anytime."
+            "message": "Subscription cancelled. Your data will be kept for 30 days.",
+            "data_expires_at": data_expires_at
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Disconnect error: {e}")
+        logger.error(f"Unsubscribe error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

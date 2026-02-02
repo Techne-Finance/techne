@@ -81,7 +81,7 @@ class ArtisanBot:
         self.app.add_handler(CommandHandler("start", self.start_command))
         self.app.add_handler(CommandHandler("mode", self.mode_command))
         self.app.add_handler(CommandHandler("status", self.status_command))
-        self.app.add_handler(CommandHandler("disconnect", self.disconnect_command))
+        self.app.add_handler(CommandHandler("unsubscribe", self.unsubscribe_command))
         self.app.add_handler(CommandHandler("delete", self.delete_command))
         self.app.add_handler(CommandHandler("help", self.help_command))
         self.app.add_handler(CommandHandler("import", self.import_command))
@@ -234,8 +234,8 @@ class ArtisanBot:
             logger.error(f"Status error: {e}")
             await update.message.reply_text(f"❌ Error fetching portfolio: {e}")
     
-    async def disconnect_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Disconnect subscription"""
+    async def unsubscribe_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Unsubscribe - cancel subscription but keep data for 30 days"""
         chat_id = update.effective_chat.id
         
         sub = await self._get_subscription(chat_id)
@@ -244,15 +244,17 @@ class ArtisanBot:
             return
         
         keyboard = [
-            [InlineKeyboardButton("Yes, disconnect", callback_data="confirm_disconnect")],
-            [InlineKeyboardButton("Cancel", callback_data="cancel_disconnect")]
+            [InlineKeyboardButton("Yes, unsubscribe", callback_data="confirm_unsub_step1")],
+            [InlineKeyboardButton("Cancel", callback_data="cancel_unsub")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.message.reply_text(
-            "⚠️ *Are you sure you want to disconnect?*\n\n"
-            "This will cancel your subscription.\n"
-            "You can resubscribe anytime at techne.finance/premium",
+            "⚠️ *Unsubscribe from Artisan Bot?*\n\n"
+            "Your subscription will be cancelled.\n"
+            "📦 *Your data will be kept for 30 days*\n"
+            "(conversations, preferences, memories)\n\n"
+            "You can resubscribe anytime to restore access.",
             parse_mode="Markdown",
             reply_markup=reply_markup
         )
@@ -267,19 +269,19 @@ class ArtisanBot:
             return
         
         keyboard = [
-            [InlineKeyboardButton("⚠️ Yes, DELETE everything", callback_data="confirm_delete")],
+            [InlineKeyboardButton("Continue to delete", callback_data="confirm_delete_step1")],
             [InlineKeyboardButton("Cancel", callback_data="cancel_delete")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.message.reply_text(
-            "🗑️ *PERMANENT DELETION*\n\n"
-            "This will:\n"
-            "• Cancel your subscription\n"
-            "• Delete all conversation history\n"
-            "• Delete all saved preferences\n"
-            "• Remove all agent memories\n\n"
-            "⚠️ *This cannot be undone!*",
+            "🗑️ *DELETE ALL DATA*\n\n"
+            "This will *permanently* remove:\n"
+            "• Your subscription\n"
+            "• All conversation history\n"
+            "• All saved preferences\n"
+            "• All agent memories & strategies\n\n"
+            "⚠️ *Unlike /unsubscribe, this is immediate and irreversible!*",
             parse_mode="Markdown",
             reply_markup=reply_markup
         )
@@ -293,8 +295,8 @@ class ArtisanBot:
             "/mode - Change autonomy mode\n"
             "/import - Connect existing agent\n"
             "/create - Create new agent\n"
-            "/disconnect - Cancel subscription\n"
-            "/delete - Delete all data\n\n"
+            "/unsubscribe - Cancel (keeps data 30 days)\n"
+            "/delete - Remove all data permanently\n\n"
             "*Natural language:*\n"
             "Just type what you want!\n\n"
             "Examples:\n"
@@ -446,18 +448,55 @@ class ArtisanBot:
                     parse_mode="Markdown"
                 )
         
-        elif data == "confirm_disconnect":
+        # ===== UNSUBSCRIBE FLOW (2-step) =====
+        elif data == "confirm_unsub_step1":
+            # Step 1 -> Step 2 confirmation
+            keyboard = [
+                [InlineKeyboardButton("✅ Yes, I'm sure - Unsubscribe", callback_data="confirm_unsub_final")],
+                [InlineKeyboardButton("Cancel", callback_data="cancel_unsub")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(
+                "⚠️ *Final confirmation*\n\n"
+                "Click below to unsubscribe.\n"
+                "Your data will be saved for 30 days.",
+                parse_mode="Markdown",
+                reply_markup=reply_markup
+            )
+        
+        elif data == "confirm_unsub_final":
             sub = await self._get_subscription(chat_id)
             if sub and sub.get("found"):
-                await self._disconnect(sub["user_address"])
+                await self._unsubscribe(sub["user_address"])
                 await query.edit_message_text(
-                    "👋 Disconnected.\n\nResubscribe anytime at techne.finance/premium"
+                    "👋 *Unsubscribed*\n\n"
+                    "Your subscription is cancelled.\n"
+                    "📦 Data saved for 30 days.\n\n"
+                    "Resubscribe anytime at techne.finance/premium",
+                    parse_mode="Markdown"
                 )
         
-        elif data == "cancel_disconnect":
-            await query.edit_message_text("✅ Cancelled. Still connected!")
+        elif data == "cancel_unsub":
+            await query.edit_message_text("✅ Cancelled. Still subscribed!")
         
-        elif data == "confirm_delete":
+        # ===== DELETE FLOW (2-step) =====
+        elif data == "confirm_delete_step1":
+            # Step 1 -> Step 2 final warning
+            keyboard = [
+                [InlineKeyboardButton("🗑️ DELETE EVERYTHING NOW", callback_data="confirm_delete_final")],
+                [InlineKeyboardButton("Cancel", callback_data="cancel_delete")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(
+                "🚨 *FINAL WARNING*\n\n"
+                "This will *permanently delete* all your data.\n"
+                "There is *NO recovery* possible.\n\n"
+                "Are you absolutely sure?",
+                parse_mode="Markdown",
+                reply_markup=reply_markup
+            )
+        
+        elif data == "confirm_delete_final":
             sub = await self._get_subscription(chat_id)
             if sub and sub.get("found"):
                 await self._delete(sub["user_address"])
@@ -681,15 +720,15 @@ class ArtisanBot:
         except Exception as e:
             logger.error(f"Change mode error: {e}")
     
-    async def _disconnect(self, user_address: str):
-        """Disconnect subscription"""
+    async def _unsubscribe(self, user_address: str):
+        """Unsubscribe - cancel but keep data for 30 days"""
         try:
             await self.http.post(
-                "/api/premium/disconnect",
+                "/api/premium/unsubscribe",
                 json={"user_address": user_address}
             )
         except Exception as e:
-            logger.error(f"Disconnect error: {e}")
+            logger.error(f"Unsubscribe error: {e}")
     
     async def _delete(self, user_address: str):
         """Permanently delete subscription and all data"""
