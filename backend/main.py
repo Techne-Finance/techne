@@ -474,12 +474,15 @@ except ImportError as e:
 # CORS - Hardened for production (update origins as needed)
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:3001",
     "http://localhost:5173",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "https://techne.finance",
+    "https://www.techne.finance",
     "https://app.techne.finance",
     "https://techne-finance.vercel.app",
+    "https://techne-eight.vercel.app",
     "https://techne-backend-t2umhhv3ia-ew.a.run.app",
     "https://techne-backend-516629447651.europe-west1.run.app",
 ]
