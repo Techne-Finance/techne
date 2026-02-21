@@ -27,7 +27,7 @@ import { useWalletStore } from '@/stores/walletStore'
 import { useCreditsStore, CREDIT_COSTS } from '@/stores/creditsStore'
 import { fetchPaymentRequirements, fetchPremiumRequirements, settlePayment, subscribePremium, updatePremiumSettings, fetchPremiumStatus, toggleAutoRenewal, fetchRenewalStatus } from '@/lib/api'
 import { toast } from '@/components/Toast'
-import { ethers } from 'ethers'
+// ethers loaded via dynamic import() in async payment functions
 import { SubscribeModal } from '@/components/modals/SubscribeModal'
 
 // ============ Constants ============
@@ -212,6 +212,7 @@ export function PremiumPage() {
         setPurchasing(true)
         try {
             const requirements = await fetchPaymentRequirements()
+            const { ethers } = await import('ethers')
             const usdcContract = new ethers.Contract(requirements.usdcAddress, ERC20_ABI, signer)
             const amount = ethers.parseUnits(CREDIT_PACK_PRICE, USDC_DECIMALS)
 
@@ -255,6 +256,7 @@ export function PremiumPage() {
         setSubscribing(true)
         try {
             const requirements = await fetchPremiumRequirements()
+            const { ethers } = await import('ethers')
             const usdcContract = new ethers.Contract(requirements.usdcAddress, ERC20_ABI, signer)
             const amount = ethers.parseUnits('99', USDC_DECIMALS)
 
