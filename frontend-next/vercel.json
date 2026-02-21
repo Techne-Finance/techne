@@ -2,15 +2,15 @@
     "rewrites": [
         {
             "source": "/api/:path*",
-            "destination": "https://techne-backend-t2umhhv3ia-ew.a.run.app/api/:path*"
+            "destination": "https://techne-backend-516629447651.europe-west1.run.app/api/:path*"
         },
         {
             "source": "/ws/:path*",
-            "destination": "https://techne-backend-t2umhhv3ia-ew.a.run.app/ws/:path*"
+            "destination": "https://techne-backend-516629447651.europe-west1.run.app/ws/:path*"
         },
         {
             "source": "/health",
-            "destination": "https://techne-backend-t2umhhv3ia-ew.a.run.app/health"
+            "destination": "https://techne-backend-516629447651.europe-west1.run.app/health"
         }
     ]
 }
