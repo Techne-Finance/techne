@@ -46,7 +46,7 @@ export interface Transaction {
 // ─── Agent Management Hook ───
 export function useAgentManagement() {
     const { address } = useWalletStore()
-    const qc = useQueryClient()
+    useQueryClient() // retain hook call for future invalidation
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
     const [toast, setToast] = useState<{ msg: string; type: string } | null>(null)
 

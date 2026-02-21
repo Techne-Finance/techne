@@ -177,7 +177,11 @@ class SupabaseClient:
         pool_address: str = None,
         metadata: dict = None
     ) -> Optional[dict]:
-        """Save or upsert a user position to user_positions table"""
+        """Save or upsert a user position to user_positions table.
+        
+        Upserts on (user_address, protocol, pool_address) to handle
+        multiple positions on the same protocol (e.g. 2 Aave pools).
+        """
         if not self.is_available:
             return None
             
@@ -189,13 +193,14 @@ class SupabaseClient:
             "asset": asset,
             "pool_type": pool_type,
             "apy": apy,
-            "pool_address": pool_address,
+            "pool_address": pool_address or "",
             "last_updated": datetime.utcnow().isoformat(),
             "status": "active",
             "metadata": json.dumps(metadata or {})
         }
         
-        # Upsert via POST with on_conflict (user_address, protocol)
+        # Upsert via POST with on_conflict (user_address, protocol, pool_address)
+        # Ensures multi-pool positions on same protocol don't collide
         headers = self._headers()
         headers["Prefer"] = "return=representation,resolution=merge-duplicates"
         
@@ -205,10 +210,10 @@ class SupabaseClient:
                     f"{self.url}/rest/v1/user_positions",
                     headers=headers,
                     json=data,
-                    params={"on_conflict": "user_address,protocol"}
+                    params={"on_conflict": "user_address,protocol,pool_address"}
                 )
                 if resp.status_code in [200, 201]:
-                    logger.info(f"[Supabase] User position saved: {user_address[:10]}... @ {protocol}")
+                    logger.info(f"[Supabase] User position saved: {user_address[:10]}... @ {protocol} / {pool_address or 'default'}")
                     return resp.json()[0] if resp.text else data
                 else:
                     logger.error(f"[Supabase] Save user position failed: {resp.status_code} - {resp.text}")
@@ -235,7 +240,8 @@ class SupabaseClient:
         user_address: str,
         protocol: str,
         current_value: float,
-        apy: float = None
+        apy: float = None,
+        pool_address: str = None
     ) -> bool:
         """Update current value of a position (for yield updates)"""
         data = {
@@ -245,28 +251,38 @@ class SupabaseClient:
         if apy is not None:
             data["apy"] = apy
             
+        params = {
+            "user_address": f"eq.{user_address.lower()}",
+            "protocol": f"eq.{protocol}"
+        }
+        # If pool_address provided, use it for precise matching
+        if pool_address:
+            params["pool_address"] = f"eq.{pool_address}"
+        
         result = await self._request(
             "PATCH", "user_positions",
             data=data,
-            params={
-                "user_address": f"eq.{user_address.lower()}",
-                "protocol": f"eq.{protocol}"
-            }
+            params=params
         )
         return result is not None
     
-    async def close_user_position(self, user_address: str, protocol: str) -> bool:
+    async def close_user_position(self, user_address: str, protocol: str, pool_address: str = None) -> bool:
         """Mark a position as closed"""
+        params = {
+            "user_address": f"eq.{user_address.lower()}",
+            "protocol": f"eq.{protocol}"
+        }
+        # If pool_address provided, use it for precise matching
+        if pool_address:
+            params["pool_address"] = f"eq.{pool_address}"
+        
         result = await self._request(
             "PATCH", "user_positions",
             data={
                 "status": "closed",
                 "last_updated": datetime.utcnow().isoformat()
             },
-            params={
-                "user_address": f"eq.{user_address.lower()}",
-                "protocol": f"eq.{protocol}"
-            }
+            params=params
         )
         return result is not None
     

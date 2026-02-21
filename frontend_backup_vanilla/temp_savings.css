@@ -1,0 +1,249 @@
+/* ============================================ */
+/* SAVINGS UI STYLES - MVP */
+/* ============================================ */
+
+/* Pool Cards */
+.savings-pool-card {
+    background: linear-gradient(135deg, #1a1d29 0%, #22262f 100%);
+    border: 1px solid #2d3343;
+    border-radius: 16px;
+    padding: 24px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.savings-pool-card.recommended {
+    border-color: #3b82f6;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+.savings-pool-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Recommended Badge */
+.recommended-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Pool Header */
+.pool-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.pool-header h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+}
+
+.protocol-badge {
+    background: #374151;
+    color: #9ca3af;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Stats Grid */
+.pool-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.stat-value.apy {
+    color: #10b981;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+/* Utilization Bar */
+.pool-utilization {
+    margin-bottom: 20px;
+}
+
+.utilization-label {
+    font-size: 13px;
+    color: #9ca3af;
+    margin-bottom: 8px;
+}
+
+.utilization-bar {
+    height: 6px;
+    background: #374151;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.utilization-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #3b82f6);
+    transition: width 0.3s ease;
+}
+
+/* Pool Actions */
+.pool-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.deposit-input {
+    flex: 1;
+    padding: 12px 16px;
+    background: #0f1114;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 15px;
+    font-family: inherit;
+}
+
+.deposit-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.deposit-input::placeholder {
+    color: #6b7280;
+}
+
+.btn-deposit-savings {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.btn-deposit-savings:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-deposit-savings:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Task Items */
+.tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.task-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #22262f;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+}
+
+.task-item.completed {
+    border-left-color: #10b981;
+}
+
+.task-item.failed_reverted,
+.task-item.failed_slippage,
+.task-item.failed_timeout {
+    border-left-color: #ef4444;
+}
+
+.task-item.executing {
+    border-left-color: #3b82f6;
+}
+
+.task-type {
+    font-weight: 600;
+    color: #fff;
+    font-size: 14px;
+}
+
+.task-status {
+    font-size: 13px;
+    color: #9ca3af;
+    text-transform: capitalize;
+}
+
+.task-time {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.empty-tasks {
+    text-align: center;
+    color: #6b7280;
+    padding: 20px;
+    font-size: 14px;
+}
+
+/* Loading State */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+}
+
+.error-state {
+    text-align: center;
+    padding: 40px;
+    color: #ef4444;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pool-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .pool-actions {
+        flex-direction: column;
+    }
+
+    #savings-pools {
+        grid-template-columns: 1fr;
+    }
+}

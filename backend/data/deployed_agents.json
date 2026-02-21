@@ -1,3 +1,66 @@
 {
-  "0xba9d6947c0ad6ea2aaa99507355cf83b4d098058": []
+  "0xba9d6947c0ad6ea2aaa99507355cf83b4d098058": [
+    {
+      "id": "agent_1_1770595198",
+      "name": "Agent #1",
+      "user_address": "0xba9d6947c0ad6ea2aaa99507355cf83b4d098058",
+      "agent_address": "0x31e5FDCd9cbcA130245e06A69384B1bD33e7E6aA",
+      "account_type": "erc8004",
+      "deploy_tx_hash": "0xa1c3aec4e6f7f509a583c3bdb99f33eae82e108dc248b94a8f3f81d494e39384",
+      "signature_verified": true,
+      "chain": "base",
+      "preset": "balanced-growth",
+      "pool_type": "single",
+      "risk_level": "medium",
+      "min_apy": 10.0,
+      "max_apy": 30.0,
+      "max_drawdown": 20.0,
+      "protocols": [
+        "morpho",
+        "aave",
+        "aerodrome"
+      ],
+      "preferred_assets": [
+        "USDC",
+        "WETH",
+        "USDT"
+      ],
+      "max_allocation": 20,
+      "vault_count": 5,
+      "auto_rebalance": true,
+      "only_audited": true,
+      "is_pro_mode": false,
+      "pro_config": null,
+      "rebalance_threshold": 5,
+      "max_gas_price": 50,
+      "slippage": 0.5,
+      "compound_frequency": 7,
+      "avoid_il": false,
+      "emergency_exit": true,
+      "min_pool_tvl": 10000000,
+      "duration": 30.0,
+      "apy_check_hours": 24,
+      "deployed_at": "2026-02-09T01:00:17.139025",
+      "is_active": true,
+      "positions": [],
+      "total_deposited": 0,
+      "total_value": 0,
+      "recommended_pools": [
+        {
+          "symbol": "USDC",
+          "project": "aave-v3",
+          "apy": 3.33,
+          "tvlUsd": 76572053.737436,
+          "chain": "Base",
+          "risk_score": "Low",
+          "pool": "aave-usdc-base",
+          "_score": 31.332,
+          "_trading_style": "moderate",
+          "_allocation": 20
+        }
+      ],
+      "last_scan": "2026-02-17T23:36:15.989305",
+      "last_compound_time": "2026-02-17T19:55:37.307804"
+    }
+  ]
 }

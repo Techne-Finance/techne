@@ -1,16 +1,16 @@
 import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-    X, ExternalLink, AlertTriangle, Shield, Lock, Activity, Coins,
+    X, ExternalLink, AlertTriangle, Lock,
     Flame, ArrowRight, Copy, Check, ChevronDown,
     Zap, Clock, TrendingDown, Target, Droplet, Flag,
-    BarChart3, Timer, Waves, Users, Eye, Skull, CircleAlert, Info,
-    LineChart, TrendingUp, ShieldCheck, ShieldAlert, ShieldX,
-    Scale, Fingerprint, Search,
+    Timer, Waves, Users, Eye, Skull, CircleAlert,
+    LineChart, ShieldAlert,
+    Scale, Fingerprint,
     Landmark, KeyRound, Gem, FlaskConical, Wallet, Crosshair,
     LogOut, Layers, Gauge, Microscope,
     BadgeCheck, FileQuestion, LockOpen, Sparkles, Bug, CircleCheck,
-    OctagonX, CircleDashed, FileCheck, FileX, PenLine, Snowflake,
+    OctagonX, CircleDashed, FileCheck, PenLine, Snowflake,
     UserX, Receipt, Hourglass, Verified
 } from 'lucide-react'
 import {
@@ -170,11 +170,11 @@ function RiskFlags({ pool }: { pool: any }) {
     return (
         <div className="mb-2">
             <div className="flex flex-wrap gap-1">
-                {flags.map((f, i) => (
+                {flags.map((f: { type: string; icon: React.ReactNode; text: string }, i: number) => (
                     <div key={i} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded" style={{
-                        background: `color-mix(in srgb, ${colorMap[f.type]} 6%, transparent)`,
-                        border: `1px solid color-mix(in srgb, ${colorMap[f.type]} 15%, transparent)`,
-                        color: colorMap[f.type],
+                        background: `color-mix(in srgb, ${colorMap[f.type as keyof typeof colorMap]} 6%, transparent)`,
+                        border: `1px solid color-mix(in srgb, ${colorMap[f.type as keyof typeof colorMap]} 15%, transparent)`,
+                        color: colorMap[f.type as keyof typeof colorMap],
                     }}>
                         {f.icon}
                         {f.text}

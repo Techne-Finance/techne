@@ -1,6 +1,6 @@
 """
 Premium Subscription API Router
-Handles Techne Premium ($50/mo) subscriptions with Artisan Agent
+Handles Techne Artisan ($99/mo) subscriptions with Artisan Agent
 """
 
 from fastapi import APIRouter, HTTPException, Query, Body
@@ -10,9 +10,8 @@ from datetime import datetime, timedelta
 import secrets
 import logging
 import os
+import httpx
 
-# Supabase client
-from supabase import create_client
 
 logger = logging.getLogger("PremiumAPI")
 
@@ -53,12 +52,13 @@ class ValidateSessionRequest(BaseModel):
 # ============================================
 
 def get_supabase():
-    """Get Supabase client"""
+    """Get Supabase REST client (shared module, no SDK dependency)"""
+    from infrastructure.supabase_rest import SupabaseREST
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
     if not url or not key:
         raise HTTPException(status_code=500, detail="Supabase not configured")
-    return create_client(url, key)
+    return SupabaseREST(url, key)
 
 def generate_activation_code() -> str:
     """Generate unique activation code: ARTISAN-XXXX-XXXX"""
@@ -116,10 +116,10 @@ async def subscribe_premium(request: SubscribeWithPaymentRequest):
         supabase = get_supabase()
         user_address = request.wallet_address.lower()
         
-        # Extract payment info for verification/logging
+        # Extract payment info for logging
         payment_sig = request.paymentPayload.get("payload", {}).get("signature", "")[:20]
         
-        # Check if already subscribed
+        # ── PRE-CHECK: Don't charge if already active ──
         existing = supabase.table("premium_subscriptions").select("*").eq(
             "user_address", user_address
         ).execute()
@@ -134,25 +134,97 @@ async def subscribe_premium(request: SubscribeWithPaymentRequest):
                     "expires_at": sub["expires_at"],
                     "message": "Already subscribed! Use your existing code."
                 }
-            else:
-                # Reactivate expired/cancelled subscription
-                code = generate_activation_code()
-                supabase.table("premium_subscriptions").update({
-                    "status": "active",
-                    "activation_code": code,
-                    "code_used_at": None,
-                    "telegram_chat_id": None,
-                    "expires_at": (datetime.now() + timedelta(days=30)).isoformat(),
-                    "x402_payment_id": payment_sig
-                }).eq("user_address", user_address).execute()
-                
-                return {
-                    "success": True,
-                    "already_subscribed": False,
-                    "activation_code": code,
-                    "expires_at": (datetime.now() + timedelta(days=30)).isoformat(),
-                    "message": "Subscription reactivated!"
+        
+        # ── STEP 1: Verify & settle payment through Meridian ──
+        # Without this, anyone could send a fake payload and get free premium
+        MERIDIAN_API_URL = "https://api.mrdn.finance/v1"
+        MERIDIAN_PK = os.getenv("MERIDIAN_PUBLIC_KEY", "pk_9e408b7d2b5068cc1b5e2d9c01c62660ac3705d6f3173bbeea729b647450e16f")
+        MERIDIAN_CONTRACT = "0x8E7769D440b3460b92159Dd9C6D17302b036e2d6"
+        MERIDIAN_RECIPIENT = os.getenv("MERIDIAN_RECIPIENT", "0xa30A689ec0F9D717C5bA1098455B031b868B720f")
+        
+        payment_requirements = {
+            "recipient": MERIDIAN_RECIPIENT,
+            "network": "base",
+            "asset": USDC_BASE,
+            "scheme": "exact",
+            "payTo": MERIDIAN_CONTRACT,
+            "maxTimeoutSeconds": 3600,
+            "resource": "https://techne.finance/premium",
+            "description": "Artisan Bot - 30 day subscription",
+            "mimeType": "application/json",
+            "amount": str(SUBSCRIPTION_PRICE_USDC),
+            "maxAmountRequired": str(SUBSCRIPTION_PRICE_USDC)
+        }
+        
+        meridian_tx = None
+        async with httpx.AsyncClient(timeout=30) as client:
+            # Verify payment signature
+            logger.info(f"[Premium] Verifying payment for {user_address[:10]}...")
+            verify_resp = await client.post(
+                f"{MERIDIAN_API_URL}/verify",
+                headers={
+                    "Authorization": f"Bearer {MERIDIAN_PK}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "paymentPayload": request.paymentPayload,
+                    "paymentRequirements": payment_requirements
                 }
+            )
+            verify_data = verify_resp.json()
+            logger.info(f"[Premium] Verify response: {verify_data}")
+            
+            if not verify_data.get("isValid"):
+                raise HTTPException(
+                    status_code=402,
+                    detail=f"Payment invalid: {verify_data.get('invalidReason', 'Unknown')}"
+                )
+            
+            # Settle payment (actually move the USDC)
+            logger.info(f"[Premium] Settling payment for {user_address[:10]}...")
+            settle_resp = await client.post(
+                f"{MERIDIAN_API_URL}/settle",
+                headers={
+                    "Authorization": f"Bearer {MERIDIAN_PK}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "paymentPayload": request.paymentPayload,
+                    "paymentRequirements": payment_requirements
+                }
+            )
+            settle_data = settle_resp.json()
+            logger.info(f"[Premium] Settle response: {settle_data}")
+            
+            if not settle_data.get("success"):
+                error_msg = settle_data.get('errorReason') or settle_data.get('error') or 'Settlement failed'
+                raise HTTPException(status_code=402, detail=f"Payment settlement failed: {error_msg}")
+            
+            meridian_tx = settle_data.get("transaction", "")
+            logger.info(f"[Premium] ✅ Payment settled! TX: {meridian_tx}")
+        
+        # ── STEP 2: Payment verified — now create/reactivate subscription ──
+        
+        if existing.data:
+            # Reactivate expired/cancelled subscription
+            sub = existing.data[0]
+            code = generate_activation_code()
+            supabase.table("premium_subscriptions").update({
+                "status": "active",
+                "activation_code": code,
+                "code_used_at": None,
+                "telegram_chat_id": None,
+                "expires_at": (datetime.now() + timedelta(days=30)).isoformat(),
+                "x402_payment_id": meridian_tx or payment_sig
+            }).eq("user_address", user_address).execute()
+            
+            return {
+                "success": True,
+                "already_subscribed": False,
+                "activation_code": code,
+                "expires_at": (datetime.now() + timedelta(days=30)).isoformat(),
+                "message": "Subscription reactivated!"
+            }
         
         # Create new subscription
         code = generate_activation_code()
@@ -164,7 +236,7 @@ async def subscribe_premium(request: SubscribeWithPaymentRequest):
             "autonomy_mode": "advisor",  # Default mode
             "activation_code": code,
             "expires_at": expires_at.isoformat(),
-            "x402_payment_id": payment_sig
+            "x402_payment_id": meridian_tx or payment_sig
         }).execute()
         
         logger.info(f"[Premium] New subscription: {user_address[:10]}... code: {code}")
@@ -236,68 +308,15 @@ async def validate_activation_code(request: ValidateCodeRequest):
                 "error": "Subscription is not active"
             }
         
-        # === AUTO-CREATE AGENT WALLET ===
-        agent_address = None
-        session_key_address = None
-        
-        try:
-            from services.smart_account_service import SmartAccountService
-            from eth_account import Account
-            
-            smart_account = SmartAccountService()
-            
-            # Generate unique agent ID
-            agent_id = f"artisan-{secrets.token_hex(8)}"
-            
-            # Get counterfactual smart account address
-            account_result = smart_account.create_account(
-                user_address=sub["user_address"],
-                agent_id=agent_id
-            )
-            
-            if account_result.get("success"):
-                agent_address = account_result["account_address"]
-                
-                # Generate session key for backend execution
-                session_key = Account.create()
-                session_key_address = session_key.address
-                
-                # Store in agents table for later use
-                from services.agent_service import agent_service, AgentConfig
-                
-                config = AgentConfig(
-                    chain="base",
-                    preset="artisan",
-                    risk_level="moderate"
-                )
-                
-                agent_service.create_agent(
-                    user_address=sub["user_address"],
-                    agent_address=agent_address,
-                    encrypted_private_key=session_key.key.hex(),
-                    config=config,
-                    agent_name=agent_id
-                )
-                
-                logger.info(f"[Premium] Created agent {agent_address[:10]} for {sub['user_address'][:10]}")
-            else:
-                logger.warning(f"[Premium] Agent creation failed: {account_result.get('error')}")
-                
-        except Exception as agent_error:
-            logger.error(f"[Premium] Agent creation error: {agent_error}")
-            # Continue anyway - agent can be created later
-        
-        # Link Telegram + agent to subscription
+        # Link Telegram to subscription
+        # NOTE: Agent + session key are NOT created here.
+        # They are created later by the TG bot when user first requests execution.
+        # This builds trust progressively: observe → execute → auto-renew.
         update_data = {
             "telegram_chat_id": request.telegram_chat_id,
             "telegram_username": request.telegram_username,
             "code_used_at": datetime.now().isoformat()
         }
-        
-        if agent_address:
-            update_data["agent_address"] = agent_address
-        if session_key_address:
-            update_data["session_key_address"] = session_key_address
         
         supabase.table("premium_subscriptions").update(update_data).eq(
             "id", sub["id"]
@@ -308,11 +327,9 @@ async def validate_activation_code(request: ValidateCodeRequest):
         return {
             "success": True,
             "user_address": sub["user_address"],
-            "agent_address": agent_address,
-            "session_key_address": session_key_address,
             "autonomy_mode": sub["autonomy_mode"],
             "expires_at": sub["expires_at"],
-            "message": "Welcome to Artisan Agent! 🤖 Your agent wallet is ready."
+            "message": "Welcome to Artisan! 🤖 Use me for portfolio analysis. When you're ready to execute trades, I'll set up your agent wallet."
         }
         
     except Exception as e:
@@ -608,3 +625,309 @@ async def import_agent(request: ImportAgentRequest):
     except Exception as e:
         logger.error(f"Import agent error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# AUTO-RENEWAL VIA SESSION KEYS
+# ============================================
+
+class AutoRenewalToggleRequest(BaseModel):
+    """Toggle auto-renewal on/off"""
+    user_address: str
+    enabled: bool
+
+
+@router.put("/auto-renewal")
+async def toggle_auto_renewal(request: AutoRenewalToggleRequest):
+    """
+    Enable/disable auto-renewal from agent Smart Account.
+    
+    When enabled, the bot will use the trading session key to send
+    $99 USDC from the user's Smart Account to Treasury before expiry.
+    """
+    try:
+        supabase = get_supabase()
+        user_address = request.user_address.lower()
+        
+        # Find active subscription
+        result = supabase.table("premium_subscriptions").select("*").eq(
+            "user_address", user_address
+        ).eq("status", "active").execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="No active subscription")
+        
+        sub = result.data[0]
+        
+        # Cannot enable without a deployed agent with session key
+        if request.enabled:
+            agents_result = supabase.table("agents").select(
+                "smart_account_address"
+            ).eq("user_address", user_address).execute()
+            
+            if not agents_result.data:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No deployed agent found. Deploy an agent via Build page first."
+                )
+        
+        # Update
+        supabase.table("premium_subscriptions").update({
+            "auto_renewal_enabled": request.enabled
+        }).eq("id", sub["id"]).execute()
+        
+        status = "enabled" if request.enabled else "disabled"
+        logger.info(f"[Premium] Auto-renewal {status} for {user_address[:10]}...")
+        
+        return {
+            "success": True,
+            "auto_renewal_enabled": request.enabled,
+            "agent_address": sub.get("agent_address"),
+            "message": f"Auto-renewal {status}. Bot will {'pay $99 USDC from your agent wallet before expiry' if request.enabled else 'no longer auto-renew'}."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Toggle auto-renewal error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/process-renewals")
+async def process_renewals(
+    api_key: str = Query(..., alias="key")
+):
+    """
+    Process all due auto-renewals. Protected by API key.
+    Called by external cron (Vercel/GitHub Actions/PM2).
+    
+    Finds subscriptions expiring within 5 days with auto_renewal_enabled,
+    then executes $99 USDC transfer from each user's Smart Account to Treasury.
+    """
+    # Verify API key
+    expected_key = os.getenv("CRON_API_KEY", "techne-cron-secret")
+    if api_key != expected_key:
+        raise HTTPException(status_code=403, detail="Invalid API key")
+    
+    try:
+        supabase = get_supabase()
+        
+        # Find subscriptions due for renewal (expiring in ≤ 5 days)
+        from datetime import timezone
+        cutoff = (datetime.now(timezone.utc) + timedelta(days=5)).isoformat()
+        
+        result = supabase.table("premium_subscriptions").select("*").eq(
+            "auto_renewal_enabled", True
+        ).eq("status", "active").lt(
+            "expires_at", cutoff
+        ).execute()
+        
+        if not result.data:
+            return {"success": True, "processed": 0, "message": "No renewals due"}
+        
+        # Process each renewal
+        results = []
+        
+        for sub in result.data:
+            renewal_result = await _process_single_renewal(supabase, sub)
+            results.append(renewal_result)
+        
+        succeeded = sum(1 for r in results if r["success"])
+        failed = len(results) - succeeded
+        
+        logger.info(f"[Premium] Renewals processed: {succeeded} OK, {failed} failed")
+        
+        return {
+            "success": True,
+            "processed": len(results),
+            "succeeded": succeeded,
+            "failed": failed,
+            "details": results
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Process renewals error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _process_single_renewal(supabase, sub: dict) -> dict:
+    """
+    Process a single auto-renewal payment.
+    
+    Builds USDC transfer calldata → executes via session key → extends subscription.
+    """
+    user_address = sub["user_address"]
+    agent_address = sub.get("agent_address")
+    sub_id = sub["id"]
+    
+    try:
+        # Skip if renewal failed recently (1 hour backoff)
+        if sub.get("renewal_failed_at"):
+            from datetime import timezone
+            failed_at = datetime.fromisoformat(sub["renewal_failed_at"].replace("Z", "+00:00"))
+            if (datetime.now(timezone.utc) - failed_at).total_seconds() < 3600:
+                return {
+                    "success": False,
+                    "user": user_address[:10],
+                    "reason": "Backoff — failed recently, retrying later"
+                }
+        
+        # Get agent + session key from agents table (deployed via Build page)
+        agents_result = supabase.table("agents").select(
+            "encrypted_private_key, smart_account_address"
+        ).eq("user_address", user_address).execute()
+        
+        if not agents_result.data:
+            return {
+                "success": False,
+                "user": user_address[:10],
+                "reason": "No deployed agent found — user needs to deploy via Build page first"
+            }
+        
+        agent_record = agents_result.data[0]
+        session_key_private = agent_record["encrypted_private_key"]
+        agent_address = agent_record["smart_account_address"]
+        
+        # Build USDC transfer calldata: transfer(Treasury, $99)
+        from web3 import Web3
+        
+        ERC20_TRANSFER_ABI = [{
+            "inputs": [
+                {"name": "to", "type": "address"},
+                {"name": "amount", "type": "uint256"}
+            ],
+            "name": "transfer",
+            "outputs": [{"name": "", "type": "bool"}],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }]
+        
+        w3 = Web3()
+        usdc = w3.eth.contract(
+            address=Web3.to_checksum_address(USDC_BASE),
+            abi=ERC20_TRANSFER_ABI
+        )
+        
+        calldata = usdc.functions.transfer(
+            Web3.to_checksum_address(TREASURY_ADDRESS),
+            SUBSCRIPTION_PRICE_USDC  # $99 in 6 decimals
+        )._encode_transaction_data()
+        
+        # Execute via session key
+        from services.smart_account_service import SmartAccountService
+        smart_account = SmartAccountService()
+        
+        tx_result = smart_account.execute_with_session_key(
+            smart_account=agent_address,
+            target=USDC_BASE,
+            value=0,
+            calldata=bytes.fromhex(calldata[2:]),  # Strip 0x prefix
+            session_key_private=session_key_private,
+            estimated_value_usd=99
+        )
+        
+        if tx_result.get("success"):
+            # Extend subscription by 30 days
+            new_expiry = datetime.now() + timedelta(days=30)
+            
+            supabase.table("premium_subscriptions").update({
+                "expires_at": new_expiry.isoformat(),
+                "last_renewal_tx": tx_result["tx_hash"],
+                "renewal_failed_at": None
+            }).eq("id", sub_id).execute()
+            
+            # Log to audit trail
+            supabase.table("artisan_actions").insert({
+                "subscription_id": sub_id,
+                "action_type": "auto_renewal",
+                "details": {
+                    "amount_usdc": 99,
+                    "tx_hash": tx_result["tx_hash"],
+                    "new_expiry": new_expiry.isoformat(),
+                    "treasury": TREASURY_ADDRESS
+                },
+                "tx_hash": tx_result["tx_hash"],
+                "executed": True,
+                "executed_at": datetime.utcnow().isoformat()
+            }).execute()
+            
+            logger.info(
+                f"[Premium] Auto-renewed {user_address[:10]} → TX: {tx_result['tx_hash']}"
+            )
+            
+            return {
+                "success": True,
+                "user": user_address[:10],
+                "tx_hash": tx_result["tx_hash"],
+                "new_expiry": new_expiry.isoformat()
+            }
+        else:
+            # Mark failed
+            supabase.table("premium_subscriptions").update({
+                "renewal_failed_at": datetime.utcnow().isoformat()
+            }).eq("id", sub_id).execute()
+            
+            return {
+                "success": False,
+                "user": user_address[:10],
+                "reason": tx_result.get("message", "TX failed")
+            }
+            
+    except Exception as e:
+        # Mark failed with backoff
+        try:
+            supabase.table("premium_subscriptions").update({
+                "renewal_failed_at": datetime.utcnow().isoformat()
+            }).eq("id", sub_id).execute()
+        except:
+            pass
+        
+        logger.error(f"[Premium] Renewal failed for {user_address[:10]}: {e}")
+        return {
+            "success": False,
+            "user": user_address[:10],
+            "reason": str(e)
+        }
+
+
+@router.get("/renewal-status")
+async def get_renewal_status(user_address: str = Query(...)):
+    """Get auto-renewal status for a user"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("premium_subscriptions").select(
+            "auto_renewal_enabled, last_renewal_tx, renewal_failed_at, expires_at"
+        ).eq(
+            "user_address", user_address.lower()
+        ).eq("status", "active").execute()
+        
+        if not result.data:
+            return {
+                "auto_renewal_enabled": False,
+                "can_enable": False,
+                "reason": "No active subscription"
+            }
+        
+        sub = result.data[0]
+        
+        # Check for deployed agent (from Build page)
+        agents_result = supabase.table("agents").select(
+            "smart_account_address"
+        ).eq("user_address", user_address.lower()).execute()
+        
+        has_agent = bool(agents_result.data)
+        agent_address = agents_result.data[0]["smart_account_address"] if has_agent else None
+        
+        return {
+            "auto_renewal_enabled": sub.get("auto_renewal_enabled", False),
+            "can_enable": has_agent,
+            "agent_address": agent_address,
+            "expires_at": sub.get("expires_at"),
+            "last_renewal_tx": sub.get("last_renewal_tx"),
+            "last_failed": sub.get("renewal_failed_at"),
+            "renewal_cost_usdc": 99,
+            "missing": [] if has_agent else ["deployed_agent"]
+        }

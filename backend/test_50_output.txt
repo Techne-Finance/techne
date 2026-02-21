@@ -1,0 +1,167 @@
+﻿==========================================================================================
+  50 AGENT SIMULATION SCENARIOS - FULL REAL-WORLD TESTING
+==========================================================================================
+
+==========================================================================================
+  CATEGORY: DURATION
+==========================================================================================
+  [OK] #01 Duration 1H ÔÇö expires
+       -> expired=True (expected True)
+  [OK] #02 Duration 1D ÔÇö expires
+       -> expired=True (expected True)
+  [OK] #03 Duration 1W ÔÇö expires
+       -> expired=True (expected True)
+  [OK] #04 Duration 1M ÔÇö expires
+       -> expired=True (expected True)
+  [OK] #05 Duration 3M ÔÇö expires
+       -> expired=True (expected True)
+  [OK] #06 Duration 6M ÔÇö expires
+       -> expired=True (expected True)
+  [OK] #07 Duration 1Y ÔÇö expires
+       -> expired=True (expected True)
+  [OK] #08 Duration Infinite ÔÇö never expires
+       -> expired=False (expected False)
+
+==========================================================================================
+  CATEGORY: APY_ROTATION
+==========================================================================================
+  [OK] #09 APY 3.0% for 12h (min=5%, check=12h) Ôćĺ ROTATE
+       -> rotate=True (expected True) | APY 3.0% < min 5% for 12h
+  [OK] #10 APY 3.0% for 11h (min=5%, check=12h) Ôćĺ KEEP
+       -> rotate=False (expected False)
+  [OK] #11 APY 6.0% for 24h (min=5%, check=12h) Ôćĺ KEEP
+       -> rotate=False (expected False)
+  [OK] #12 APY 2.0% for 25h (min=5%, check=24h) Ôćĺ ROTATE
+       -> rotate=True (expected True) | APY 2.0% < min 5% for 25h
+  [OK] #13 APY 4.9% for 13h (min=5%, check=12h) Ôćĺ ROTATE
+       -> rotate=True (expected True) | APY 4.9% < min 5% for 13h
+  [OK] #14 APY 5.0% for 100h (min=5%, check=12h) Ôćĺ KEEP
+       -> rotate=False (expected False)
+
+==========================================================================================
+  CATEGORY: VAULT_COUNT
+==========================================================================================
+  [OK] #15 vault_count=1 ÔÇö select exactly 1 positions
+       -> selected=1 (expected=1, available=14) | pools: WETH-AERO
+  [OK] #16 vault_count=2 ÔÇö select exactly 2 positions
+       -> selected=2 (expected=2, available=14) | pools: WETH-AERO, WETH-USDC
+  [OK] #17 vault_count=3 ÔÇö select exactly 3 positions
+       -> selected=3 (expected=3, available=14) | pools: WETH-AERO, WETH-USDC, WETH-USDT
+  [OK] #18 vault_count=5 ÔÇö select exactly 5 positions
+       -> selected=5 (expected=5, available=14) | pools: WETH-AERO, WETH-USDC, WETH-USDT, WETH/USDC, USDC/DAI
+  [OK] #19 vault_count=8 ÔÇö select exactly 8 positions
+       -> selected=8 (expected=8, available=14) | pools: WETH-AERO, WETH-USDC, WETH-USDT, WETH/USDC, USDC/DAI
+  [OK] #20 vault_count=10 ÔÇö select exactly 10 positions
+       -> selected=10 (expected=10, available=14) | pools: WETH-AERO, WETH-USDC, WETH-USDT, WETH/USDC, USDC/DAI
+
+==========================================================================================
+  CATEGORY: COMPOUND
+==========================================================================================
+  [OK] #21 Compound every 1d, last 2d ago Ôćĺ COMPOUND
+       -> compound=True (expected True)
+  [OK] #22 Compound every 7d, last 3d ago Ôćĺ SKIP
+       -> compound=False (expected False)
+  [OK] #23 Compound every 7d, last 8d ago Ôćĺ COMPOUND
+       -> compound=True (expected True)
+  [OK] #24 Compound every 30d, last 15d ago Ôćĺ SKIP
+       -> compound=False (expected False)
+  [OK] #25 Compound every 1d, last 0.5d ago Ôćĺ SKIP
+       -> compound=False (expected False)
+
+==========================================================================================
+  CATEGORY: EMERGENCY_EXIT
+==========================================================================================
+  [OK] #26 $10000Ôćĺ$6500 (dd=35%) max_dd=30% exit=ON Ôćĺ EXIT
+       -> exit=True dd=35% (expected True)
+  [OK] #27 $10000Ôćĺ$7500 (dd=25%) max_dd=30% exit=ON Ôćĺ HOLD
+       -> exit=False dd=25% (expected False)
+  [OK] #28 $10000Ôćĺ$5000 (dd=50%) max_dd=50% exit=ON Ôćĺ EXIT
+       -> exit=True dd=50% (expected True)
+  [OK] #29 $10000Ôćĺ$8000 (dd=20%) max_dd=10% exit=ON Ôćĺ EXIT
+       -> exit=True dd=20% (expected True)
+  [OK] #30 $10000Ôćĺ$6000 (dd=40%) max_dd=30% exit=OFF Ôćĺ HOLD
+       -> exit=False dd=40% (expected False)
+
+==========================================================================================
+  CATEGORY: STOP_LOSS_TAKE_PROFIT
+==========================================================================================
+  [OK] #31 $1000Ôćĺ$800 SL=15% TP=OFF Ôćĺ SL
+       -> SL=True(exp=True) TP=False(exp=False)
+  [OK] #32 $1000Ôćĺ$900 SL=15% TP=OFF Ôćĺ HOLD
+       -> SL=False(exp=False) TP=False(exp=False)
+  [OK] #33 $1000Ôćĺ$1500 SL=15% TP=$400 Ôćĺ TP
+       -> SL=False(exp=False) TP=True(exp=True)
+  [OK] #34 $1000Ôćĺ$1300 SL=15% TP=$400 Ôćĺ HOLD
+       -> SL=False(exp=False) TP=False(exp=False)
+  [OK] #35 $1000Ôćĺ$850 SL=15% TP=$500 Ôćĺ SL
+       -> SL=True(exp=True) TP=False(exp=False)
+  [OK] #36 $1000Ôćĺ$1000 SL=15% TP=OFF Ôćĺ HOLD
+       -> SL=False(exp=False) TP=False(exp=False)
+
+==========================================================================================
+  CATEGORY: VOLATILITY_GUARD
+==========================================================================================
+  [OK] #37 Vol=90 guard=ON Ôćĺ PAUSE
+       -> pause=True (expected True)
+  [OK] #38 Vol=50 guard=ON Ôćĺ CONTINUE
+       -> pause=False (expected False)
+  [OK] #39 Vol=95 guard=OFF Ôćĺ CONTINUE
+       -> pause=False (expected False)
+
+==========================================================================================
+  CATEGORY: PARK
+==========================================================================================
+  [OK] #40 pools=N idle=$5000 no_pool=1.5h idle_min=0 alloc=N lock=N Ôćĺ PARK
+       -> park=True (expected True) trigger=no_pools_timeout
+  [OK] #41 pools=N idle=$5000 no_pool=0.5h idle_min=0 alloc=N lock=N Ôćĺ WAIT
+       -> park=False (expected False) trigger=none
+  [OK] #42 pools=Y idle=$3000 no_pool=0h idle_min=20 alloc=Y lock=N Ôćĺ PARK
+       -> park=True (expected True) trigger=partial_idle_timeout
+  [OK] #43 pools=N idle=$5000 no_pool=2h idle_min=0 alloc=N lock=Y Ôćĺ WAIT
+       -> park=False (expected False) trigger=none
+
+==========================================================================================
+  CATEGORY: REBALANCE
+==========================================================================================
+  [OK] #44 APY 50.0%Ôćĺ35.0% (drift=30%) thresh=5% Ôćĺ REBAL
+       -> rebal=True drift=30% (expected True)
+  [OK] #45 APY 50.0%Ôćĺ48.0% (drift=4%) thresh=5% Ôćĺ HOLD
+       -> rebal=False drift=4% (expected False)
+  [OK] #46 APY 10.0%Ôćĺ8.5% (drift=15%) thresh=10% Ôćĺ REBAL
+       -> rebal=True drift=15% (expected True)
+
+==========================================================================================
+  CATEGORY: GAS
+==========================================================================================
+  [OK] #47 Gas 2.0 gwei, max=50 Ôćĺ OK
+       -> gas_ok=True (expected True)
+  [OK] #48 Gas 55.0 gwei, max=50 Ôćĺ SKIP
+       -> gas_ok=False (expected False)
+
+==========================================================================================
+  CATEGORY: EDGE
+==========================================================================================
+  [OK] #49 Ethereum chain ÔÇö should find Ethereum pools only
+       -> found=1 all_correct_chain=True
+  [OK] #50 Empty protocols list ÔÇö should match ALL protocols
+       -> found=6 protocols={'compound-v3', 'aave-v3', 'morpho-blue', 'beefy', 'moonwell', 'seamless'}
+
+
+==========================================================================================
+  FINAL REPORT: 50/50 PASSED | 0 FAILED
+==========================================================================================
+  [OK] DURATION                       8/8
+  [OK] APY_ROTATION                   6/6
+  [OK] VAULT_COUNT                    6/6
+  [OK] COMPOUND                       5/5
+  [OK] EMERGENCY_EXIT                 5/5
+  [OK] STOP_LOSS_TAKE_PROFIT          6/6
+  [OK] VOLATILITY_GUARD               3/3
+  [OK] PARK                           4/4
+  [OK] REBALANCE                      3/3
+  [OK] GAS                            2/2
+  [OK] EDGE                           2/2
+
+  [OK] ALL TESTS PASSED
+
+  Completed at 2026-02-16T22:13:18.389727

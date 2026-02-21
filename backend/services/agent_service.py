@@ -11,21 +11,11 @@ from dataclasses import dataclass
 
 logger = logging.getLogger("AgentService")
 
-# Supabase client
-try:
-    from supabase import create_client, Client
-    SUPABASE_URL = os.environ.get("SUPABASE_URL")
-    SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-    
-    if SUPABASE_URL and SUPABASE_KEY:
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        SUPABASE_AVAILABLE = True
-    else:
-        supabase = None
-        SUPABASE_AVAILABLE = False
-except ImportError:
-    supabase = None
-    SUPABASE_AVAILABLE = False
+# Supabase REST client (no SDK dependency — avoids httpcore version conflict)
+from infrastructure.supabase_rest import get_supabase_rest
+
+supabase = get_supabase_rest()
+SUPABASE_AVAILABLE = supabase.is_available
 
 
 @dataclass
@@ -178,6 +168,19 @@ class AgentService:
         """Update agent configuration"""
         if not self.supabase:
             return False
+        
+        # Extract top-level DB columns from nested 'settings' dict
+        # DB schema: pool_type is a top-level column, not inside settings JSONB
+        if "settings" in updates and isinstance(updates["settings"], dict):
+            settings = updates["settings"]
+            # Fields that are top-level columns in user_agents table
+            TOP_LEVEL_FIELDS = ["pool_type"]
+            for field in TOP_LEVEL_FIELDS:
+                if field in settings:
+                    updates[field] = settings.pop(field)
+            # If settings dict is now empty, remove it
+            if not settings:
+                del updates["settings"]
         
         # Add updated timestamp
         updates["updated_at"] = datetime.now().isoformat()

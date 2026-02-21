@@ -912,6 +912,173 @@ async def get_chains_status():
 
 
 # ============================================
+# VERIFY-ONCHAIN (Deep On-Chain Protocol Verify)
+# ============================================
+
+@router.get("/verify-onchain")
+async def verify_pool_onchain(
+    pool_address: str = Query(..., description="Pool/vault/market contract address"),
+    protocol: str = Query("auto", description="Protocol name (aave-v3, morpho, compound-v3, aerodrome, uniswap-v3, curve, pendle, erc4626, moonwell, seamless) or 'auto' to detect"),
+    chain: str = Query("base", description="Chain name")
+):
+    """
+    🔗 Deep On-Chain Verification using OnChainVerifier.
+    
+    Reads TVL, APY, and Price directly from smart contracts (RPC),
+    compares with API data (DefiLlama), and returns delta analysis.
+    
+    Supports 10 protocols: Aave V3, Morpho Blue, Compound V3, Moonwell,
+    Seamless, Aerodrome, Uniswap V3, Curve, Pendle, ERC-4626.
+    """
+    from services.onchain_verifier import OnChainVerifier
+    
+    start_time = time.time()
+    pool_address_clean = pool_address.lower() if chain != "solana" else pool_address
+    
+    logger.info(f"🔗 verify-onchain for {pool_address_clean} protocol={protocol} chain={chain}")
+    
+    try:
+        verifier = OnChainVerifier()
+        
+        # Auto-detect protocol from known pool addresses if "auto"
+        if protocol == "auto":
+            protocol = await _detect_protocol(pool_address_clean, chain)
+            logger.info(f"Auto-detected protocol: {protocol}")
+        
+        # Fetch DefiLlama data for comparison
+        api_data = None
+        try:
+            pools = await get_cached_defillama_pools()
+            chain_pools = [p for p in pools if chain.lower() in p.get("chain", "").lower()]
+            for p in chain_pools:
+                if pool_address_clean in p.get("pool", "").lower():
+                    api_data = {
+                        "tvl": p.get("tvlUsd", 0) or p.get("tvl", 0),
+                        "apy": p.get("apy", 0),
+                        "apy_base": p.get("apyBase", 0),
+                        "apy_reward": p.get("apyReward", 0),
+                        "project": p.get("project", ""),
+                        "symbol": p.get("symbol", ""),
+                    }
+                    break
+        except Exception as e:
+            logger.debug(f"DefiLlama comparison data fetch failed: {e}")
+        
+        # Run on-chain verification
+        result = await verifier.verify(pool_address_clean, protocol, api_data)
+        
+        # Get Moralis holder data for LP token
+        holder_data = None
+        try:
+            from data_sources.holder_analysis import holder_analyzer
+            holder_data = await holder_analyzer.get_holder_analysis(pool_address_clean, chain)
+        except Exception as e:
+            logger.debug(f"Holder analysis failed: {e}")
+        
+        elapsed = time.time() - start_time
+        
+        return {
+            "success": result.get("verified", False),
+            "onchain": result.get("onchain", {}),
+            "api": result.get("api"),
+            "delta": result.get("delta"),
+            "protocol": result.get("protocol", protocol),
+            "pool_address": pool_address_clean,
+            "chain": chain,
+            "holders": holder_data,
+            "rpc_time_ms": result.get("rpc_time_ms", 0),
+            "total_time_ms": round(elapsed * 1000),
+            "timestamp": result.get("timestamp"),
+            "error": result.get("error"),
+        }
+        
+    except Exception as e:
+        logger.error(f"verify-onchain failed: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "pool_address": pool_address_clean,
+            "protocol": protocol,
+            "chain": chain,
+        }
+
+
+async def _detect_protocol(pool_address: str, chain: str) -> str:
+    """Auto-detect protocol from pool address by probing contract interfaces."""
+    from web3 import Web3
+    import os
+    
+    rpc_url = os.environ.get("ALCHEMY_RPC_URL", "https://base-mainnet.g.alchemy.com/v2/demo")
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
+    addr = Web3.to_checksum_address(pool_address)
+    
+    # Try ERC-4626 (totalAssets)
+    try:
+        abi = [{"inputs": [], "name": "totalAssets", "outputs": [{"type": "uint256"}], "stateMutability": "view", "type": "function"}]
+        c = w3.eth.contract(address=addr, abi=abi)
+        c.functions.totalAssets().call()
+        return "erc4626"
+    except:
+        pass
+    
+    # Try Aerodrome/Uniswap V2 (getReserves)
+    try:
+        abi = [{"inputs": [], "name": "getReserves", "outputs": [{"name": "r0", "type": "uint256"}, {"name": "r1", "type": "uint256"}, {"name": "ts", "type": "uint256"}], "stateMutability": "view", "type": "function"}]
+        c = w3.eth.contract(address=addr, abi=abi)
+        c.functions.getReserves().call()
+        # Check if Aerodrome (has stable() function)
+        try:
+            abi2 = [{"inputs": [], "name": "stable", "outputs": [{"type": "bool"}], "stateMutability": "view", "type": "function"}]
+            c2 = w3.eth.contract(address=addr, abi=abi2)
+            c2.functions.stable().call()
+            return "aerodrome"
+        except:
+            pass
+        return "aerodrome"  # V2-style pool
+    except:
+        pass
+    
+    # Try Uniswap V3 (slot0)
+    try:
+        abi = [{"inputs": [], "name": "slot0", "outputs": [{"name": "sqrtPriceX96", "type": "uint160"}, {"name": "tick", "type": "int24"}, {"name": "observationIndex", "type": "uint16"}, {"name": "observationCardinality", "type": "uint16"}, {"name": "observationCardinalityNext", "type": "uint16"}, {"name": "feeProtocol", "type": "uint8"}, {"name": "unlocked", "type": "bool"}], "stateMutability": "view", "type": "function"}]
+        c = w3.eth.contract(address=addr, abi=abi)
+        c.functions.slot0().call()
+        return "uniswap-v3"
+    except:
+        pass
+    
+    # Try Compound V3 (getUtilization)
+    try:
+        abi = [{"inputs": [], "name": "getUtilization", "outputs": [{"type": "uint256"}], "stateMutability": "view", "type": "function"}]
+        c = w3.eth.contract(address=addr, abi=abi)
+        c.functions.getUtilization().call()
+        return "compound-v3"
+    except:
+        pass
+    
+    # Try Moonwell mToken (exchangeRateStored)
+    try:
+        abi = [{"inputs": [], "name": "exchangeRateStored", "outputs": [{"type": "uint256"}], "stateMutability": "view", "type": "function"}]
+        c = w3.eth.contract(address=addr, abi=abi)
+        c.functions.exchangeRateStored().call()
+        return "moonwell"
+    except:
+        pass
+    
+    # Try Curve (get_virtual_price)
+    try:
+        abi = [{"inputs": [], "name": "get_virtual_price", "outputs": [{"type": "uint256"}], "stateMutability": "view", "type": "function"}]
+        c = w3.eth.contract(address=addr, abi=abi)
+        c.functions.get_virtual_price().call()
+        return "curve"
+    except:
+        pass
+    
+    # Fallback
+    return "erc4626"
+
+
+# ============================================
 # VERIFY-RPC (RPC-First Pool Verification)
 # ============================================
 

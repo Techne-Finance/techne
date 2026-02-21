@@ -13,7 +13,7 @@ import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip as RTo
 import { formatUsd } from '@/lib/api'
 import type { Agent, Holding, Position, Transaction } from '@/hooks/usePortfolio'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -308,7 +308,7 @@ export function AllocationChart({ holdings, positions }: { holdings: Holding[]; 
                         background: 'var(--popover)', border: '1px solid var(--border)',
                         borderRadius: '8px', fontSize: '12px', color: 'var(--foreground)',
                     }}
-                        formatter={(v: number) => [formatUsd(v), '']} />
+                        formatter={((v: any) => [formatUsd(Number(v ?? 0)), '']) as any} />
                 </RechartsPie>
             </ResponsiveContainer>
             {/* Center label */}

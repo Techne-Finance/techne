@@ -2,6 +2,10 @@
 Engineer Agent - "The Hands" of Techne System
 Execution layer for autonomous DeFi operations
 
+⚠️ DEPRECATED / MVP-ONLY: This module simulates deposits with asyncio.sleep(2).
+All real execution goes through strategy_executor.py → execute_v4_strategy() / execute_allocation().
+This file is dead code and should not be relied upon for production behavior.
+
 MVP Scope:
 - Simple ERC-4626 deposits/withdrawals (stablecoin vaults)
 - Gas optimization (wait for cheap gas)

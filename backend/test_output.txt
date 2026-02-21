@@ -1,22 +1,689 @@
-﻿Testing single-sided lending pools...
-Total single-sided pools: 100
+﻿================================================================================
+­čž¬ POOL SEARCH + DEPOSIT SIMULATION ÔÇö 10 FLEXIBLE PRESETS
+================================================================================
+­čôŐ Mock pool universe: 21 pools
+­čĺ░ Simulated capital: $10,000
 
-Risk Level Distribution:
-  Low     :  83 (83.0%)
-  Medium  :  17 (17.0%)
-  High    :   0 (0.0%)
-  Critical:   0 (0.0%)
 
-Score stats: min=36.0, max=65.8, avg=54.2
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+­čôő TEST 1: T1: Dual-Sided ETH/USDC Yield Hunter
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   Chain: base | Pool type: dual | Risk: medium
+   APY: 50%-200% | Style: moderate
+   Protocols: aerodrome, uniswap
+   Assets: WETH, USDC
+   TVL: $0.5M - $10M
+   Vaults: 3 | Max alloc: 33%
+   Avoid IL: False | Audited only: True
 
-=== LOW RISK POOLS (first 10) ===
-  peapods-finance      Score: 51.8 APY:  38.6% TVL:$4.8M
-  garden               Score: 51.8 APY:  37.1% TVL:$1.1M
-  pendle               Score: 51.8 APY:  25.7% TVL:$6.2M
-  stake-dao            Score: 51.8 APY:  22.6% TVL:$4.2M
-  pendle               Score: 51.8 APY:  21.6% TVL:$1.4M
-  kiloex               Score: 51.8 APY:  20.1% TVL:$1.1M
-  merkl                Score: 51.8 APY:  19.5% TVL:$0.8M
-  wildcat-protocol     Score: 58.8 APY:  18.5% TVL:$5.0M
-  wildcat-protocol     Score: 58.8 APY:  18.5% TVL:$5.0M
-  yearn-finance        Score: 51.8 APY:  18.4% TVL:$0.9M
+   ­čöŹ POOL SEARCH RESULTS: 1 matching pools
+      1. WETH-AERO            APY:  180.0%  TVL:$  3.2M  [LP] aerodrome
+   Ôťů All validation checks passed
+
+   ­čôŐ RANKED & SELECTED (top 3):
+      1. WETH-AERO            Score:  60.0  APY:  180.0%  Alloc:33%
+
+   ­čĺ░ DEPOSIT SIMULATION ($10,000):
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH-AERO (dual-sided LP)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Swap $1650.00 USDC Ôćĺ WETH (via DEX router)
+         3. Swap $1650.00 USDC Ôćĺ AERO (via DEX router)
+         4. Approve WETH to LP router
+         5. Approve AERO to LP router
+         6. addLiquidity(WETH, AERO, $1650.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1200
+         ­čôł Est. daily: $16.2740
+         ­ččí IL Risk: MEDIUM-HIGH
+
+   ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   ­čôŐ SUMMARY:
+      Total Gas: $0.1200
+      Est. Daily Yield: $16.2740
+      Est. Weekly Yield: $113.9180
+      Est. Monthly Yield: $488.22
+      Annualized ROI: 59.4%
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+­čôő TEST 2: T2: Conservative Stablecoin Lender
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   Chain: base | Pool type: single | Risk: low
+   APY: 5%-50% | Style: conservative
+   Protocols: aave, morpho, compound, moonwell
+   Assets: USDC
+   TVL: $10.0M+
+   Vaults: 3 | Max alloc: 33%
+   Avoid IL: True | Audited only: True
+
+   ­čöŹ POOL SEARCH RESULTS: 4 matching pools
+      1. USDC                 APY:    8.2%  TVL:$ 45.0M  [Lending] aave-v3
+      2. USDC                 APY:   12.4%  TVL:$ 15.0M  [Lending] morpho-blue
+      3. USDC                 APY:    9.1%  TVL:$ 22.0M  [Lending] moonwell
+      4. USDC                 APY:    7.0%  TVL:$ 30.0M  [Lending] compound-v3
+   Ôťů All validation checks passed
+
+   ­čôŐ RANKED & SELECTED (top 3):
+      1. USDC                 Score:  46.0  APY:    7.0%  Alloc:33%
+      2. USDC                 Score:  45.1  APY:    8.2%  Alloc:33%
+      3. USDC                 Score:  44.5  APY:    9.1%  Alloc:33%
+
+   ­čĺ░ DEPOSIT SIMULATION ($10,000):
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC (single-sided lending)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Approve USDC to vault
+         3. vault.deposit($3300.00 USDC)
+         ÔŤŻ Gas: $0.0400
+         ­čôł Est. daily: $0.6329
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC (single-sided lending)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Approve USDC to vault
+         3. vault.deposit($3300.00 USDC)
+         ÔŤŻ Gas: $0.0400
+         ­čôł Est. daily: $0.7414
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC (single-sided lending)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Approve USDC to vault
+         3. vault.deposit($3300.00 USDC)
+         ÔŤŻ Gas: $0.0400
+         ­čôł Est. daily: $0.8227
+
+   ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   ­čôŐ SUMMARY:
+      Total Gas: $0.1200
+      Est. Daily Yield: $2.1970
+      Est. Weekly Yield: $15.3790
+      Est. Monthly Yield: $65.91
+      Annualized ROI: 8.0%
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+­čôő TEST 3: T3: Aggressive Degen Farmer
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   Chain: base | Pool type: all | Risk: high
+   APY: 100%-10000% | Style: aggressive
+   Protocols: aerodrome, velodrome, uniswap
+   Assets: ANY
+   TVL: $0.5M+
+   Vaults: 5 | Max alloc: 20%
+   Avoid IL: False | Audited only: False
+
+   ­čöŹ POOL SEARCH RESULTS: 2 matching pools
+      1. WETH-AERO            APY:  180.0%  TVL:$  3.2M  [LP] aerodrome
+      2. USDC/AERO            APY:  120.0%  TVL:$  1.5M  [LP] velodrome-v2
+   Ôťů All validation checks passed
+
+   ­čôŐ RANKED & SELECTED (top 5):
+      1. WETH-AERO            Score:  78.0  APY:  180.0%  Alloc:20%
+      2. USDC/AERO            Score:  78.0  APY:  120.0%  Alloc:20%
+
+   ­čĺ░ DEPOSIT SIMULATION ($10,000):
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH-AERO (dual-sided LP)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Swap $1000.00 USDC Ôćĺ WETH (via DEX router)
+         3. Swap $1000.00 USDC Ôćĺ AERO (via DEX router)
+         4. Approve WETH to LP router
+         5. Approve AERO to LP router
+         6. addLiquidity(WETH, AERO, $1000.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1200
+         ­čôł Est. daily: $9.8630
+         ­ččí IL Risk: MEDIUM-HIGH
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC/AERO (dual-sided LP)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Keep $1000.00 as USDC
+         3. Swap $1000.00 USDC Ôćĺ AERO (via DEX router)
+         4. Approve USDC to LP router
+         5. Approve AERO to LP router
+         6. addLiquidity(USDC, AERO, $1000.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1000
+         ­čôł Est. daily: $6.5753
+         ­ččí IL Risk: MEDIUM-HIGH
+
+   ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   ­čôŐ SUMMARY:
+      Total Gas: $0.2200
+      Est. Daily Yield: $16.4383
+      Est. Weekly Yield: $115.0681
+      Est. Monthly Yield: $493.15
+      Annualized ROI: 60.0%
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+­čôő TEST 4: T4: ETH-Only Lending
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   Chain: base | Pool type: single | Risk: medium
+   APY: 3%-30% | Style: moderate
+   Protocols: aave, morpho, moonwell
+   Assets: WETH, ETH
+   TVL: $1.0M+
+   Vaults: 3 | Max alloc: 33%
+   Avoid IL: True | Audited only: True
+
+   ­čöŹ POOL SEARCH RESULTS: 3 matching pools
+      1. WETH                 APY:    3.5%  TVL:$120.0M  [Lending] aave-v3
+      2. WETH                 APY:    6.8%  TVL:$  8.0M  [Lending] morpho-blue
+      3. WETH                 APY:    5.2%  TVL:$ 10.0M  [Lending] moonwell
+   Ôťů All validation checks passed
+
+   ­čôŐ RANKED & SELECTED (top 3):
+      1. WETH                 Score:  31.4  APY:    3.5%  Alloc:33%
+      2. WETH                 Score:  22.7  APY:    6.8%  Alloc:33%
+      3. WETH                 Score:  22.1  APY:    5.2%  Alloc:33%
+
+   ­čĺ░ DEPOSIT SIMULATION ($10,000):
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH (single-sided lending)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Swap $3300.00 USDC Ôćĺ WETH (via DEX router)
+         3. Approve WETH to vault
+         4. vault.deposit($3300.00 WETH)
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.0600
+         ­čôł Est. daily: $0.3164
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH (single-sided lending)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Swap $3300.00 USDC Ôćĺ WETH (via DEX router)
+         3. Approve WETH to vault
+         4. vault.deposit($3300.00 WETH)
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.0600
+         ­čôł Est. daily: $0.6148
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH (single-sided lending)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Swap $3300.00 USDC Ôćĺ WETH (via DEX router)
+         3. Approve WETH to vault
+         4. vault.deposit($3300.00 WETH)
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.0600
+         ­čôł Est. daily: $0.4701
+
+   ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   ­čôŐ SUMMARY:
+      Total Gas: $0.1800
+      Est. Daily Yield: $1.4013
+      Est. Weekly Yield: $9.8091
+      Est. Monthly Yield: $42.04
+      Annualized ROI: 5.1%
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+­čôő TEST 5: T5: Stable/Stable LP Farmer
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   Chain: base | Pool type: dual | Risk: low
+   APY: 3%-100% | Style: conservative
+   Protocols: aerodrome, curve, uniswap
+   Assets: USDC, DAI, USDT
+   TVL: $5.0M+
+   Vaults: 3 | Max alloc: 33%
+   Avoid IL: False | Audited only: True
+
+   ­čöŹ POOL SEARCH RESULTS: 5 matching pools
+      1. WETH/USDC            APY:   62.5%  TVL:$ 12.0M  [LP] aerodrome
+      2. USDC/DAI             APY:   22.0%  TVL:$ 15.0M  [LP] aerodrome
+      3. WETH-USDC            APY:   75.0%  TVL:$ 25.0M  [LP] uniswap-v3
+      4. WETH-USDT            APY:   68.0%  TVL:$ 18.0M  [LP] uniswap-v3
+      5. USDC-USDT            APY:    4.8%  TVL:$ 40.0M  [LP] curve-dex
+   Ôťů All validation checks passed
+
+   ­čôŐ RANKED & SELECTED (top 3):
+      1. USDC-USDT            Score:  47.5  APY:    4.8%  Alloc:33%
+      2. WETH-USDC            Score:  42.0  APY:   75.0%  Alloc:33%
+      3. WETH-USDT            Score:  40.0  APY:   68.0%  Alloc:33%
+
+   ­čĺ░ DEPOSIT SIMULATION ($10,000):
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC-USDT (dual-sided LP)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Keep $1650.00 as USDC
+         3. Keep $1650.00 as USDT
+         4. Approve USDC to LP router
+         5. Approve USDT to LP router
+         6. addLiquidity(USDC, USDT, $1650.00 each)
+            ÔÜá´ŞĆ IL Risk: LOW
+         ÔŤŻ Gas: $0.0800
+         ­čôł Est. daily: $0.4340
+         ­ččó IL Risk: LOW
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH-USDC (dual-sided LP)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Swap $1650.00 USDC Ôćĺ WETH (via DEX router)
+         3. Keep $1650.00 as USDC
+         4. Approve WETH to LP router
+         5. Approve USDC to LP router
+         6. addLiquidity(WETH, USDC, $1650.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1000
+         ­čôł Est. daily: $6.7808
+         ­ččí IL Risk: MEDIUM-HIGH
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH-USDT (dual-sided LP)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Swap $1650.00 USDC Ôćĺ WETH (via DEX router)
+         3. Keep $1650.00 as USDT
+         4. Approve WETH to LP router
+         5. Approve USDT to LP router
+         6. addLiquidity(WETH, USDT, $1650.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1000
+         ­čôł Est. daily: $6.1479
+         ­ččí IL Risk: MEDIUM-HIGH
+
+   ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   ­čôŐ SUMMARY:
+      Total Gas: $0.2800
+      Est. Daily Yield: $13.3627
+      Est. Weekly Yield: $93.5389
+      Est. Monthly Yield: $400.88
+      Annualized ROI: 48.8%
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+­čôő TEST 6: T6: Morpho Maximizer
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   Chain: base | Pool type: single | Risk: medium
+   APY: 5%-200% | Style: moderate
+   Protocols: morpho
+   Assets: USDC, WETH
+   TVL: $1.0M+
+   Vaults: 5 | Max alloc: 25%
+   Avoid IL: True | Audited only: True
+
+   ­čöŹ POOL SEARCH RESULTS: 2 matching pools
+      1. USDC                 APY:   12.4%  TVL:$ 15.0M  [Lending] morpho-blue
+      2. WETH                 APY:    6.8%  TVL:$  8.0M  [Lending] morpho-blue
+   Ôťů All validation checks passed
+
+   ­čôŐ RANKED & SELECTED (top 5):
+      1. USDC                 Score:  35.0  APY:   12.4%  Alloc:20%
+      2. WETH                 Score:  22.7  APY:    6.8%  Alloc:20%
+
+   ­čĺ░ DEPOSIT SIMULATION ($10,000):
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC (single-sided lending)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Approve USDC to vault
+         3. vault.deposit($2000.00 USDC)
+         ÔŤŻ Gas: $0.0400
+         ­čôł Est. daily: $0.6795
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH (single-sided lending)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Swap $2000.00 USDC Ôćĺ WETH (via DEX router)
+         3. Approve WETH to vault
+         4. vault.deposit($2000.00 WETH)
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.0600
+         ­čôł Est. daily: $0.3726
+
+   ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   ­čôŐ SUMMARY:
+      Total Gas: $0.1000
+      Est. Daily Yield: $1.0521
+      Est. Weekly Yield: $7.3647
+      Est. Monthly Yield: $31.56
+      Annualized ROI: 3.8%
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+­čôő TEST 7: T7: Institutional Grade (TVL >$20M)
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   Chain: base | Pool type: all | Risk: low
+   APY: 3%-50% | Style: conservative
+   Protocols: aave, compound, uniswap, curve
+   Assets: USDC
+   TVL: $20.0M+
+   Vaults: 3 | Max alloc: 33%
+   Avoid IL: True | Audited only: True
+
+   ­čöŹ POOL SEARCH RESULTS: 2 matching pools
+      1. USDC                 APY:    8.2%  TVL:$ 45.0M  [Lending] aave-v3
+      2. USDC                 APY:    7.0%  TVL:$ 30.0M  [Lending] compound-v3
+   Ôťů All validation checks passed
+
+   ­čôŐ RANKED & SELECTED (top 3):
+      1. USDC                 Score:  46.0  APY:    7.0%  Alloc:33%
+      2. USDC                 Score:  45.1  APY:    8.2%  Alloc:33%
+
+   ­čĺ░ DEPOSIT SIMULATION ($10,000):
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC (single-sided lending)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Approve USDC to vault
+         3. vault.deposit($3300.00 USDC)
+         ÔŤŻ Gas: $0.0400
+         ­čôł Est. daily: $0.6329
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC (single-sided lending)
+         Amount: $3,300.00
+         1. Start with $3300.00 USDC
+         2. Approve USDC to vault
+         3. vault.deposit($3300.00 USDC)
+         ÔŤŻ Gas: $0.0400
+         ­čôł Est. daily: $0.7414
+
+   ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   ­čôŐ SUMMARY:
+      Total Gas: $0.0800
+      Est. Daily Yield: $1.3743
+      Est. Weekly Yield: $9.6201
+      Est. Monthly Yield: $41.23
+      Annualized ROI: 5.0%
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+­čôő TEST 8: T8: Multi-Asset Diversified
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   Chain: base | Pool type: all | Risk: medium
+   APY: 5%-200% | Style: moderate
+   Protocols: aave, morpho, moonwell, aerodrome, uniswap
+   Assets: USDC, WETH
+   TVL: $1.0M+
+   Vaults: 5 | Max alloc: 20%
+   Avoid IL: False | Audited only: True
+
+   ­čöŹ POOL SEARCH RESULTS: 11 matching pools
+      1. USDC                 APY:    8.2%  TVL:$ 45.0M  [Lending] aave-v3
+      2. USDC                 APY:   12.4%  TVL:$ 15.0M  [Lending] morpho-blue
+      3. WETH                 APY:    6.8%  TVL:$  8.0M  [Lending] morpho-blue
+      4. USDC                 APY:    9.1%  TVL:$ 22.0M  [Lending] moonwell
+      5. WETH                 APY:    5.2%  TVL:$ 10.0M  [Lending] moonwell
+      6. WETH/USDC            APY:   62.5%  TVL:$ 12.0M  [LP] aerodrome
+      7. cbETH/WETH           APY:   35.0%  TVL:$  8.5M  [LP] aerodrome
+      8. USDC/DAI             APY:   22.0%  TVL:$ 15.0M  [LP] aerodrome
+      ... +3 more
+   Ôťů All validation checks passed
+
+   ­čôŐ RANKED & SELECTED (top 5):
+      1. WETH-AERO            Score:  60.0  APY:  180.0%  Alloc:20%
+      2. WETH-USDC            Score:  60.0  APY:   75.0%  Alloc:20%
+      3. WETH-USDT            Score:  57.2  APY:   68.0%  Alloc:20%
+      4. WETH/USDC            Score:  55.0  APY:   62.5%  Alloc:20%
+      5. USDC/DAI             Score:  38.8  APY:   22.0%  Alloc:20%
+
+   ­čĺ░ DEPOSIT SIMULATION ($10,000):
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH-AERO (dual-sided LP)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Swap $1000.00 USDC Ôćĺ WETH (via DEX router)
+         3. Swap $1000.00 USDC Ôćĺ AERO (via DEX router)
+         4. Approve WETH to LP router
+         5. Approve AERO to LP router
+         6. addLiquidity(WETH, AERO, $1000.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1200
+         ­čôł Est. daily: $9.8630
+         ­ččí IL Risk: MEDIUM-HIGH
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH-USDC (dual-sided LP)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Swap $1000.00 USDC Ôćĺ WETH (via DEX router)
+         3. Keep $1000.00 as USDC
+         4. Approve WETH to LP router
+         5. Approve USDC to LP router
+         6. addLiquidity(WETH, USDC, $1000.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1000
+         ­čôł Est. daily: $4.1096
+         ­ččí IL Risk: MEDIUM-HIGH
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH-USDT (dual-sided LP)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Swap $1000.00 USDC Ôćĺ WETH (via DEX router)
+         3. Keep $1000.00 as USDT
+         4. Approve WETH to LP router
+         5. Approve USDT to LP router
+         6. addLiquidity(WETH, USDT, $1000.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1000
+         ­čôł Est. daily: $3.7260
+         ­ččí IL Risk: MEDIUM-HIGH
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH/USDC (dual-sided LP)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Swap $1000.00 USDC Ôćĺ WETH (via DEX router)
+         3. Keep $1000.00 as USDC
+         4. Approve WETH to LP router
+         5. Approve USDC to LP router
+         6. addLiquidity(WETH, USDC, $1000.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1000
+         ­čôł Est. daily: $3.4247
+         ­ččí IL Risk: MEDIUM-HIGH
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC/DAI (dual-sided LP)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Keep $1000.00 as USDC
+         3. Keep $1000.00 as DAI
+         4. Approve USDC to LP router
+         5. Approve DAI to LP router
+         6. addLiquidity(USDC, DAI, $1000.00 each)
+            ÔÜá´ŞĆ IL Risk: LOW
+         ÔŤŻ Gas: $0.0800
+         ­čôł Est. daily: $1.2055
+         ­ččó IL Risk: LOW
+
+   ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   ­čôŐ SUMMARY:
+      Total Gas: $0.5000
+      Est. Daily Yield: $22.3288
+      Est. Weekly Yield: $156.3016
+      Est. Monthly Yield: $669.86
+      Annualized ROI: 81.5%
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+­čôő TEST 9: T9: Aerodrome LP Hunter
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   Chain: base | Pool type: dual | Risk: high
+   APY: 30%-1000% | Style: aggressive
+   Protocols: aerodrome
+   Assets: ANY
+   TVL: $0.5M+
+   Vaults: 5 | Max alloc: 25%
+   Avoid IL: False | Audited only: False
+
+   ­čöŹ POOL SEARCH RESULTS: 3 matching pools
+      1. WETH/USDC            APY:   62.5%  TVL:$ 12.0M  [LP] aerodrome
+      2. cbETH/WETH           APY:   35.0%  TVL:$  8.5M  [LP] aerodrome
+      3. WETH-AERO            APY:  180.0%  TVL:$  3.2M  [LP] aerodrome
+   Ôťů All validation checks passed
+
+   ­čôŐ RANKED & SELECTED (top 5):
+      1. WETH-AERO            Score:  78.0  APY:  180.0%  Alloc:20%
+      2. WETH/USDC            Score:  71.5  APY:   62.5%  Alloc:20%
+      3. cbETH/WETH           Score:  44.2  APY:   35.0%  Alloc:20%
+
+   ­čĺ░ DEPOSIT SIMULATION ($10,000):
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH-AERO (dual-sided LP)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Swap $1000.00 USDC Ôćĺ WETH (via DEX router)
+         3. Swap $1000.00 USDC Ôćĺ AERO (via DEX router)
+         4. Approve WETH to LP router
+         5. Approve AERO to LP router
+         6. addLiquidity(WETH, AERO, $1000.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1200
+         ­čôł Est. daily: $9.8630
+         ­ččí IL Risk: MEDIUM-HIGH
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ WETH/USDC (dual-sided LP)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Swap $1000.00 USDC Ôćĺ WETH (via DEX router)
+         3. Keep $1000.00 as USDC
+         4. Approve WETH to LP router
+         5. Approve USDC to LP router
+         6. addLiquidity(WETH, USDC, $1000.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1000
+         ­čôł Est. daily: $3.4247
+         ­ččí IL Risk: MEDIUM-HIGH
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ cbETH/WETH (dual-sided LP)
+         Amount: $2,000.00
+         1. Start with $2000.00 USDC
+         2. Swap $1000.00 USDC Ôćĺ cbETH (via DEX router)
+         3. Swap $1000.00 USDC Ôćĺ WETH (via DEX router)
+         4. Approve cbETH to LP router
+         5. Approve WETH to LP router
+         6. addLiquidity(cbETH, WETH, $1000.00 each)
+            ÔÜá´ŞĆ IL Risk: MEDIUM-HIGH
+         ­čöä Token conversion required
+         ÔŤŻ Gas: $0.1200
+         ­čôł Est. daily: $1.9178
+         ­ččí IL Risk: MEDIUM-HIGH
+
+   ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   ­čôŐ SUMMARY:
+      Total Gas: $0.3400
+      Est. Daily Yield: $15.2055
+      Est. Weekly Yield: $106.4385
+      Est. Monthly Yield: $456.16
+      Annualized ROI: 55.5%
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+­čôő TEST 10: T10: Ultra-Safe Treasury
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   Chain: base | Pool type: single | Risk: low
+   APY: 2%-15% | Style: conservative
+   Protocols: aave, compound
+   Assets: USDC
+   TVL: $25.0M+
+   Vaults: 2 | Max alloc: 50%
+   Avoid IL: True | Audited only: True
+
+   ­čöŹ POOL SEARCH RESULTS: 2 matching pools
+      1. USDC                 APY:    8.2%  TVL:$ 45.0M  [Lending] aave-v3
+      2. USDC                 APY:    7.0%  TVL:$ 30.0M  [Lending] compound-v3
+   Ôťů All validation checks passed
+
+   ­čôŐ RANKED & SELECTED (top 2):
+      1. USDC                 Score:  46.0  APY:    7.0%  Alloc:50%
+      2. USDC                 Score:  45.1  APY:    8.2%  Alloc:50%
+
+   ­čĺ░ DEPOSIT SIMULATION ($10,000):
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC (single-sided lending)
+         Amount: $5,000.00
+         1. Start with $5000.00 USDC
+         2. Approve USDC to vault
+         3. vault.deposit($5000.00 USDC)
+         ÔŤŻ Gas: $0.0400
+         ­čôł Est. daily: $0.9589
+
+      ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+      ­čôŽ USDC (single-sided lending)
+         Amount: $5,000.00
+         1. Start with $5000.00 USDC
+         2. Approve USDC to vault
+         3. vault.deposit($5000.00 USDC)
+         ÔŤŻ Gas: $0.0400
+         ­čôł Est. daily: $1.1233
+
+   ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+   ­čôŐ SUMMARY:
+      Total Gas: $0.0800
+      Est. Daily Yield: $2.0822
+      Est. Weekly Yield: $14.5754
+      Est. Monthly Yield: $62.47
+      Annualized ROI: 7.6%
+
+
+================================================================================
+­čôŐ FINAL REPORT: 10/10 TESTS PASSED
+================================================================================
+   Ôťů PASS T1: T1: Dual-Sided ETH/USDC Yield Hunter ÔÇö 1 pools, 1 selected
+   Ôťů PASS T2: T2: Conservative Stablecoin Lender ÔÇö 4 pools, 3 selected
+   Ôťů PASS T3: T3: Aggressive Degen Farmer ÔÇö 2 pools, 2 selected
+   Ôťů PASS T4: T4: ETH-Only Lending ÔÇö 3 pools, 3 selected
+   Ôťů PASS T5: T5: Stable/Stable LP Farmer ÔÇö 5 pools, 3 selected
+   Ôťů PASS T6: T6: Morpho Maximizer ÔÇö 2 pools, 2 selected
+   Ôťů PASS T7: T7: Institutional Grade (TVL >$20M) ÔÇö 2 pools, 2 selected
+   Ôťů PASS T8: T8: Multi-Asset Diversified ÔÇö 11 pools, 5 selected
+   Ôťů PASS T9: T9: Aerodrome LP Hunter ÔÇö 3 pools, 3 selected
+   Ôťů PASS T10: T10: Ultra-Safe Treasury ÔÇö 2 pools, 2 selected
+
+================================================================================
+­čÉŤ KNOWN ISSUES DETECTED DURING CODE REVIEW:
+================================================================================
+
+   1. ÔÜá´ŞĆ  FIELD NAME MISMATCH (strategy_executor.py:836-837)
+      - find_matching_pools() reads: agent.get("min_tvl", 500000) 
+      - _build_agent_data() stores:  min_pool_tvl (from AgentDeployRequest)
+      - Result: TVL filter uses DEFAULT 500000 instead of agent's configured value
+      - Impact: Agents with custom TVL settings (e.g., 1M, 5M, 10M) will be IGNORED
+      - Fix: Change agent.get("min_tvl") Ôćĺ agent.get("min_pool_tvl") in strategy_executor.py
+
+   2. ÔÜá´ŞĆ  FIELD NAME MISMATCH (strategy_executor.py:838)
+      - find_matching_pools() reads: agent.get("max_apy", 50000)
+      - But this field name IS correct in _build_agent_data (max_apy)
+      - OK Ôťů
+
+   3. Ôä╣´ŞĆ  NO DUAL-SIDED TOKEN CONVERSION IN ENGINEER (engineer_agent.py)
+      - create_deposit_task() only handles single-sided ERC-4626 vaults
+      - Dual-sided LP deposits need: USDC Ôćĺ split Ôćĺ swap Ôćĺ approve ├Ś 2 Ôćĺ addLiquidity
+      - Currently not implemented ÔÇö would need Aerodrome/Uniswap router integration
+      - Impact: Dual-sided pools can be RECOMMENDED but not AUTO-DEPOSITED yet
+
+
+­čĺż Test complete at 2026-02-16T22:04:07.495420

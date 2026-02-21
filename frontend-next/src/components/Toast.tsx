@@ -3,7 +3,7 @@
  * Replaces the vanilla JS Toast module with React + Framer Motion
  */
 
-import { useState, useEffect, useCallback } from 'react'
+
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, AlertTriangle, Info, XCircle, X } from 'lucide-react'
 import { create } from 'zustand'

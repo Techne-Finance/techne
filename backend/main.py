@@ -179,7 +179,7 @@ except ImportError as e:
     print(f"[Warning] Agent service router not available: {e}")
     AGENT_SERVICE_AVAILABLE = False
 
-# Import premium router (Artisan Agent - $50/mo subscription)
+# Import premium router (Artisan Agent - $99/mo subscription)
 try:
     from api.premium_router import router as premium_router
     PREMIUM_ROUTER_AVAILABLE = True
@@ -252,12 +252,12 @@ async def startup_event():
         except Exception as e2:
             print(f"[Startup] Deposit monitor also failed: {e2}")
     
-    # Start strategy executor (scans pools, allocates funds every 3 min)
+    # Start strategy executor (scans pools, allocates funds every 10 min)
+    # CRITICAL: Use the MODULE-LEVEL singleton so it shares DEPLOYED_AGENTS with agent_config_router
     try:
-        from agents.strategy_executor import StrategyExecutor
-        executor = StrategyExecutor()
-        asyncio.create_task(executor.start())
-        print("[Startup] ✅ Strategy executor started (scans every 10 min)")
+        from agents.strategy_executor import start_executor
+        await start_executor()
+        print("[Startup] ✅ Strategy executor started (global singleton, scans every 10 min)")
     except Exception as e:
         print(f"[Startup] Strategy executor failed: {e}")
     
@@ -381,6 +381,13 @@ if AGENT_SERVICE_AVAILABLE:
 if PREMIUM_ROUTER_AVAILABLE:
     app.include_router(premium_router)
     print("[Premium] Artisan Agent subscription API loaded - /api/premium")
+else:
+    print("[Premium] SKIPPED - PREMIUM_ROUTER_AVAILABLE is False")
+
+# Include ERC-8004 routes (Agent Identity & Reputation)
+if ERC8004_ROUTER_AVAILABLE:
+    app.include_router(erc8004_router)
+    print("[ERC8004] Agent identity & reputation API loaded - /api/agent-trust-score")
 
 # Include Artisan routes (OpenClaw MCP Integration - Session Key Execution)
 if ARTISAN_ROUTER_AVAILABLE:
@@ -435,6 +442,14 @@ try:
 except ImportError as e:
     print(f"[Protocols] Router not available: {e}")
 
+# Include Credits API (per-wallet credit balance)
+try:
+    from api.credits_router import router as credits_router
+    app.include_router(credits_router)
+    print("[Credits] Credits API loaded - /api/credits")
+except ImportError as e:
+    print(f"[Credits] Router not available: {e}")
+
 
 # Security Middleware (Production-grade protection)
 try:
@@ -459,11 +474,20 @@ except ImportError as e:
 # CORS - Hardened for production (update origins as needed)
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:5173",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "https://techne.finance",
     "https://app.techne.finance",
+    "https://techne-finance.vercel.app",
+    "https://techne-backend-t2umhhv3ia-ew.a.run.app",
+    "https://techne-backend-516629447651.europe-west1.run.app",
 ]
+
+# Allow additional origins from env var (comma-separated)
+extra_origins = os.environ.get("EXTRA_CORS_ORIGINS", "")
+if extra_origins:
+    ALLOWED_ORIGINS.extend([o.strip() for o in extra_origins.split(",") if o.strip()])
 
 app.add_middleware(
     CORSMiddleware,
@@ -564,7 +588,8 @@ async def create_smart_account(user_address: str = Query(...), agent_id: str = Q
         sa_service = get_smart_account_service()
         
         # Get or generate agent_id
-        effective_agent_id = agent_id or f"agent_1_{int(datetime.now().timestamp())}"
+        import time
+        effective_agent_id = agent_id or f"agent_1_{int(time.time())}"
         
         # Get session key address (deterministic from master secret)
         session_key_addr = None
@@ -719,75 +744,6 @@ async def check_whitelist_status(user_address: str = Query(..., description="Use
             "error": str(e)
         }
 
-
-# ============================================
-# SMART ACCOUNT ENDPOINTS (ERC-4337)
-# ============================================
-
-@app.get("/api/smart-account/{user_address}")
-async def get_smart_account(user_address: str):
-    """
-    Get user's smart account address (counterfactual or deployed).
-    Returns deterministic address even if not yet deployed.
-    """
-    try:
-        from services.smart_account_service import get_smart_account_service
-        
-        svc = get_smart_account_service()
-        
-        # Get counterfactual address
-        predicted_address = svc.get_account_address(user_address)
-        
-        # Check if actually deployed
-        deployed_address = svc.get_account(user_address)
-        
-        return {
-            "success": True,
-            "user_address": user_address,
-            "smart_account": predicted_address,
-            "is_deployed": deployed_address is not None,
-            "message": "Account deployed" if deployed_address else "Account not deployed (counterfactual)"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "user_address": user_address,
-            "smart_account": None,
-            "is_deployed": False,
-            "error": str(e)
-        }
-
-
-@app.post("/api/smart-account/create")
-async def create_smart_account(user_address: str = Query(..., description="User EOA to create account for")):
-    """
-    Deploy a new ERC-4337 Smart Account for user.
-    
-    - Account is owned by user's EOA
-    - Backend is added as SessionKey with limited permissions
-    - Default protocols (Aave, Aerodrome) are pre-whitelisted
-    """
-    try:
-        from services.smart_account_service import get_smart_account_service
-        
-        svc = get_smart_account_service()
-        result = svc.create_account(user_address)
-        
-        return {
-            "success": result["success"],
-            "user_address": user_address,
-            "smart_account": result.get("account_address"),
-            "tx_hash": result.get("tx_hash"),
-            "message": result.get("message")
-        }
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {
-            "success": False,
-            "user_address": user_address,
-            "message": str(e)
-        }
 
 
 # Alias for /api/pools (frontend uses this)
@@ -1682,29 +1638,9 @@ async def health_check():
     return {"status": "healthy", "service": "techne-finance"}
 
 
-# ============================================
-# STATIC FILES - Frontend
-# ============================================
-
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
-
-@app.get("/")
-async def serve_index():
-    """Serve the main index.html"""
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
-
-@app.get("/styles.css")
-async def serve_styles():
-    """Serve styles.css"""
-    return FileResponse(os.path.join(FRONTEND_DIR, "styles.css"), media_type="text/css")
-
-@app.get("/app.js")
-async def serve_app_js():
-    """Serve app.js"""
-    return FileResponse(os.path.join(FRONTEND_DIR, "app.js"), media_type="application/javascript")
-
-# Mount frontend as static files for all other assets
-app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+# Mount frontend as static files for all other assets (only if available)
+if os.path.isdir(FRONTEND_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
 
 # ============================================

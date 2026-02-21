@@ -102,6 +102,9 @@ class PositionMonitor:
         Data sources:
         1. Supabase user_positions (primary - persistent)
         2. DEPLOYED_AGENTS in-memory (fallback)
+        
+        REM-4: Merges in-memory flags (exit_in_progress) onto Supabase positions
+        REM-2: Skips SL/TP checks if strategy_executor ran recently (dedup)
         """
         checked = 0
         exits_triggered = 0
@@ -111,28 +114,78 @@ class PositionMonitor:
                 if not agent.get("is_active", False):
                     continue
                 
+                # REM-2 DEDUP: Skip if strategy_executor ran <15 min ago
+                # strategy_executor already handles SL/TP via check_position_risks
+                # position_monitor only handles: duration, apy_range (which strategy_executor doesn't check)
+                skip_risk_checks = False
+                if strategy_executor:
+                    agent_id = agent.get("id", "")
+                    last_exec = strategy_executor.last_execution.get(agent_id)
+                    if last_exec and (datetime.utcnow() - last_exec).total_seconds() < 900:
+                        skip_risk_checks = True
+                
+                # Get in-memory positions for flag merging (exit_in_progress etc.)
+                in_memory_positions = agent.get("positions", [])
+                in_memory_allocations = agent.get("allocations", [])
+                
                 # Try to get positions from Supabase first
                 positions = []
                 if supabase and supabase.is_available:
                     try:
                         positions = await supabase.get_user_positions(user_address)
                         logger.debug(f"[PositionMonitor] Got {len(positions)} positions from Supabase for {user_address[:10]}")
+                        
+                        # REM-4 FIX: Merge in-memory flags onto Supabase positions
+                        # Supabase rows don't carry exit_in_progress flag
+                        for sp in positions:
+                            sp_pool = sp.get("pool") or sp.get("pool_address", "")
+                            sp_protocol = (sp.get("protocol", "") or "").lower()
+                            
+                            for mp in (in_memory_allocations + in_memory_positions):
+                                mp_pool = mp.get("pool", "")
+                                mp_protocol = (mp.get("protocol", "") or "").lower()
+                                if mp_pool == sp_pool and mp_protocol == sp_protocol:
+                                    if mp.get("exit_in_progress"):
+                                        sp["exit_in_progress"] = True
+                                    if mp.get("exit_status"):
+                                        sp["exit_status"] = mp["exit_status"]
+                                    break
                     except Exception as e:
                         logger.warning(f"[PositionMonitor] Supabase fetch failed: {e}")
                 
                 # Fallback to in-memory positions
                 if not positions:
-                    positions = agent.get("positions", [])
+                    positions = in_memory_positions
                 
                 if not positions:
                     continue
                 
                 for position in positions:
+                    # REM-4 FIX: Skip positions being exited by strategy_executor
+                    if position.get("exit_in_progress"):
+                        continue
+                    # Skip already exited positions
+                    if position.get("exit_status") in ("completed", "exited"):
+                        continue
+                    
                     checked += 1
-                    exit_result = await self.check_position_exit(agent, position)
+                    
+                    # REM-2 DEDUP: Only check duration and APY range 
+                    # (SL/TP/volatility handled by strategy_executor)
+                    if skip_risk_checks:
+                        exit_result = await self._check_position_exit_no_risk(agent, position)
+                    else:
+                        exit_result = await self.check_position_exit(agent, position)
                     
                     if exit_result.get("should_exit"):
                         exits_triggered += 1
+                        # REM-4: Set guard before exit to prevent strategy_executor double-exit
+                        position["exit_in_progress"] = True
+                        # Also set on in-memory positions
+                        for mp in (in_memory_allocations + in_memory_positions):
+                            if mp.get("pool") == (position.get("pool") or position.get("pool_address", "")):
+                                mp["exit_in_progress"] = True
+                        
                         await self.execute_exit_and_reinvest(
                             agent, 
                             position, 
@@ -141,6 +194,22 @@ class PositionMonitor:
         
         if checked > 0:
             logger.info(f"[PositionMonitor] Checked {checked} positions, {exits_triggered} exits triggered")
+    
+    async def _check_position_exit_no_risk(self, agent: Dict, position: Dict) -> Dict:
+        """
+        REM-2 DEDUP: Check only duration and APY (skip SL/TP which strategy_executor handles).
+        """
+        # 1. Check Duration Expiry
+        duration_check = await self.check_duration_expiry(agent, position)
+        if duration_check.get("expired"):
+            return {"should_exit": True, "reason": duration_check.get("reason"), "trigger": "duration"}
+        
+        # 2. Check APY Below Range
+        apy_check = await self.check_apy_range(agent, position)
+        if apy_check.get("below_range"):
+            return {"should_exit": True, "reason": apy_check.get("reason"), "trigger": "apy"}
+        
+        return {"should_exit": False}
     
     async def check_position_exit(self, agent: Dict, position: Dict) -> Dict:
         """
@@ -202,9 +271,11 @@ class PositionMonitor:
         except:
             return {"expired": False, "reason": "Invalid deployment date"}
         
-        # Get duration from agent config (default 30 days)
-        duration_config = agent.get("duration", {})
-        if isinstance(duration_config, dict):
+        # DISC-6 FIX: Get duration from agent config — handle both float (actual storage) and dict (legacy)
+        duration_config = agent.get("duration", self.default_duration_days)
+        if isinstance(duration_config, (int, float)):
+            duration_days = float(duration_config)
+        elif isinstance(duration_config, dict):
             duration_days = duration_config.get("days", self.default_duration_days)
         else:
             duration_days = self.default_duration_days
@@ -385,7 +456,10 @@ class PositionMonitor:
         # 4. Close position in Supabase
         if supabase and supabase.is_available and user_address:
             try:
-                await supabase.close_user_position(user_address, protocol)
+                await supabase.close_user_position(
+                    user_address, protocol,
+                    pool_address=position.get("pool_address") or position.get("pool", "")
+                )
                 await supabase.log_position_history(
                     user_address=user_address,
                     protocol=protocol,
@@ -463,17 +537,28 @@ class PositionMonitor:
         """
         Execute on-chain withdrawal from protocol.
         
-        TODO: Integrate with V4.3.3 contract executeWithdraw
+        GAP-A FIX: Delegates to strategy_executor.execute_exit() for real on-chain execution.
         """
-        # For now, simulate success
-        # In production, this would call the smart contract
-        logger.info(f"[PositionMonitor] Simulating withdrawal from {position.get('protocol', 'unknown')}")
+        if not strategy_executor:
+            logger.error("[PositionMonitor] No strategy_executor available for withdrawal")
+            return False
         
-        # TODO: Implement actual on-chain withdrawal
-        # from agents.contract_monitor import contract_monitor
-        # return await contract_monitor.execute_withdrawal(agent, position)
+        protocol = position.get('protocol', 'unknown')
+        logger.info(f"[PositionMonitor] Executing on-chain withdrawal from {protocol}")
         
-        return True
+        try:
+            result = await strategy_executor.execute_exit(agent, position)
+            success = result.get("success", False)
+            
+            if success:
+                logger.info(f"[PositionMonitor] ✅ Withdrawal successful: {result.get('tx_hash', 'N/A')}")
+            else:
+                logger.error(f"[PositionMonitor] ❌ Withdrawal failed: {result.get('error', 'Unknown')}")
+            
+            return success
+        except Exception as e:
+            logger.error(f"[PositionMonitor] Withdrawal execution error: {e}")
+            return False
     
     async def find_reinvestment_pool(self, agent: Dict, excluded_pools: List[str] = None) -> Optional[Dict]:
         """
@@ -496,8 +581,8 @@ class PositionMonitor:
             if not pools:
                 return None
             
-            # Rank and select best
-            selected = await strategy_executor.rank_and_select(pools, agent)
+            # Rank and select best (sync method, no await)
+            selected = strategy_executor.rank_and_select(pools, agent)
             
             return selected[0] if selected else None
         except Exception as e:
@@ -508,9 +593,8 @@ class PositionMonitor:
         """
         Execute investment into new pool.
         
-        TODO: Integrate with V4.3.3 contract executeStrategy
+        GAP-A FIX: Delegates to strategy_executor.execute_allocation() for real on-chain execution.
         """
-        # For now, simulate success and add to positions
         new_position = {
             "id": f"pos_{int(datetime.utcnow().timestamp())}",
             "protocol": pool.get("project"),
@@ -525,14 +609,46 @@ class PositionMonitor:
             "status": "active"
         }
         
-        agent["positions"].append(new_position)
+        if not strategy_executor:
+            logger.warning("[PositionMonitor] No strategy_executor - recording position without on-chain execution")
+            if "positions" not in agent:
+                agent["positions"] = []
+            agent["positions"].append(new_position)
+            return {"success": True, "position": new_position, "simulated": True}
         
-        logger.info(f"[PositionMonitor] Simulated reinvestment into {pool.get('project')}")
-        
-        # TODO: Implement actual on-chain investment
-        # return await strategy_executor.execute_v4_strategy(...)
-        
-        return {"success": True, "position": new_position}
+        try:
+            # Set up agent's recommended_pools for execute_allocation
+            agent["recommended_pools"] = [pool]
+            
+            # Execute real on-chain allocation via strategy_executor
+            result = await strategy_executor.execute_allocation(
+                agent=agent,
+                amount_usdc=amount
+            )
+            
+            success = result.get("success", False)
+            
+            if success:
+                logger.info(f"[PositionMonitor] ✅ Reinvestment into {pool.get('project')} successful")
+                new_position["status"] = "active"
+                # Extract tx hashes from results
+                pool_results = result.get("results", [])
+                new_position["tx_hashes"] = [r.get("result", {}).get("tx_hash") for r in pool_results if r.get("result", {}).get("tx_hash")]
+            else:
+                logger.error(f"[PositionMonitor] ❌ Reinvestment failed: {result.get('error')}")
+            
+            if "positions" not in agent:
+                agent["positions"] = []
+            agent["positions"].append(new_position)
+            
+            return {"success": success, "position": new_position}
+        except Exception as e:
+            logger.error(f"[PositionMonitor] Reinvestment error: {e}")
+            new_position["status"] = "error"
+            if "positions" not in agent:
+                agent["positions"] = []
+            agent["positions"].append(new_position)
+            return {"success": False, "position": new_position, "error": str(e)}
 
 
 # Global instance

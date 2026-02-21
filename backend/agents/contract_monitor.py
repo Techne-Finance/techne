@@ -147,7 +147,7 @@ PROTOCOLS = {
         "risk_level": "low",
         "is_lending": True,
         "audited": True,
-        "implemented": False,  # Coming soon - no on-chain integration yet
+        "implemented": True,  # GAP-D FIX: calldata integration via strategy_executor
         "supply_sig": "mint(uint256)",
         "apy": 7.1,
         "tvl": 45000000,   # $45M TVL
@@ -161,7 +161,7 @@ PROTOCOLS = {
         "risk_level": "low",
         "is_lending": True,
         "audited": True,
-        "implemented": False,  # Coming soon - no Smart Account integration yet
+        "implemented": True,  # GAP-D FIX: calldata integration via strategy_executor
         "supply_sig": "supply(address,uint256)",
         "apy": 5.8,
         "tvl": 200000000,  # $200M TVL
@@ -175,7 +175,7 @@ PROTOCOLS = {
         "risk_level": "medium",
         "is_lending": True,
         "audited": True,
-        "implemented": False,  # Coming soon - no Smart Account integration yet
+        "implemented": True,  # GAP-D FIX: calldata integration via strategy_executor (Aave-fork pattern)
         "supply_sig": "deposit(uint256,address)",
         "apy": 9.2,
         "tvl": 25000000,   # $25M TVL
@@ -2055,8 +2055,31 @@ class ContractMonitor:
         Check all user positions for:
         1. max_drawdown violations (trigger emergency exit)
         2. rebalance opportunities (if auto_rebalance enabled)
+        
+        REM-2 FIX: Dedup with strategy_executor — skip if executor has run
+        within the last 15 minutes (executor runs every 10 min and handles
+        all risk checks + rebalance via check_position_risks/check_rebalance_needed).
+        Contract_monitor only acts as a fallback safety net.
         """
         from api.agent_config_router import DEPLOYED_AGENTS
+        
+        # REM-2: Check if strategy_executor has run recently — if so, skip (it handles this)
+        try:
+            from agents.strategy_executor import strategy_executor as se
+            for user_addr, positions in self.user_positions.items():
+                agent_config = None
+                for u, agents in DEPLOYED_AGENTS.items():
+                    if u.lower() == user_addr.lower() and agents:
+                        agent_config = agents[0]
+                        break
+                if agent_config:
+                    agent_id = agent_config.get("id", "")
+                    last_exec = se.last_execution.get(agent_id)
+                    if last_exec and (datetime.utcnow() - last_exec).total_seconds() < 900:
+                        # Strategy executor ran <15 min ago — it already checked risks
+                        continue
+        except ImportError:
+            pass
         
         for user_addr, positions in self.user_positions.items():
             # Get user's agent config

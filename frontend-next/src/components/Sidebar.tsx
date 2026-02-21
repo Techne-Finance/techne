@@ -162,9 +162,7 @@ export function Sidebar() {
                                 >
                                     {c.iconSrc ? (
                                         <img src={c.iconSrc} alt="" className="w-3.5 h-3.5 rounded-full" />
-                                    ) : (
-                                        <span className="text-[11px]">{c.icon}</span>
-                                    )}
+                                    ) : null}
                                     <span className="font-medium">{c.label}</span>
                                 </button>
                             )

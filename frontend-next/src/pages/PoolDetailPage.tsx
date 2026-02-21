@@ -481,7 +481,7 @@ export function PoolDetailPage() {
                             <XAxis dataKey="day" tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${v.toFixed(0)}%`} />
                             <Tooltip contentStyle={{ background: '#1a1a24', border: '1px solid rgba(212,168,83,0.12)', borderRadius: '8px', fontSize: '12px', color: '#e5e5e5' }}
-                                formatter={(value: number) => [`${value.toFixed(2)}%`, 'APY']} />
+                                formatter={((value: any) => [`${Number(value ?? 0).toFixed(2)}%`, 'APY']) as any} />
                             <Area type="monotone" dataKey="apy" stroke="#22c55e" fill="url(#apyGrad)" strokeWidth={2} />
                         </AreaChart>
                     </ResponsiveContainer>
@@ -498,7 +498,7 @@ export function PoolDetailPage() {
                             <XAxis dataKey="day" tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => formatUsd(v)} />
                             <Tooltip contentStyle={{ background: '#1a1a24', border: '1px solid rgba(212,168,83,0.12)', borderRadius: '8px', fontSize: '12px', color: '#e5e5e5' }}
-                                formatter={(value: number) => [formatUsd(value), 'TVL']} />
+                                formatter={((value: any) => [formatUsd(Number(value ?? 0)), 'TVL']) as any} />
                             <Bar dataKey="tvl" fill="url(#tvlGrad)" radius={[3, 3, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>

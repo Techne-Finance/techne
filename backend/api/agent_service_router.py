@@ -199,6 +199,29 @@ async def resume_agent(agent_address: str):
     return {"success": True, "message": "Agent resumed"}
 
 
+@router.delete("/{agent_address}")
+async def delete_agent(agent_address: str):
+    """Delete an agent permanently"""
+    agent = await agent_service.get_agent(agent_address)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    # Log deletion before removing
+    await agent_service.log_audit(
+        agent_address=agent_address,
+        user_address=agent["user_address"],
+        action="delete",
+        message="Agent deleted by user",
+        severity="warning"
+    )
+    
+    success = await agent_service.delete_agent(agent_address)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete agent")
+    
+    return {"success": True, "message": "Agent deleted"}
+
+
 # ==========================================
 # Transaction Endpoints
 # ==========================================
