@@ -322,7 +322,7 @@ export function PremiumPage() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
             {/* Header */}
             <div className="text-center mb-8">
                 <motion.div
@@ -331,7 +331,7 @@ export function PremiumPage() {
                     className="inline-flex items-center gap-2 mb-3"
                 >
                     <Crown className="w-8 h-8" style={{ color: 'var(--color-gold)' }} />
-                    <h1 className="font-heading text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                    <h1 className="font-heading text-2xl sm:text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
                         Artisan Access
                     </h1>
                 </motion.div>
@@ -353,7 +353,7 @@ export function PremiumPage() {
                 <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="glass-card-gold p-5 mb-6 flex items-center justify-between"
+                    className="glass-card-gold p-4 sm:p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:justify-between"
                 >
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -382,20 +382,20 @@ export function PremiumPage() {
             )}
 
             {/* Pricing Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 mb-8">
                 {/* Pay-Per-Use */}
                 <motion.div
                     initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="glass-card p-6 flex flex-col"
+                    className="glass-card p-4 sm:p-6 flex flex-col"
                 >
                     <div className="text-center mb-5">
                         <p className="text-xs font-heading font-semibold tracking-widest mb-3" style={{ color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
                             CREDIT PACK
                         </p>
                         <div className="flex items-baseline justify-center gap-1">
-                            <span className="font-heading text-5xl font-bold" style={{ color: 'var(--color-text-primary)' }}>0.10</span>
+                            <span className="font-heading text-3xl sm:text-5xl font-bold" style={{ color: 'var(--color-text-primary)' }}>0.10</span>
                             <span className="text-lg" style={{ color: 'var(--color-text-muted)' }}>USDC</span>
                         </div>
                         <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
@@ -469,10 +469,10 @@ export function PremiumPage() {
                     initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="glass-card-gold p-6 flex flex-col relative overflow-hidden"
+                    className="glass-card-gold p-4 sm:p-6 flex flex-col relative overflow-hidden"
                 >
                     {/* Badge */}
-                    <div className="absolute top-5 right-5">
+                    <div className="absolute top-3 right-3 sm:top-5 sm:right-5">
                         <span
                             className="px-3 py-1 rounded-full text-xs font-heading font-bold"
                             style={{
@@ -489,7 +489,7 @@ export function PremiumPage() {
                             ARTISAN BOT
                         </p>
                         <div className="flex items-baseline justify-center gap-1">
-                            <span className="font-heading text-5xl font-bold" style={{ color: 'var(--color-text-primary)' }}>99</span>
+                            <span className="font-heading text-3xl sm:text-5xl font-bold" style={{ color: 'var(--color-text-primary)' }}>99</span>
                             <span className="text-lg" style={{ color: 'var(--color-text-muted)' }}>USDC/mo</span>
                         </div>
                     </div>
@@ -553,7 +553,7 @@ export function PremiumPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="glass-card p-6"
+                className="glass-card p-4 sm:p-6"
             >
                 <div className="flex items-center gap-3 mb-3">
                     <div
@@ -596,7 +596,7 @@ export function PremiumPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35 }}
-                className="glass-card p-6 mt-6"
+                className="glass-card p-4 sm:p-6 mt-6"
             >
                 <h3 className="font-heading text-lg font-bold text-center mb-6" style={{ color: 'var(--color-text-primary)' }}>
                     How It Works
@@ -636,7 +636,7 @@ export function PremiumPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="glass-card-gold p-6 mt-6"
+                className="glass-card-gold p-4 sm:p-6 mt-6"
             >
                 <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
@@ -683,7 +683,7 @@ export function PremiumPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.42 }}
-                className="glass-card p-6 mt-6"
+                className="glass-card p-4 sm:p-6 mt-6"
             >
                 <div className="flex items-center gap-2 mb-2">
                     <Settings className="w-5 h-5" style={{ color: 'var(--color-gold)' }} />
@@ -791,7 +791,7 @@ export function PremiumPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.45 }}
-                className="glass-card-gold p-6 mt-6"
+                className="glass-card-gold p-4 sm:p-6 mt-6"
             >
                 <div className="flex items-center gap-2 mb-4">
                     <Brain className="w-5 h-5" style={{ color: 'var(--color-gold)' }} />
@@ -840,7 +840,7 @@ export function PremiumPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="glass-card p-6 mt-6"
+                className="glass-card p-4 sm:p-6 mt-6"
             >
                 <div className="flex items-center gap-2 mb-4">
                     <Terminal className="w-5 h-5" style={{ color: 'var(--color-gold)' }} />
@@ -877,7 +877,7 @@ export function PremiumPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55 }}
-                className="glass-card p-6 mt-6 mb-8"
+                className="glass-card p-4 sm:p-6 mt-6 mb-8"
             >
                 <div className="flex items-center gap-2 mb-4">
                     <Globe className="w-5 h-5" style={{ color: 'var(--color-gold)' }} />
@@ -917,7 +917,7 @@ export function PremiumPage() {
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
                             onClick={e => e.stopPropagation()}
-                            className="glass-card-gold p-8 max-w-md mx-4 text-center relative"
+                            className="glass-card-gold p-5 sm:p-8 max-w-md mx-4 text-center relative"
                         >
                             {/* Close */}
                             <button
@@ -945,7 +945,7 @@ export function PremiumPage() {
                                 }}
                             >
                                 <code
-                                    className="font-mono text-2xl font-bold tracking-widest"
+                                    className="font-mono text-lg sm:text-2xl font-bold tracking-widest"
                                     style={{ color: 'var(--color-text-primary)' }}
                                 >
                                     {activationCode}
