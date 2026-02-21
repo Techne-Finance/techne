@@ -22,10 +22,10 @@ import { toast } from '@/components/Toast'
 // ─── Strategy Presets (from agent-builder-ui.js) ───
 const STRATEGIES = {
     safe: {
-        label: 'Safe', icon: Shield, range: '5-12% APY', color: '#22C55E',
+        label: 'Safe', icon: Shield, range: '5-12% APY', color: 'var(--color-green)', colorDim: 'var(--color-green-dim)',
         desc: 'Maximum security. Audited protocols only. Single-sided stablecoin deposits.',
         bullets: ['TVL $10M+ only', 'Time-tested protocols', 'No IL exposure'],
-        badge: 'LOW RISK', badgeColor: '#22C55E',
+        badge: 'LOW RISK', badgeColor: 'var(--color-green)',
         narrative: 'Maximum security. Targeting 5–12% APY on audited protocols only. TVL $10M+ required. No IL exposure.',
         riskLevel: 'low', minApy: 5, maxApy: 12, maxDrawdown: 10,
         protocols: ['aave', 'morpho', 'moonwell', 'compound'],
@@ -34,10 +34,10 @@ const STRATEGIES = {
         rebalanceThreshold: 3, slippage: 0.3, compoundFreq: 7,
     },
     steady: {
-        label: 'Steady', icon: TrendingUp, range: '10-30% APY', color: '#D4A853',
+        label: 'Steady', icon: TrendingUp, range: '10-30% APY', color: 'var(--color-gold)', colorDim: 'var(--color-gold-dim)',
         desc: 'Balanced approach. Diversified across top protocols with moderate exposure.',
         bullets: ['TVL $10M+ pools', 'Blue-chip tokens', 'Auto-compound'],
-        badge: 'BALANCED', badgeColor: '#D4A853',
+        badge: 'BALANCED', badgeColor: 'var(--color-gold)',
         narrative: 'Balanced approach. Targeting 10–30% APY. TVL $10M+, single + dual pools. Ready to deploy.',
         riskLevel: 'medium', minApy: 10, maxApy: 30, maxDrawdown: 20,
         protocols: ['morpho', 'aave', 'moonwell', 'aerodrome'],
@@ -46,10 +46,10 @@ const STRATEGIES = {
         rebalanceThreshold: 5, slippage: 0.5, compoundFreq: 7,
     },
     degen: {
-        label: 'Degen', icon: Flame, range: '30-100%+ APY', color: '#EF4444',
+        label: 'Degen', icon: Flame, range: '30-100%+ APY', color: 'var(--color-red)', colorDim: 'var(--color-red-dim)',
         desc: 'Maximum growth potential. Active rotation. Dual-sided LPs. IL exposure possible.',
         bullets: ['Aggressive rotation', 'Higher yields', 'MEV Protection'],
-        badge: 'DEGEN MODE', badgeColor: '#EF4444',
+        badge: 'DEGEN MODE', badgeColor: 'var(--color-red)',
         narrative: 'Aggressive growth. 30–100%+ APY. Active rotation, dual-sided LPs, IL exposure. LFG!',
         riskLevel: 'high', minApy: 30, maxApy: 100, maxDrawdown: 40,
         protocols: ['aerodrome', 'beefy', 'morpho', 'moonwell', 'uniswap'],
@@ -853,7 +853,7 @@ export function BuildPage() {
                                     : 'border-border hover:border-primary/20'}`}
                                     onClick={() => setStrategy(key)}>
                                     <div className="flex justify-center mb-3">
-                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${s.color}15` }}>
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: s.colorDim }}>
                                             <Icon className="w-5 h-5" style={{ color: s.color }} />
                                         </div>
                                     </div>
@@ -898,12 +898,12 @@ export function BuildPage() {
                     </div>
 
                     {/* AI Status + Deploy */}
-                    <div className="rounded-xl p-4 mb-5" style={{ border: '1px solid #A07830', background: 'rgba(0,0,0,0.4)' }}>
+                    <div className="rounded-xl p-4 mb-5" style={{ border: '1px solid var(--color-gold-dark)', background: 'rgba(0,0,0,0.4)' }}>
                         <div className="flex items-center gap-2 mb-3">
-                            <Terminal className="w-4 h-4" style={{ color: '#A07830' }} />
-                            <span className="font-heading text-xs font-bold uppercase tracking-wider" style={{ color: '#A07830' }}>AI Status</span>
+                            <Terminal className="w-4 h-4" style={{ color: 'var(--color-gold-dark)' }} />
+                            <span className="font-heading text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-gold-dark)' }}>AI Status</span>
                         </div>
-                        <div className="text-xs p-3 rounded-lg font-mono" style={{ background: 'rgba(0,0,0,0.5)', color: '#F0F0F5' }}>
+                        <div className="text-xs p-3 rounded-lg font-mono" style={{ background: 'rgba(0,0,0,0.5)', color: 'var(--color-text-primary)' }}>
                             [AI] {currentStrategy.narrative}
                         </div>
                     </div>
@@ -912,8 +912,8 @@ export function BuildPage() {
                         disabled={isRunning}
                         className="w-full py-3.5 px-6 rounded-xl font-heading font-bold text-base mb-5 flex items-center justify-center gap-2 cursor-pointer transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{
-                            background: 'linear-gradient(135deg, #D4A853, #A07830)',
-                            color: '#06060A',
+                            background: 'linear-gradient(135deg, var(--color-gold), var(--color-gold-dark))',
+                            color: 'var(--color-bg-primary)',
                             border: '1px solid rgba(212,168,83,0.4)',
                             boxShadow: '0 0 20px rgba(212,168,83,0.15)',
                         }}
@@ -1052,9 +1052,9 @@ export function BuildPage() {
                         <span className="block text-[10px] font-medium mb-2.5 uppercase tracking-wider text-muted-foreground">Agent Trading Style</span>
                         <div className="flex flex-wrap gap-2 mb-2">
                             {([
-                                { v: 'conservative' as const, l: 'Conservative', color: '#22C55E' },
-                                { v: 'moderate' as const, l: 'Moderate', color: '#D4A853' },
-                                { v: 'aggressive' as const, l: 'Aggressive', color: '#EF4444' },
+                                { v: 'conservative' as const, l: 'Conservative', color: 'var(--color-green)' },
+                                { v: 'moderate' as const, l: 'Moderate', color: 'var(--color-gold)' },
+                                { v: 'aggressive' as const, l: 'Aggressive', color: 'var(--color-red)' },
                             ]).map(s => (
                                 <Button key={s.v} variant={flexTradingStyle === s.v ? 'default' : 'outline'} size="sm"
                                     className="text-xs font-heading font-semibold"
@@ -1174,8 +1174,8 @@ export function BuildPage() {
                         disabled={isRunning}
                         className="w-full py-3.5 px-6 rounded-xl font-heading font-bold text-base mb-5 flex items-center justify-center gap-2 cursor-pointer transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{
-                            background: 'linear-gradient(135deg, #D4A853, #A07830)',
-                            color: '#06060A',
+                            background: 'linear-gradient(135deg, var(--color-gold), var(--color-gold-dark))',
+                            color: 'var(--color-bg-primary)',
                             border: '1px solid rgba(212,168,83,0.4)',
                             boxShadow: '0 0 20px rgba(212,168,83,0.15)',
                         }}
@@ -1537,15 +1537,15 @@ export function BuildPage() {
             }
 
             {/* ── Neural Terminal (all modes) ── */}
-            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #A07830', background: 'rgba(0,0,0,0.95)' }}>
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--color-gold-dark)', background: 'rgba(0,0,0,0.95)' }}>
                 {/* Terminal Header */}
                 <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(160,120,48,0.3)' }}>
                     <div className="flex items-center gap-2.5">
-                        <Zap className="w-4 h-4" style={{ color: '#A07830' }} />
-                        <span className="font-mono text-sm font-bold tracking-wider" style={{ color: '#A07830' }}>NEURAL TERMINAL</span>
+                        <Zap className="w-4 h-4" style={{ color: 'var(--color-gold-dark)' }} />
+                        <span className="font-mono text-sm font-bold tracking-wider" style={{ color: 'var(--color-gold-dark)' }}>NEURAL TERMINAL</span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold"
                             style={{
-                                color: isRunning ? '#D4A853' : '#22C55E',
+                                color: isRunning ? 'var(--color-gold)' : 'var(--color-green)',
                                 background: isRunning ? 'rgba(212,168,83,0.08)' : 'rgba(34,197,94,0.05)',
                                 border: `1px solid ${isRunning ? 'rgba(212,168,83,0.3)' : 'rgba(34,197,94,0.2)'}`,
                             }}>
@@ -1553,8 +1553,8 @@ export function BuildPage() {
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button className="text-xs px-1.5 py-0.5 rounded cursor-pointer" style={{ color: '#666', background: 'transparent', border: '1px solid #333' }}>_</button>
-                        <button className="text-xs px-1.5 py-0.5 rounded cursor-pointer" style={{ color: '#666', background: 'transparent', border: '1px solid #333' }}
+                        <button className="text-xs px-1.5 py-0.5 rounded cursor-pointer" style={{ color: 'var(--color-text-muted)', background: 'transparent', border: '1px solid var(--color-glass-border)' }}>_</button>
+                        <button className="text-xs px-1.5 py-0.5 rounded cursor-pointer" style={{ color: 'var(--color-text-muted)', background: 'transparent', border: '1px solid var(--color-glass-border)' }}
                             onClick={() => setLines([{ type: 'system', text: '[SYSTEM] Neural Terminal v2.0 initialized', timestamp: new Date().toLocaleTimeString('en', { hour12: false }) }])}>
                             ⌘
                         </button>
@@ -1563,34 +1563,34 @@ export function BuildPage() {
                 {/* Terminal Body */}
                 <div ref={terminalRef}
                     className="p-4 font-mono text-xs leading-relaxed overflow-y-auto"
-                    style={{ minHeight: '200px', maxHeight: '350px', background: 'rgba(0,0,0,0.95)', color: '#F0F0F5' }}>
+                    style={{ minHeight: '200px', maxHeight: '350px', background: 'rgba(0,0,0,0.95)', color: 'var(--color-text-primary)' }}>
                     <AnimatePresence>
                         {lines.map((line, i) => (
                             <motion.div key={i} initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.2 }} className="mb-1">
                                 <span style={{
-                                    color: line.type === 'error' ? '#EF4444' :
-                                        line.type === 'warning' ? '#D4A853' :
-                                            line.type === 'success' ? '#22C55E' :
-                                                line.type === 'user' ? '#A07830' :
-                                                    line.type === 'agent' ? '#60A5FA' :
-                                                        line.text.includes('[SYSTEM]') ? '#A07830' :
-                                                            line.text.includes('[READY]') ? '#22C55E' :
-                                                                '#B0B0B8'
+                                    color: line.type === 'error' ? 'var(--color-red)' :
+                                        line.type === 'warning' ? 'var(--color-gold)' :
+                                            line.type === 'success' ? 'var(--color-green)' :
+                                                line.type === 'user' ? 'var(--color-gold-dark)' :
+                                                    line.type === 'agent' ? 'var(--color-blue)' :
+                                                        line.text.includes('[SYSTEM]') ? 'var(--color-gold-dark)' :
+                                                            line.text.includes('[READY]') ? 'var(--color-green)' :
+                                                                'var(--color-text-secondary)'
                                 }}>{line.text}</span>
                             </motion.div>
                         ))}
                     </AnimatePresence>
                     {!isRunning && (
                         <div className="mt-2 flex items-center gap-1">
-                            <span style={{ color: '#A07830' }}>&gt;</span>
-                            <span style={{ color: '#00FF41', opacity: 0.5 }} className="animate-pulse">Enter command...</span>
+                            <span style={{ color: 'var(--color-gold-dark)' }}>&gt;</span>
+                            <span style={{ color: 'var(--color-terminal)', opacity: 0.5 }} className="animate-pulse">Enter command...</span>
                         </div>
                     )}
                 </div>
                 {/* Terminal Input */}
                 <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderTop: '1px solid rgba(160,120,48,0.15)' }}>
-                    <span className="font-mono text-sm" style={{ color: '#A07830' }}>&gt;</span>
+                    <span className="font-mono text-sm" style={{ color: 'var(--color-gold-dark)' }}>&gt;</span>
                     <input
                         type="text"
                         value={command}
@@ -1598,7 +1598,7 @@ export function BuildPage() {
                         onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                         placeholder="Enter command..."
                         className="flex-1 bg-transparent border-none outline-none font-mono text-xs"
-                        style={{ color: '#00FF41', caretColor: '#00FF41' }}
+                        style={{ color: 'var(--color-terminal)', caretColor: 'var(--color-terminal)' }}
                     />
                 </div>
             </div>

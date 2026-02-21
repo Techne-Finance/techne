@@ -6,7 +6,7 @@
  * - 20 credits = 1 filter/explore search
  * - 10 credits = 1 pool verification
  * - 100 credits = 0.10 USDC purchase
- * - Premium = 3000 credits/day
+ * - Premium = 500 credits/day
  */
 
 import { create } from 'zustand'
@@ -19,7 +19,7 @@ export const CREDIT_COSTS = {
     VERIFY: 10,
     PURCHASE_AMOUNT: 100,
     PRICE_USDC: 0.1,
-    PREMIUM_DAILY: 3000,
+    PREMIUM_DAILY: 500,
     WELCOME_BONUS: 50,
 } as const
 

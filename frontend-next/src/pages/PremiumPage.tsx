@@ -19,8 +19,8 @@ import {
     MessageSquare, CheckCircle2, XCircle, Loader2, Coins,
     Copy, Check, ExternalLink, Settings,
     ToggleLeft, ToggleRight, X, Lock, CreditCard, Flame,
-    PartyPopper, Wallet, Search, Activity, ChevronRight,
-    Eye, BarChart3, ShieldCheck, Radio, Crosshair, Gift,
+    PartyPopper, Wallet, Activity, ChevronRight,
+    Eye, BarChart3, Crosshair, Gift,
     Globe, Terminal
 } from 'lucide-react'
 import { useWalletStore } from '@/stores/walletStore'
@@ -62,38 +62,38 @@ const HOW_IT_WORKS_STEPS = [
     },
     {
         step: '02',
-        title: 'Verify & Analyze',
-        desc: 'Paste any pool address or DefiLlama URL. Get on-chain proof of TVL, APY, and safety score in seconds.',
-        icon: Search,
+        title: 'Activate Artisan Bot',
+        desc: 'Subscribe for $99/mo. Open @TechneArtisanBot on Telegram and paste your activation code.',
+        icon: Bot,
     },
     {
         step: '03',
-        title: 'Trade with AI',
-        desc: 'Subscribe to Artisan Bot — your personal AI agent that executes trades via Telegram commands.',
-        icon: Bot,
+        title: 'Start Managing DeFi',
+        desc: 'Chat with your AI agent in natural language — it finds yields, executes trades, and guards your portfolio 24/7.',
+        icon: Brain,
     },
 ]
 
-const VERIFICATION_FEATURES = [
+const BOT_SKILLS = [
     {
-        title: 'On-Chain TVL Proof',
-        desc: 'Every TVL figure is verified directly from smart contracts — not from APIs that can be spoofed.',
-        icon: ShieldCheck,
+        title: '18 DeFi Tools',
+        desc: 'Swap tokens, provide liquidity, stake, bridge cross-chain, verify pools — all through one chat interface.',
+        icon: Terminal,
     },
     {
-        title: 'APY & TVL History',
-        desc: 'Full historical charts showing APY trends, TVL changes, and yield performance over time.',
+        title: 'Portfolio Autopilot',
+        desc: 'Auto-compounds yields, rebalances positions across protocols, and optimizes gas costs without you touching anything.',
         icon: BarChart3,
     },
     {
-        title: 'Protocol Safety Score',
-        desc: 'Risk rating based on contract age, audit status, TVL stability, and holder concentration.',
+        title: 'Risk Engine',
+        desc: 'Built-in stop-loss, max drawdown limits, volatility guard, and instant emergency exit. Protects your funds 24/7.',
         icon: Shield,
     },
     {
-        title: 'Real-Time Signals',
-        desc: 'Instant alerts for APY drops, TVL changes, whale movements, and protocol risk events.',
-        icon: Radio,
+        title: 'Yield Scanner',
+        desc: 'Scans 25+ protocols on Base in real-time. Finds the best APY for your risk profile and auto-rotates into top opportunities.',
+        icon: Crosshair,
     },
 ]
 
@@ -358,7 +358,7 @@ export function PremiumPage() {
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                             style={{ background: 'linear-gradient(135deg, var(--color-gold), var(--color-gold-bright))' }}>
-                            <CheckCircle2 className="w-5 h-5" style={{ color: '#0a0a0f' }} />
+                            <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--color-bg-primary)' }} />
                         </div>
                         <div>
                             <h3 className="font-heading text-sm font-bold" style={{ color: 'var(--color-gold)' }}>
@@ -422,15 +422,20 @@ export function PremiumPage() {
                     <div className="p-3 rounded-xl mb-4"
                         style={{ background: 'var(--color-glass)', border: '1px solid var(--color-glass-border)' }}>
                         <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Credit Costs
+                            Credit Usage
                         </p>
-                        <div className="space-y-1">
-                            {Object.entries(CREDIT_COSTS).map(([key, value]) => (
-                                <div key={key} className="flex items-center justify-between text-xs">
+                        <div className="space-y-1.5">
+                            {[
+                                { label: 'Pool Verification', cost: `${CREDIT_COSTS.VERIFY} cr`, color: 'var(--color-gold)' },
+                                { label: 'Filter / Search', cost: `${CREDIT_COSTS.FILTER} cr`, color: 'var(--color-gold)' },
+                                { label: 'Premium Daily Bonus', cost: `${CREDIT_COSTS.PREMIUM_DAILY} cr / day`, color: 'var(--color-green)' },
+                                { label: 'Welcome Bonus', cost: `${CREDIT_COSTS.WELCOME_BONUS} cr`, color: 'var(--color-accent)' },
+                            ].map((item, i) => (
+                                <div key={i} className="flex items-center justify-between text-xs">
                                     <span style={{ color: 'var(--color-text-secondary)' }}>
-                                        {key.charAt(0) + key.slice(1).toLowerCase()}
+                                        {item.label}
                                     </span>
-                                    <span style={{ color: 'var(--color-gold)' }}>{value} cr</span>
+                                    <span className="font-heading font-semibold" style={{ color: item.color }}>{item.cost}</span>
                                 </div>
                             ))}
                         </div>
@@ -472,7 +477,7 @@ export function PremiumPage() {
                             className="px-3 py-1 rounded-full text-xs font-heading font-bold"
                             style={{
                                 background: 'linear-gradient(135deg, var(--color-gold), var(--color-gold-bright))',
-                                color: '#0a0a0f',
+                                color: 'var(--color-bg-primary)',
                             }}
                         >
                             <Bot className="w-3.5 h-3.5 inline mr-1" /> AI TRADING AGENT
@@ -508,7 +513,7 @@ export function PremiumPage() {
                         className="w-full py-3 rounded-xl text-sm font-heading font-bold cursor-pointer flex items-center justify-center gap-2"
                         style={{
                             background: 'linear-gradient(135deg, var(--color-gold), var(--color-gold-bright))',
-                            color: '#0a0a0f',
+                            color: 'var(--color-bg-primary)',
                             opacity: !isConnected ? 0.7 : 1,
                         }}
                     >
@@ -559,18 +564,18 @@ export function PremiumPage() {
                     </div>
                     <div>
                         <h3 className="font-heading text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                            AI Trading via Telegram
+                            Techne Artisan Bot
                         </h3>
                         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                            Your personal AI agent that understands natural language. Just chat to manage your DeFi portfolio.
+                            Your personal AI trading agent on Telegram. Powered by OpenClaw MCP with 18 specialized DeFi tools.
                         </p>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
                     {[
-                        { title: 'Natural Language', desc: 'Type commands like "check my portfolio" or "find best stablecoin yields"' },
-                        { title: 'Autonomous Execution', desc: 'Agent executes trades, rebalances, and monitors positions 24/7' },
-                        { title: 'Emergency Controls', desc: 'Instant stop-loss and emergency exit with a single message' },
+                        { title: 'Setup in 60 Seconds', desc: 'Subscribe → get activation code → open @TechneArtisanBot on Telegram → paste code → done' },
+                        { title: 'Natural Language AI', desc: 'No complex UIs. Just type "find best yields" or "move 50% to Aave" — the bot handles everything' },
+                        { title: 'Always-On Agent', desc: 'Runs 24/7 on our VPS infrastructure. Monitors positions, auto-compounds, guards against risk — even while you sleep' },
                     ].map((item, i) => (
                         <div
                             key={i}
@@ -626,32 +631,31 @@ export function PremiumPage() {
                 </div>
             </motion.div>
 
-            {/* ========== VERIFICATION FEATURES ========== */}
+            {/* ========== BOT SKILLS & CAPABILITIES ========== */}
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="glass-card p-6 mt-6"
+                className="glass-card-gold p-6 mt-6"
             >
                 <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
-                        <Eye className="w-5 h-5" style={{ color: 'var(--color-gold)' }} />
+                        <Bot className="w-5 h-5" style={{ color: 'var(--color-gold)' }} />
                         <h3 className="font-heading text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                            Pool Verification Intelligence
+                            Artisan Bot Skills
                         </h3>
                     </div>
                     <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
                         style={{ background: 'var(--color-gold-dim)', border: '1px solid var(--color-gold-border)' }}>
-                        <Coins className="w-3 h-3" style={{ color: 'var(--color-gold)' }} />
-                        <span className="text-xs font-heading font-bold" style={{ color: 'var(--color-gold)' }}>10 credits / verify</span>
+                        <Activity className="w-3 h-3" style={{ color: 'var(--color-green)' }} />
+                        <span className="text-xs font-heading font-bold" style={{ color: 'var(--color-green)' }}>Online 24/7</span>
                     </div>
                 </div>
                 <p className="text-sm mb-5" style={{ color: 'var(--color-text-muted)' }}>
-                    Every verification reads directly from on-chain smart contracts. No API middlemen.
-                    Paste a 0x address, DefiLlama URL, or protocol link to get full on-chain proof.
+                    Powered by OpenClaw MCP framework. Your Artisan Bot connects directly to on-chain smart contracts — no API middlemen, no centralized custody.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {VERIFICATION_FEATURES.map((f, i) => (
+                    {BOT_SKILLS.map((f, i) => (
                         <div
                             key={i}
                             className="p-4 rounded-xl flex gap-3"
@@ -668,6 +672,114 @@ export function PremiumPage() {
                                     {f.title}
                                 </h4>
                                 <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{f.desc}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </motion.div>
+
+            {/* ========== BOT ACTIVATION MODES ========== */}
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.42 }}
+                className="glass-card p-6 mt-6"
+            >
+                <div className="flex items-center gap-2 mb-2">
+                    <Settings className="w-5 h-5" style={{ color: 'var(--color-gold)' }} />
+                    <h3 className="font-heading text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                        4 Operating Modes
+                    </h3>
+                </div>
+                <p className="text-sm mb-5" style={{ color: 'var(--color-text-muted)' }}>
+                    After activating your code in Telegram, choose a mode with <code style={{ color: 'var(--color-gold)', background: 'var(--color-glass)', padding: '1px 5px', borderRadius: '4px', fontSize: '11px' }}>/mode</code>. Change anytime.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {([
+                        {
+                            label: 'Observer',
+                            icon: Eye,
+                            badge: 'Read Only',
+                            color: 'var(--color-accent)',
+                            colorDim: 'rgba(99,102,241,0.1)',
+                            setup: 'Provide your Smart Account address',
+                            desc: 'Analysis only — no execution. Portfolio tracking, yield discovery, risk alerts.',
+                            bullets: ['Portfolio analysis & P&L tracking', 'Yield opportunity scanner', 'Risk monitoring & alerts'],
+                        },
+                        {
+                            label: 'Advisor',
+                            icon: MessageSquare,
+                            badge: 'Confirm Each Trade',
+                            color: 'var(--color-gold)',
+                            colorDim: 'var(--color-gold-dim)',
+                            setup: 'Smart Account + Session Key',
+                            desc: 'Bot suggests optimal moves and trade parameters. Every transaction requires your explicit confirmation.',
+                            bullets: ['AI-generated trade suggestions', 'Manual confirm: true per trade', 'Full visibility before execution'],
+                        },
+                        {
+                            label: 'Copilot',
+                            icon: Zap,
+                            badge: 'Auto < $1K',
+                            color: '#f59e0b',
+                            colorDim: 'rgba(245,158,11,0.1)',
+                            setup: 'Smart Account + Session Key',
+                            desc: 'Auto-executes trades under $1,000. Anything above requires your confirmation in chat.',
+                            bullets: ['Auto-execute under $1K', 'Confirmation for larger trades', 'Best for active DeFi users'],
+                        },
+                        {
+                            label: 'Full Auto',
+                            icon: Bot,
+                            badge: 'Autonomous',
+                            color: 'var(--color-green)',
+                            colorDim: 'var(--color-green-dim)',
+                            setup: 'Session Key from Portfolio → Agent panel',
+                            desc: 'Fully autonomous — bot executes, rebalances, and manages risk 24/7. Capped at $10K per transaction.',
+                            bullets: ['24/7 auto-execution & rebalancing', 'Built-in risk engine & stop-loss', '$10,000 per-transaction cap'],
+                        },
+                    ]).map((mode, idx) => (
+                        <div
+                            key={idx}
+                            className="p-4 rounded-xl flex flex-col"
+                            style={{
+                                background: 'var(--color-glass)',
+                                border: `1px solid var(--color-glass-border)`,
+                            }}
+                        >
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <div
+                                        className="w-8 h-8 rounded-lg flex items-center justify-center"
+                                        style={{ background: mode.colorDim }}
+                                    >
+                                        <mode.icon className="w-4 h-4" style={{ color: mode.color }} />
+                                    </div>
+                                    <span className="font-heading text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                                        {mode.label}
+                                    </span>
+                                </div>
+                                <span className="text-[10px] font-heading font-bold px-2 py-0.5 rounded-full"
+                                    style={{ background: mode.colorDim, color: mode.color, border: `1px solid ${mode.color}40` }}>
+                                    {mode.badge}
+                                </span>
+                            </div>
+                            <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
+                                {mode.desc}
+                            </p>
+                            <div className="space-y-1.5 mb-3 flex-1">
+                                {mode.bullets.map((b, i) => (
+                                    <div key={i} className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                        <Check className="w-3 h-3 flex-shrink-0" style={{ color: mode.color }} />
+                                        {b}
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-auto pt-3" style={{ borderTop: '1px solid var(--color-glass-border)' }}>
+                                <p className="text-[10px] font-heading font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                                    SETUP
+                                </p>
+                                <p className="text-xs font-heading font-semibold" style={{ color: mode.color }}>
+                                    {mode.setup}
+                                </p>
                             </div>
                         </div>
                     ))}
@@ -774,7 +886,7 @@ export function PremiumPage() {
                     </h3>
                 </div>
                 <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
-                    On-chain verification across 25+ DeFi protocols on Base. Supports 0x addresses, DefiLlama URLs, and direct protocol links.
+                    Your Artisan Bot can trade, stake, and manage liquidity across all these protocols — directly from Telegram.
                 </p>
                 <div className="flex flex-wrap gap-2">
                     {SUPPORTED_SOURCES.map((name, i) => (
@@ -865,7 +977,7 @@ export function PremiumPage() {
                                     rel="noopener noreferrer"
                                     className="w-full py-3 rounded-xl text-sm font-heading font-bold flex items-center justify-center gap-2 no-underline"
                                     style={{
-                                        background: '#0088cc',
+                                        background: 'var(--color-blue)',
                                         color: '#fff',
                                     }}
                                 >
@@ -1150,7 +1262,7 @@ export function PremiumPage() {
                                 className="w-full py-3 mt-6 rounded-xl text-sm font-heading font-bold cursor-pointer flex items-center justify-center gap-2"
                                 style={{
                                     background: 'linear-gradient(135deg, var(--color-gold), var(--color-gold-bright))',
-                                    color: '#0a0a0f',
+                                    color: 'var(--color-bg-primary)',
                                     opacity: savingSettings ? 0.7 : 1,
                                 }}
                             >

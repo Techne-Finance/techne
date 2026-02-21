@@ -210,7 +210,16 @@ class ArtisanAgent:
                     "message": f"Trade of ${amount} exceeds $1000 limit. Reply 'confirm' to proceed."
                 }
         
-        # Full Auto or under threshold - execute immediately
+        # Full Auto mode - cap at $10K per transaction
+        if mode == AutonomyMode.FULL_AUTO:
+            amount = args.get("amount_usd", 0)
+            if amount > 10000:
+                return {
+                    "blocked": True,
+                    "reason": f"Full Auto cap: ${amount} exceeds $10,000 per-transaction limit."
+                }
+        
+        # Execute immediately (Full Auto under cap, or Copilot under $1K)
         return await self._do_execute_action(tool_name, args)
     
     async def _do_execute_action(self, tool_name: str, args: Dict) -> Dict:

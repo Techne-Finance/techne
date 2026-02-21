@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/credits", tags=["Credits"])
 
 # Constants (mirrored from frontend CREDIT_COSTS)
 WELCOME_BONUS = 50
-PREMIUM_DAILY = 3000
+PREMIUM_DAILY = 500
 
 
 class CreditUpdate(BaseModel):

@@ -504,9 +504,58 @@ async def execute_trade_for_user(
     user_address: str,
     action: str,
     protocol_id: str,
-    amount_usd: float
+    amount_usd: float,
+    autonomy_mode: str = "advisor",
+    confirmed: bool = False
 ) -> Dict[str, Any]:
-    """Execute a trade for a user (used by Artisan Agent)"""
+    """
+    Execute a trade for a user with server-side mode enforcement.
+    
+    Mode rules:
+    - observer: BLOCKED — no execution allowed
+    - advisor: requires confirmed=True for every trade
+    - copilot: auto-execute under $1K, confirmed=True for larger
+    - full_auto: auto-execute up to $10K cap
+    """
+    # ── Observer: hard block ──
+    if autonomy_mode == "observer":
+        return {
+            "success": False,
+            "blocked": True,
+            "error": "Observer mode — execution disabled. Switch to Advisor or higher with /mode."
+        }
+    
+    # ── Advisor: every trade needs explicit confirmation ──
+    if autonomy_mode == "advisor" and not confirmed:
+        return {
+            "success": False,
+            "needs_confirmation": True,
+            "message": f"Advisor mode: {action} ${amount_usd:.2f} to {protocol_id} requires your confirmation.",
+            "action": action,
+            "protocol_id": protocol_id,
+            "amount_usd": amount_usd
+        }
+    
+    # ── Copilot: auto under $1K, confirm above ──
+    if autonomy_mode == "copilot" and amount_usd > 1000 and not confirmed:
+        return {
+            "success": False,
+            "needs_confirmation": True,
+            "message": f"Copilot mode: ${amount_usd:.2f} exceeds $1,000 threshold. Confirm to proceed.",
+            "action": action,
+            "protocol_id": protocol_id,
+            "amount_usd": amount_usd
+        }
+    
+    # ── Full Auto: cap at $10K per transaction ──
+    if autonomy_mode == "full_auto" and amount_usd > 10000:
+        return {
+            "success": False,
+            "blocked": True,
+            "error": f"Full Auto cap: ${amount_usd:.2f} exceeds $10,000 per-transaction limit."
+        }
+    
+    # ── Execute ──
     executor = create_executor(user_address)
     
     if action == "deposit":

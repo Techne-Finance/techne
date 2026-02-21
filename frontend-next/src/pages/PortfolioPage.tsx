@@ -539,10 +539,10 @@ function NeuralTerminal({ auditEntries, trades, agent }: {
     const fmt = (ts: number) => new Date(ts).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
     const color = (t: string) => {
-        if (t === 'success') return '#22c55e'
-        if (t === 'error') return '#ef4444'
-        if (t === 'info') return '#22d3ee'
-        if (t === 'agent') return '#d4a853'
+        if (t === 'success') return 'var(--color-green)'
+        if (t === 'error') return 'var(--color-red)'
+        if (t === 'info') return 'var(--color-cyan)'
+        if (t === 'agent') return 'var(--color-gold)'
         return 'rgba(255,255,255,0.55)'
     }
 
@@ -561,12 +561,12 @@ function NeuralTerminal({ auditEntries, trades, agent }: {
             {/* Terminal Header */}
             <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(160,120,48,0.2)', background: 'rgba(0,0,0,0.6)' }}>
                 <div className="flex items-center gap-2.5">
-                    <Zap className="w-3.5 h-3.5" style={{ color: '#A07830' }} />
-                    <span className="font-mono text-xs font-bold tracking-wider" style={{ color: '#A07830' }}>NEURAL TERMINAL</span>
+                    <Zap className="w-3.5 h-3.5" style={{ color: 'var(--color-gold-dark)' }} />
+                    <span className="font-mono text-xs font-bold tracking-wider" style={{ color: 'var(--color-gold-dark)' }}>NEURAL TERMINAL</span>
                     <span className="text-[10px] font-mono" style={{ color: 'rgba(160,120,48,0.5)' }}>— {agentName}</span>
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold"
                         style={{
-                            color: '#22C55E',
+                            color: 'var(--color-green)',
                             background: 'rgba(34,197,94,0.05)',
                             border: '1px solid rgba(34,197,94,0.15)',
                         }}>
@@ -577,8 +577,8 @@ function NeuralTerminal({ auditEntries, trades, agent }: {
                     <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-mono border-[#A07830]/20" style={{ color: 'rgba(160,120,48,0.6)' }}>
                         {lines.length} events
                     </Badge>
-                    <button className="text-[10px] px-1 py-0.5 rounded cursor-pointer" style={{ color: '#555', background: 'transparent', border: '1px solid #2a2a2a' }}>_</button>
-                    <button className="text-[10px] px-1 py-0.5 rounded cursor-pointer" style={{ color: '#555', background: 'transparent', border: '1px solid #2a2a2a' }}>⌘</button>
+                    <button className="text-[10px] px-1 py-0.5 rounded cursor-pointer" style={{ color: 'var(--color-text-muted)', background: 'transparent', border: '1px solid var(--color-glass-border)' }}>_</button>
+                    <button className="text-[10px] px-1 py-0.5 rounded cursor-pointer" style={{ color: 'var(--color-text-muted)', background: 'transparent', border: '1px solid var(--color-glass-border)' }}>⌘</button>
                 </div>
             </div>
 
@@ -618,8 +618,8 @@ function NeuralTerminal({ auditEntries, trades, agent }: {
                             {fmt(Date.now())}
                         </span>
                         <span className="flex items-center gap-1">
-                            <span style={{ color: '#A07830' }}>&gt;</span>
-                            <span style={{ color: '#00FF41', opacity: 0.4 }} className="animate-pulse">█</span>
+                            <span style={{ color: 'var(--color-gold-dark)' }}>&gt;</span>
+                            <span style={{ color: 'var(--color-terminal)', opacity: 0.4 }} className="animate-pulse">█</span>
                         </span>
                     </div>
                 </div>

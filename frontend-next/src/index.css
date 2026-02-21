@@ -28,12 +28,17 @@
   --color-red-dim: rgba(239, 68, 68, 0.15);
   --color-blue: #3b82f6;
   --color-blue-dim: rgba(59, 130, 246, 0.15);
+  --color-amber: #F59E0B;
+  --color-amber-dim: rgba(245, 158, 11, 0.15);
+  --color-cyan: #22d3ee;
+  --color-gold-dark: #A07830;
+  --color-terminal: #00FF41;
 
   --color-text-primary: #e5e5e5;
   --color-text-secondary: #a1a1aa;
   --color-text-muted: #6b7280;
 
-  --color-glass: rgba(255, 255, 255, 0.05);
+  --color-glass: #111118;
   --color-glass-border: rgba(255, 255, 255, 0.08);
 
   /* Fonts */
@@ -393,7 +398,7 @@
   /* Dark base — always dark mode */
   --background: #0a0a0f;
   --foreground: #e5e5e5;
-  /* Cards = elevated dark surface */
+  /* Cards = dark blue-grey surface */
   --card: #111118;
   --card-foreground: #e5e5e5;
   /* Popover/Dialog */

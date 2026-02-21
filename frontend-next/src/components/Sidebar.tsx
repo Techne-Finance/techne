@@ -108,7 +108,7 @@ export function Sidebar() {
 
             {/* Terminal Preview */}
             <div className="p-4 border-b border-border">
-                <Card className="bg-black/40 border-border">
+                <Card className="bg-card border-border">
                     <CardContent className="p-3 font-mono text-xs leading-relaxed text-green-500 min-h-[90px]">
                         <div className="text-muted-foreground">{'>'} neural_terminal v2.0</div>
                         <div>

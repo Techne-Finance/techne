@@ -134,13 +134,13 @@ function resolveTokenSymbol(addr: string) {
 function getApySource(pool: any): { label: string; icon: ReactNode; explanation: string; confidence: 'high' | 'medium' | 'low' } {
     const src = pool.apy_source || 'unknown'
     if (src.includes('aerodrome') || src.includes('gauge') || src.includes('v2_onchain'))
-        return { label: 'On-Chain Verified', icon: <Crosshair className="w-3.5 h-3.5" style={{ color: '#22C55E' }} />, explanation: 'APY from on-chain gauge emissions data', confidence: 'high' }
+        return { label: 'On-Chain Verified', icon: <Crosshair className="w-3.5 h-3.5" style={{ color: 'var(--color-green)' }} />, explanation: 'APY from on-chain gauge emissions data', confidence: 'high' }
     if (src.includes('cl_calculated'))
-        return { label: 'Gauge + Total TVL', icon: <BarChart3 className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} />, explanation: 'Emissions ÷ total pool TVL. Actual staker APR may be higher.', confidence: 'medium' }
+        return { label: 'Gauge + Total TVL', icon: <BarChart3 className="w-3.5 h-3.5" style={{ color: 'var(--color-amber)' }} />, explanation: 'Emissions ÷ total pool TVL. Actual staker APR may be higher.', confidence: 'medium' }
     if (src.includes('defillama'))
-        return { label: 'DefiLlama Aggregate', icon: <TrendingUp className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} />, explanation: 'Historical yield data from aggregator', confidence: 'medium' }
+        return { label: 'DefiLlama Aggregate', icon: <TrendingUp className="w-3.5 h-3.5" style={{ color: 'var(--color-amber)' }} />, explanation: 'Historical yield data from aggregator', confidence: 'medium' }
     if (src.includes('geckoterminal'))
-        return { label: 'GeckoTerminal', icon: <Activity className="w-3.5 h-3.5" style={{ color: '#10B981' }} />, explanation: 'Market-derived APY estimate', confidence: 'medium' }
+        return { label: 'GeckoTerminal', icon: <Activity className="w-3.5 h-3.5" style={{ color: 'var(--color-green)' }} />, explanation: 'Market-derived APY estimate', confidence: 'medium' }
     return { label: 'Estimated', icon: <Cog className="w-3.5 h-3.5" style={{ color: 'var(--color-text-muted)' }} />, explanation: 'Calculated from available data', confidence: 'low' }
 }
 
@@ -152,12 +152,12 @@ function getApyChangeReasons(pool: any) {
     const apyBase = parseFloat(pool.apy_base || 0)
     const reasons: { icon: ReactNode; title: string; desc: string; impact: string; color: string }[] = []
 
-    if (isEpoch) reasons.push({ icon: <Timer className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />, title: 'Epoch Resets (Weekly)', desc: 'Rewards reset every Wednesday 00:00 UTC based on veAERO/veVELO votes.', impact: 'HIGH', color: '#EF4444' })
-    if (isCL) reasons.push({ icon: <Crosshair className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />, title: 'Range-Dependent Yield', desc: 'CL pools: narrower ranges = higher yield but more rebalancing.', impact: 'HIGH', color: '#EF4444' })
-    if (hasGauge) reasons.push({ icon: <Vote className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} />, title: 'Gauge Vote Distribution', desc: 'Emissions change based on weekly governance votes.', impact: 'MEDIUM', color: '#F59E0B' })
-    reasons.push({ icon: <Droplets className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} />, title: 'TVL Fluctuations', desc: 'More liquidity = diluted rewards. Less = higher share.', impact: 'MEDIUM', color: '#F59E0B' })
-    if (apyReward > 0 || hasGauge) reasons.push({ icon: <TrendingDown className="w-3.5 h-3.5" style={{ color: apyReward > apyBase ? '#EF4444' : '#F59E0B' }} />, title: 'Reward Token Price', desc: 'If AERO/token price drops, USD value of rewards falls.', impact: apyReward > apyBase ? 'HIGH' : 'MEDIUM', color: apyReward > apyBase ? '#EF4444' : '#F59E0B' })
-    if (apyBase > 0) reasons.push({ icon: <ArrowRightLeft className="w-3.5 h-3.5" style={{ color: '#10B981' }} />, title: 'Trading Volume', desc: 'Base APY from swap fees. Lower volume = lower base yield.', impact: 'LOW', color: '#10B981' })
+    if (isEpoch) reasons.push({ icon: <Timer className="w-3.5 h-3.5" style={{ color: 'var(--color-red)' }} />, title: 'Epoch Resets (Weekly)', desc: 'Rewards reset every Wednesday 00:00 UTC based on veAERO/veVELO votes.', impact: 'HIGH', color: 'var(--color-red)' })
+    if (isCL) reasons.push({ icon: <Crosshair className="w-3.5 h-3.5" style={{ color: 'var(--color-red)' }} />, title: 'Range-Dependent Yield', desc: 'CL pools: narrower ranges = higher yield but more rebalancing.', impact: 'HIGH', color: 'var(--color-red)' })
+    if (hasGauge) reasons.push({ icon: <Vote className="w-3.5 h-3.5" style={{ color: 'var(--color-amber)' }} />, title: 'Gauge Vote Distribution', desc: 'Emissions change based on weekly governance votes.', impact: 'MEDIUM', color: 'var(--color-amber)' })
+    reasons.push({ icon: <Droplets className="w-3.5 h-3.5" style={{ color: 'var(--color-amber)' }} />, title: 'TVL Fluctuations', desc: 'More liquidity = diluted rewards. Less = higher share.', impact: 'MEDIUM', color: 'var(--color-amber)' })
+    if (apyReward > 0 || hasGauge) reasons.push({ icon: <TrendingDown className="w-3.5 h-3.5" style={{ color: apyReward > apyBase ? 'var(--color-red)' : 'var(--color-amber)' }} />, title: 'Reward Token Price', desc: 'If AERO/token price drops, USD value of rewards falls.', impact: apyReward > apyBase ? 'HIGH' : 'MEDIUM', color: apyReward > apyBase ? 'var(--color-red)' : 'var(--color-amber)' })
+    if (apyBase > 0) reasons.push({ icon: <ArrowRightLeft className="w-3.5 h-3.5" style={{ color: 'var(--color-green)' }} />, title: 'Trading Volume', desc: 'Base APY from swap fees. Lower volume = lower base yield.', impact: 'LOW', color: 'var(--color-green)' })
     return reasons
 }
 
@@ -238,10 +238,10 @@ export function PoolDetailPage() {
 
     // Liquidity stress
     const tvl = pool.tvl || 0
-    let stressLabel = 'Healthy', stressColor = '#22C55E'
-    if (tvl < 100000) { stressLabel = 'Critical'; stressColor = '#EF4444' }
-    else if (tvl < 500000) { stressLabel = 'Stressed'; stressColor = '#F59E0B' }
-    else if (tvl < 2000000) { stressLabel = 'Moderate'; stressColor = '#84CC16' }
+    let stressLabel = 'Healthy', stressColor = 'var(--color-green)'
+    if (tvl < 100000) { stressLabel = 'Critical'; stressColor = 'var(--color-red)' }
+    else if (tvl < 500000) { stressLabel = 'Stressed'; stressColor = 'var(--color-amber)' }
+    else if (tvl < 2000000) { stressLabel = 'Moderate'; stressColor = 'var(--color-green)' }
 
     // Reward token
     const rewardSymbol = pool.reward_token ? resolveTokenSymbol(pool.reward_token) : null
@@ -307,9 +307,9 @@ export function PoolDetailPage() {
                     }}>
                     <div className="flex items-center gap-2 mb-2">
                         {security.isCritical
-                            ? <ShieldAlert className="w-5 h-5" style={{ color: '#EF4444' }} />
-                            : <AlertTriangle className="w-5 h-5" style={{ color: '#F59E0B' }} />}
-                        <span className="text-sm font-heading font-semibold" style={{ color: security.isCritical ? '#EF4444' : '#F59E0B' }}>
+                            ? <ShieldAlert className="w-5 h-5" style={{ color: 'var(--color-red)' }} />
+                            : <AlertTriangle className="w-5 h-5" style={{ color: 'var(--color-amber)' }} />}
+                        <span className="text-sm font-heading font-semibold" style={{ color: security.isCritical ? 'var(--color-red)' : 'var(--color-amber)' }}>
                             {security.isCritical ? 'CRITICAL RISK — Deposit Blocked' : 'Security Warning'}
                         </span>
                     </div>
@@ -344,7 +344,7 @@ export function PoolDetailPage() {
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
                                 style={{
                                     background: apySource.confidence === 'high' ? 'rgba(34,197,94,0.15)' : apySource.confidence === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
-                                    color: apySource.confidence === 'high' ? '#22C55E' : apySource.confidence === 'medium' ? '#F59E0B' : '#EF4444',
+                                    color: apySource.confidence === 'high' ? 'var(--color-green)' : apySource.confidence === 'medium' ? 'var(--color-amber)' : 'var(--color-red)',
                                 }}>{apySource.confidence}</span>
                         </div>
                     )}
@@ -352,9 +352,9 @@ export function PoolDetailPage() {
                     {totalApyBreakdown > 0 && (
                         <div className="flex items-center gap-4 mb-3">
                             <svg viewBox="0 0 100 100" className="w-16 h-16">
-                                <circle cx="50" cy="50" r="40" fill="transparent" stroke="#10B981" strokeWidth={14}
+                                <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--color-green)" strokeWidth={14}
                                     strokeDasharray={`${feePercent * 2.51} 251`} transform="rotate(-90 50 50)" />
-                                <circle cx="50" cy="50" r="40" fill="transparent" stroke="#F59E0B" strokeWidth={14}
+                                <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--color-amber)" strokeWidth={14}
                                     strokeDasharray={`${emissionPercent * 2.51} 251`} strokeDashoffset={-feePercent * 2.51}
                                     transform="rotate(-90 50 50)" />
                                 <text x="50" y="54" textAnchor="middle" fill="white" fontSize="13" fontWeight="bold">
@@ -362,9 +362,9 @@ export function PoolDetailPage() {
                                 </text>
                             </svg>
                             <div className="text-xs space-y-1">
-                                <div><span style={{ color: '#10B981' }}>●</span> Fees: {apyBase.toFixed(2)}% ({feePercent.toFixed(0)}%)</div>
-                                <div><span style={{ color: '#F59E0B' }}>●</span> Emissions: {apyReward.toFixed(2)}% ({emissionPercent.toFixed(0)}%)</div>
-                                <div style={{ color: emissionPercent > 80 ? '#EF4444' : emissionPercent > 50 ? '#F59E0B' : '#10B981', fontWeight: 500 }}>
+                                <div><span style={{ color: 'var(--color-green)' }}>●</span> Fees: {apyBase.toFixed(2)}% ({feePercent.toFixed(0)}%)</div>
+                                <div><span style={{ color: 'var(--color-amber)' }}>●</span> Emissions: {apyReward.toFixed(2)}% ({emissionPercent.toFixed(0)}%)</div>
+                                <div style={{ color: emissionPercent > 80 ? 'var(--color-red)' : emissionPercent > 50 ? 'var(--color-amber)' : 'var(--color-green)', fontWeight: 500 }}>
                                     {emissionPercent > 80 ? 'High emission dependency' : emissionPercent > 50 ? 'Moderate reliance' : <><Leaf className="w-3 h-3 inline" /> Sustainable</>}
                                 </div>
                             </div>
@@ -403,7 +403,7 @@ export function PoolDetailPage() {
                             </div>
                         )}
                         {/* Security status */}
-                        <div className="flex items-center gap-1.5 mb-3 text-xs" style={{ color: security?.isCritical ? '#EF4444' : security?.isWarning ? '#F59E0B' : '#22C55E' }}>
+                        <div className="flex items-center gap-1.5 mb-3 text-xs" style={{ color: security?.isCritical ? 'var(--color-red)' : security?.isWarning ? 'var(--color-amber)' : 'var(--color-green)' }}>
                             <Shield className="w-3 h-3" />
                             {security?.isCritical ? 'BLOCKED' : security?.isWarning ? 'CAUTION' : 'Safe to deposit'}
                         </div>
@@ -411,20 +411,20 @@ export function PoolDetailPage() {
                     {/* Deposit Button */}
                     {security?.isCritical ? (
                         <button disabled className="px-4 py-2.5 rounded-xl text-xs font-heading font-semibold w-full"
-                            style={{ background: 'rgba(239,68,68,0.2)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)', cursor: 'not-allowed' }}>
+                            style={{ background: 'var(--color-red-dim)', color: 'var(--color-red)', border: '1px solid rgba(239,68,68,0.3)', cursor: 'not-allowed' }}>
                             <Ban className="w-3 h-3 inline mr-1" /> DEPOSIT BLOCKED
                         </button>
                     ) : security?.isWarning ? (
                         <a href={protocolUrl || '#'} target="_blank" rel="noopener noreferrer"
                             onClick={e => { if (!confirm(`Warning:\n${security.warnings.join('\n')}\n\nProceed?`)) e.preventDefault() }}
                             className="block px-4 py-2.5 rounded-xl text-xs font-heading font-semibold w-full text-center cursor-pointer"
-                            style={{ background: 'rgba(245,158,11,0.2)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)' }}>
+                            style={{ background: 'var(--color-amber-dim)', color: 'var(--color-amber)', border: '1px solid rgba(245,158,11,0.3)' }}>
                             DEPOSIT ON {(pool.project || '').toUpperCase()} (CAUTION)
                         </a>
                     ) : (
                         <a href={protocolUrl || '#'} target="_blank" rel="noopener noreferrer"
                             className="block px-4 py-2.5 rounded-xl text-xs font-heading font-semibold w-full text-center cursor-pointer"
-                            style={{ background: 'linear-gradient(135deg, var(--color-gold), var(--color-gold-bright))', color: '#0a0a0f' }}>
+                            style={{ background: 'linear-gradient(135deg, var(--color-gold), var(--color-gold-bright))', color: 'var(--color-bg-primary)' }}>
                             DEPOSIT ON {(pool.project || '').toUpperCase()}
                         </a>
                     )}
@@ -476,13 +476,13 @@ export function PoolDetailPage() {
                     </h3>
                     <ResponsiveContainer width="100%" height={200}>
                         <AreaChart data={chartData}>
-                            <defs><linearGradient id="apyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} /><stop offset="95%" stopColor="#22c55e" stopOpacity={0} /></linearGradient></defs>
+                            <defs><linearGradient id="apyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--color-green)" stopOpacity={0.3} /><stop offset="95%" stopColor="var(--color-green)" stopOpacity={0} /></linearGradient></defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                            <XAxis dataKey="day" tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${v.toFixed(0)}%`} />
-                            <Tooltip contentStyle={{ background: '#1a1a24', border: '1px solid rgba(212,168,83,0.12)', borderRadius: '8px', fontSize: '12px', color: '#e5e5e5' }}
+                            <XAxis dataKey="day" tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${v.toFixed(0)}%`} />
+                            <Tooltip contentStyle={{ background: 'var(--color-bg-elevated)', border: '1px solid rgba(212,168,83,0.12)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-text-primary)' }}
                                 formatter={((value: any) => [`${Number(value ?? 0).toFixed(2)}%`, 'APY']) as any} />
-                            <Area type="monotone" dataKey="apy" stroke="#22c55e" fill="url(#apyGrad)" strokeWidth={2} />
+                            <Area type="monotone" dataKey="apy" stroke="var(--color-green)" fill="url(#apyGrad)" strokeWidth={2} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </motion.div>
@@ -493,11 +493,11 @@ export function PoolDetailPage() {
                     </h3>
                     <ResponsiveContainer width="100%" height={200}>
                         <BarChart data={chartData}>
-                            <defs><linearGradient id="tvlGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#d4a853" stopOpacity={0.6} /><stop offset="95%" stopColor="#d4a853" stopOpacity={0.1} /></linearGradient></defs>
+                            <defs><linearGradient id="tvlGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--color-gold)" stopOpacity={0.6} /><stop offset="95%" stopColor="var(--color-gold)" stopOpacity={0.1} /></linearGradient></defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                            <XAxis dataKey="day" tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => formatUsd(v)} />
-                            <Tooltip contentStyle={{ background: '#1a1a24', border: '1px solid rgba(212,168,83,0.12)', borderRadius: '8px', fontSize: '12px', color: '#e5e5e5' }}
+                            <XAxis dataKey="day" tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => formatUsd(v)} />
+                            <Tooltip contentStyle={{ background: 'var(--color-bg-elevated)', border: '1px solid rgba(212,168,83,0.12)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-text-primary)' }}
                                 formatter={((value: any) => [formatUsd(Number(value ?? 0)), 'TVL']) as any} />
                             <Bar dataKey="tvl" fill="url(#tvlGrad)" radius={[3, 3, 0, 0]} />
                         </BarChart>
@@ -547,9 +547,9 @@ export function PoolDetailPage() {
                         </div>
                         <div className="space-y-2.5">
                             {[
-                                { drop: 10, label: 'Low impact', color: '#22C55E' },
-                                { drop: 30, label: 'Medium impact', color: '#F59E0B' },
-                                { drop: 50, label: 'High slippage risk', color: '#EF4444' },
+                                { drop: 10, label: 'Low impact', color: 'var(--color-green)' },
+                                { drop: 30, label: 'Medium impact', color: 'var(--color-amber)' },
+                                { drop: 50, label: 'High slippage risk', color: 'var(--color-red)' },
                             ].map(s => (
                                 <div key={s.drop} className="flex items-center gap-2">
                                     <span className="text-xs w-10 text-right" style={{ color: 'var(--color-text-muted)' }}>-{s.drop}%</span>

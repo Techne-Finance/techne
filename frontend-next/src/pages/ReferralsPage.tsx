@@ -96,7 +96,7 @@ export function ReferralsPage() {
                         className="px-4 py-2.5 rounded-xl text-sm font-heading font-semibold cursor-pointer flex items-center gap-1.5"
                         style={{
                             background: 'linear-gradient(135deg, var(--color-gold), var(--color-gold-bright))',
-                            color: '#0a0a0f',
+                            color: 'var(--color-bg-primary)',
                             opacity: isConnected ? 1 : 0.5,
                         }}
                     >

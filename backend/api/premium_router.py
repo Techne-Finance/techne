@@ -406,6 +406,58 @@ async def change_autonomy_mode(request: ChangeAutonomyRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class ChangeModeBySessionRequest(BaseModel):
+    """Change mode via session key (used by VPS bridge)"""
+    session_key: str
+    mode: str  # observer, advisor, copilot, full_auto
+
+
+@router.post("/change-mode-by-session")
+async def change_mode_by_session(request: ChangeModeBySessionRequest):
+    """
+    Change autonomy mode using session key (activation code).
+    Called by VPS bridge when user runs /mode in Telegram.
+    """
+    try:
+        valid_modes = ["observer", "advisor", "copilot", "full_auto"]
+        if request.mode not in valid_modes:
+            raise HTTPException(status_code=400, detail=f"Invalid mode. Must be one of: {valid_modes}")
+        
+        supabase = get_supabase()
+        session_key = request.session_key.upper().strip()
+        
+        # Authenticate via activation code
+        result = supabase.table("premium_subscriptions").select("id,user_address,autonomy_mode").eq(
+            "activation_code", session_key
+        ).eq("status", "active").execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=401, detail="Invalid or expired session key")
+        
+        sub = result.data[0]
+        old_mode = sub.get("autonomy_mode", "advisor")
+        
+        # Persist new mode
+        supabase.table("premium_subscriptions").update({
+            "autonomy_mode": request.mode
+        }).eq("id", sub["id"]).execute()
+        
+        logger.info(f"[Premium] Mode changed via session: {old_mode} → {request.mode} | user={sub['user_address'][:10]}...")
+        
+        return {
+            "success": True,
+            "previous_mode": old_mode,
+            "mode": request.mode,
+            "message": f"Mode changed: {old_mode} → {request.mode}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Change mode by session error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/unsubscribe")
 async def unsubscribe(request: DisconnectRequest):
     """Unsubscribe - cancel subscription but keep data for 30 days"""
@@ -624,6 +676,102 @@ async def import_agent(request: ImportAgentRequest):
         
     except Exception as e:
         logger.error(f"Import agent error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# ARTISAN EXECUTE — Server-side mode enforcement
+# ============================================
+
+class ArtisanExecuteRequest(BaseModel):
+    """Execute a trade via the Artisan bridge (VPS → Backend)"""
+    session_key: str            # ARTISAN-XXXX-XXXX activation code
+    action: str                 # deposit, withdraw, swap, rebalance
+    protocol_id: str            # aave-v3, morpho, aerodrome
+    amount_usd: float
+    pool_id: Optional[str] = None
+    confirm: bool = False       # Explicit user confirmation
+
+
+@router.post("/artisan/execute")
+async def artisan_execute(request: ArtisanExecuteRequest):
+    """
+    Execute a trade for the Artisan Bot with server-side mode enforcement.
+    
+    Flow:
+    1. Authenticate via session_key (= activation code)
+    2. Fetch autonomy_mode from Supabase
+    3. Enforce mode limits (observer block, advisor confirm, copilot $1K, full_auto $10K)
+    4. Delegate to execute_trade_for_user
+    5. Log to artisan_actions audit table
+    """
+    try:
+        supabase = get_supabase()
+        session_key = request.session_key.upper().strip()
+        
+        # ── 1. Authenticate ──
+        result = supabase.table("premium_subscriptions").select("*").eq(
+            "activation_code", session_key
+        ).eq("status", "active").execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=401, detail="Invalid or expired session key")
+        
+        sub = result.data[0]
+        
+        if not sub.get("code_used_at"):
+            raise HTTPException(status_code=401, detail="Session key not yet activated")
+        
+        user_address = sub["user_address"]
+        autonomy_mode = sub.get("autonomy_mode", "advisor")
+        subscription_id = sub["id"]
+        
+        logger.info(
+            f"[Artisan Execute] {request.action} ${request.amount_usd} "
+            f"to {request.protocol_id} | mode={autonomy_mode} | "
+            f"user={user_address[:10]}..."
+        )
+        
+        # ── 2. Execute with mode enforcement ──
+        from agents.artisan_execution import execute_trade_for_user
+        
+        trade_result = await execute_trade_for_user(
+            user_address=user_address,
+            action=request.action,
+            protocol_id=request.protocol_id,
+            amount_usd=request.amount_usd,
+            autonomy_mode=autonomy_mode,
+            confirmed=request.confirm
+        )
+        
+        # ── 3. Audit log ──
+        try:
+            action_type = "trade" if not trade_result.get("blocked") else "other"
+            supabase.table("artisan_actions").insert({
+                "subscription_id": subscription_id,
+                "action_type": action_type,
+                "details": {
+                    "action": request.action,
+                    "protocol_id": request.protocol_id,
+                    "amount_usd": request.amount_usd,
+                    "autonomy_mode": autonomy_mode,
+                    "confirmed": request.confirm,
+                    "result": trade_result
+                },
+                "confirmation_required": trade_result.get("needs_confirmation", False),
+                "confirmed": request.confirm,
+                "executed": trade_result.get("success", False),
+                "tx_hash": trade_result.get("tx_hash")
+            }).execute()
+        except Exception as log_err:
+            logger.warning(f"[Artisan Execute] Audit log failed: {log_err}")
+        
+        return trade_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Artisan execute error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

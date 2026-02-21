@@ -199,7 +199,7 @@ export function ExplorePage() {
                 background: 'linear-gradient(135deg, rgba(212,168,83,0.3), rgba(212,168,83,0.05) 50%, rgba(212,168,83,0.15))',
             }}>
                 <div className="rounded-xl p-4 grid grid-cols-2 md:grid-cols-4 gap-3" style={{
-                    background: 'linear-gradient(180deg, rgba(20,20,20,0.95), rgba(12,12,12,0.98))',
+                    background: 'var(--color-glass)',
                     backdropFilter: 'blur(12px)',
                 }}>
                     <StatItem icon={Layers} label="Total TVL" value={formatUsd(stats.totalTvl)} />
@@ -344,10 +344,10 @@ function StatItem({ icon: Icon, label, value, gold }: { icon: any; label: string
                 border: gold ? '1px solid rgba(212,168,83,0.25)' : '1px solid rgba(255,255,255,0.07)',
                 boxShadow: gold ? '0 0 10px rgba(212,168,83,0.08)' : 'none',
             }}>
-                <Icon className="w-4 h-4" style={{ color: gold ? '#D4A853' : 'rgba(255,255,255,0.45)' }} />
+                <Icon className="w-4 h-4" style={{ color: gold ? 'var(--color-gold)' : 'rgba(255,255,255,0.45)' }} />
             </div>
             <div>
-                <div className="text-base font-heading font-semibold" style={{ color: gold ? '#D4A853' : '#fff' }}>{value}</div>
+                <div className="text-base font-heading font-semibold" style={{ color: gold ? 'var(--color-gold)' : '#fff' }}>{value}</div>
                 <div className="text-[10px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</div>
             </div>
         </div>
@@ -381,7 +381,7 @@ function PoolCard({ pool, index, onClick }: { pool: Pool; index: number; onClick
         'lido': '#00A3FF', 'pendle': '#4ECDC4', 'spark': '#F79C42',
     }
     const projKey = Object.keys(accentColors).find(k => (pool.project || '').toLowerCase().includes(k))
-    const protocolAccent = projKey ? accentColors[projKey] : '#D4A853'
+    const protocolAccent = projKey ? accentColors[projKey] : 'var(--color-gold)'
 
     return (
         <motion.div
@@ -394,8 +394,8 @@ function PoolCard({ pool, index, onClick }: { pool: Pool; index: number; onClick
             className="cursor-pointer group"
         >
             <div className="relative rounded-xl overflow-hidden" style={{
-                background: 'linear-gradient(180deg, rgba(22,22,22,0.95), rgba(14,14,14,0.98))',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'var(--color-glass)',
+                border: '1px solid var(--color-glass-border)',
                 transition: 'all 0.3s ease',
             }}>
                 {/* Top accent — protocol-colored gradient */}
@@ -445,13 +445,13 @@ function PoolCard({ pool, index, onClick }: { pool: Pool; index: number; onClick
                                         animate={{ opacity: [0.4, 1, 0.4] }}
                                         transition={{ duration: 1.8, repeat: Infinity }}
                                     >
-                                        <Zap className="w-3 h-3" style={{ color: '#FBBF24' }} />
+                                        <Zap className="w-3 h-3" style={{ color: 'var(--color-gold-bright)' }} />
                                     </motion.div>
                                 )}
                                 <span className="text-xl font-heading font-bold" style={{
                                     background: isHighApy
-                                        ? 'linear-gradient(135deg, #FBBF24, #F59E0B)'
-                                        : 'linear-gradient(135deg, #34D399, #10B981)',
+                                        ? 'linear-gradient(135deg, var(--color-gold-bright), var(--color-amber))'
+                                        : 'linear-gradient(135deg, var(--color-green), var(--color-green))',
                                     WebkitBackgroundClip: 'text',
                                     WebkitTextFillColor: 'transparent',
                                 }}>
@@ -498,8 +498,8 @@ function LoadingSkeleton({ count }: { count: number }) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {Array.from({ length: count }).map((_, i) => (
                 <div key={i} className="rounded-xl overflow-hidden" style={{
-                    background: 'linear-gradient(180deg, rgba(22,22,22,0.95), rgba(14,14,14,0.98))',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'var(--color-glass)',
+                    border: '1px solid var(--color-glass-border)',
                 }}>
                     <div className="h-[2px]" style={{ background: 'linear-gradient(90deg, rgba(212,168,83,0.1), rgba(212,168,83,0.05))' }} />
                     <div className="p-4 animate-pulse">
