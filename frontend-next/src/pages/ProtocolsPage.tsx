@@ -133,7 +133,7 @@ export function ProtocolsPage() {
     const [search, setSearch] = useState('')
     const [selectedProtocols, setSelectedProtocols] = useState<Set<string>>(new Set())
 
-    const { data: apiProtocols, isLoading, error, refetch } = useQuery({
+    const { data: _apiProtocols, isLoading, error, refetch } = useQuery({
         queryKey: ['protocols'],
         queryFn: async () => {
             try {

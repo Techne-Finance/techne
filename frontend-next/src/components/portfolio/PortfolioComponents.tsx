@@ -13,7 +13,7 @@ import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip as RTo
 import { formatUsd } from '@/lib/api'
 import type { Agent, Holding, Position, Transaction } from '@/hooks/usePortfolio'
 
-import { Card, CardContent } from '@/components/ui/card'
+// Card/CardContent not directly used in this file
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'

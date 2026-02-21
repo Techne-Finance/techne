@@ -27,7 +27,7 @@ import { useWalletStore } from '@/stores/walletStore'
 import { useCreditsStore, CREDIT_COSTS } from '@/stores/creditsStore'
 import { fetchPaymentRequirements, fetchPremiumRequirements, settlePayment, subscribePremium, updatePremiumSettings, fetchPremiumStatus, toggleAutoRenewal, fetchRenewalStatus } from '@/lib/api'
 import { toast } from '@/components/Toast'
-import { ethers } from 'ethers'
+// ethers used via dynamic import() in payment flows
 import { SubscribeModal } from '@/components/modals/SubscribeModal'
 
 // ============ Constants ============
@@ -142,7 +142,7 @@ export function PremiumPage() {
     const { isConnected, address, signer } = useWalletStore()
     const { credits, addCredits } = useCreditsStore()
     const [purchasing, setPurchasing] = useState(false)
-    const [subscribing, setSubscribing] = useState(false)
+    const [_subscribing, _setSubscribing] = useState(false)
 
     // Activation modal state
     const [activationCode, setActivationCode] = useState<string | null>(null)

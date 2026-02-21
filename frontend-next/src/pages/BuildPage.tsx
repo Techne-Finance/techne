@@ -6,8 +6,8 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     Hammer, Terminal, Send, Shield, Zap, AlertTriangle,
-    Play, StopCircle, TrendingUp, Settings, Check,
-    Clock, Target, Flame, Lock, Wallet, Layers,
+    StopCircle, TrendingUp, Settings, Check,
+    Clock, Target, Flame, Lock, Layers,
     ChevronDown, Crosshair, Activity, Rocket
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -102,7 +102,7 @@ export function BuildPage() {
     const [strategy, setStrategy] = useState<StrategyKey>('steady')
     const [command, setCommand] = useState('')
     const [isRunning, setIsRunning] = useState(false)
-    const [amount, setAmount] = useState('1000')
+    const [_amount, _setAmount] = useState('1000')
     const terminalRef = useRef<HTMLDivElement>(null)
 
     // Flexible Mode state
@@ -1608,7 +1608,7 @@ export function BuildPage() {
 
 // ─── Helpers ───
 
-function ToggleChip({ label, active, toggle, icon: Icon }: { label: string; active: boolean; toggle: () => void; icon: any }) {
+function ToggleChip({ label, active, toggle, icon: _Icon }: { label: string; active: boolean; toggle: () => void; icon: any }) {
     return (
         <button onClick={toggle} className="flex items-center gap-1.5 text-xs cursor-pointer bg-transparent border-none"
             style={{ color: active ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>

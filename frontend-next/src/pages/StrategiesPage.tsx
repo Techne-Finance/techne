@@ -5,18 +5,18 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
     Cpu, Star, Users, Copy, Eye, TrendingUp, Filter, Sparkles, Settings,
-    Shield, Flame, X, Save, Share2, Check, Clock, Zap, BarChart3,
-    Activity, ChevronRight, Wallet, AlertTriangle, Loader2, Lock, Timer, Droplets,
+    Shield, Flame, X, Save, Share2, Check, Zap, BarChart3,
+    Activity, Wallet, AlertTriangle, Loader2, Lock, Timer, Droplets,
 } from 'lucide-react'
 import { useWalletStore } from '@/stores/walletStore'
 import { useAgentManagement, usePortfolioData } from '@/hooks/usePortfolio'
-import { updateAgent, formatUsd } from '@/lib/api'
+import { updateAgent } from '@/lib/api'
 import { toast } from '@/components/Toast'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -92,7 +92,7 @@ export function StrategiesPage() {
 
     // Real data from backend
     const { agents, loadingAgents } = useAgentManagement()
-    const { totalValue, totalPnL, positions } = usePortfolioData(address || undefined, null)
+    const { totalValue: _totalValue, totalPnL: _totalPnL, positions: _positions } = usePortfolioData(address || undefined, null)
 
     // Edit state for modal
     const [editMinApy, setEditMinApy] = useState(0)

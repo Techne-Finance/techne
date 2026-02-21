@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import {
     Compass, TrendingUp, Shield, Layers, LayoutGrid, List,
-    ChevronDown, ChevronUp, ArrowUpDown, Eye, Lock, Sparkles, Zap,
+    ChevronDown, ChevronUp, ArrowUpDown, Eye, Lock, Zap,
 } from 'lucide-react'
 import { fetchPools, formatUsd, formatApy, getRiskColor, getRiskLabel, type Pool } from '@/lib/api'
 import { CREDIT_COSTS } from '@/stores/creditsStore'
@@ -17,7 +17,7 @@ import { useFilterStore } from '@/stores/filterStore'
 import { ExplorePoolModal } from '@/components/ExplorePoolModal'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+// Badge import removed - not currently used
 import { Button } from '@/components/ui/button'
 
 type SortKey = 'apy' | 'tvl' | 'risk_score' | 'symbol' | 'project'

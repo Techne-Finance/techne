@@ -96,13 +96,13 @@ export function PortfolioPage() {
     const {
         agents, loadingAgents, selectedAgent, selectedAgentId,
         selectAgent, removeAgent, toggleAgent, emergencyPause,
-        toast, showToast, refetchAgents,
+        toast, showToast, refetchAgents: _refetchAgents,
     } = useAgentManagement()
 
     const {
         holdings, positions, totalValue, totalPnL, avgApy,
         trades, auditEntries, trustData, sessionData,
-        loadingPortfolio, refetchPortfolio, refetchPositions,
+        loadingPortfolio: _loadingPortfolio, refetchPortfolio, refetchPositions,
     } = usePortfolioData(address || undefined, selectedAgent)
 
     const { harvest, rebalance, handleClosePosition, handleExportCSV, actionLoading } =
