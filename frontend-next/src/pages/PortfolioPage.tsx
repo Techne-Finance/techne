@@ -253,9 +253,9 @@ export function PortfolioPage() {
                 backgroundSize: '24px 24px, 24px 24px, 24px 24px',
             }}>
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
-                    <h1 className="font-heading text-2xl font-bold mb-0.5 text-foreground">
+                    <h1 className="font-heading text-xl sm:text-2xl font-bold mb-0.5 text-foreground">
                         Portfolio
                     </h1>
                     <p className="text-xs text-muted-foreground flex items-center gap-2">
@@ -268,7 +268,7 @@ export function PortfolioPage() {
                         )}
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <Button onClick={() => setDepositOpen(true)}
                         className="bg-gradient-to-r from-primary to-[var(--color-gold-bright)] text-primary-foreground font-heading font-semibold text-xs h-9">
                         <Shield className="w-3.5 h-3.5 mr-1.5" /> Fund Agent

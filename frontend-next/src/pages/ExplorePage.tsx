@@ -143,9 +143,9 @@ export function ExplorePage() {
     return (
         <div>
             {/* Header */}
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
                 <div>
-                    <h1 className="font-heading text-2xl font-bold text-foreground">
+                    <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
                         Explore Opportunities
                     </h1>
                     <p className="text-sm mt-0.5 text-muted-foreground">
@@ -181,7 +181,7 @@ export function ExplorePage() {
                 <motion.div
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 p-3 rounded-xl flex items-center justify-between bg-primary/10 border border-primary/20"
+                    className="mb-4 p-3 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-primary/10 border border-primary/20"
                 >
                     <div className="flex items-center gap-2">
                         <Eye className="w-4 h-4 text-primary" />

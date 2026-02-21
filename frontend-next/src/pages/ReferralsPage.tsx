@@ -15,26 +15,26 @@ export function ReferralsPage() {
     }
 
     return (
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto px-1 sm:px-0">
             <div className="flex items-center gap-3 mb-6">
                 <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: 'var(--color-gold-dim)', border: '1px solid var(--color-gold-border)' }}
                 >
-                    <Users className="w-6 h-6" style={{ color: 'var(--color-gold)' }} />
+                    <Users className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: 'var(--color-gold)' }} />
                 </div>
                 <div>
-                    <h1 className="font-heading text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                    <h1 className="font-heading text-xl sm:text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
                         Referrals
                     </h1>
-                    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                    <p className="text-xs sm:text-sm" style={{ color: 'var(--color-text-muted)' }}>
                         Invite friends, earn rewards
                     </p>
                 </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -77,7 +77,7 @@ export function ReferralsPage() {
                     <Link2 className="w-4 h-4 inline mr-1.5" style={{ color: 'var(--color-gold)' }} />
                     Your Referral Link
                 </h3>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                     <div
                         className="flex-1 px-4 py-2.5 rounded-xl text-sm font-mono truncate"
                         style={{

@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Wallet, Zap, ChevronDown } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Wallet, Zap, ChevronDown, Menu, X } from 'lucide-react'
 import { useWalletStore } from '@/stores/walletStore'
 import { useCreditsStore } from '@/stores/creditsStore'
 import { Sidebar } from './Sidebar'
@@ -31,6 +31,7 @@ export function Layout() {
     const [networkOpen, setNetworkOpen] = useState(false)
     const [walletOpen, setWalletOpen] = useState(false)
     const [creditBuyOpen, setCreditBuyOpen] = useState(false)
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
     const showSidebar = SIDEBAR_ROUTES.some(r => location.pathname.startsWith(r))
 
@@ -45,6 +46,15 @@ export function Layout() {
                     borderBottom: '1px solid var(--color-gold-border)',
                 }}
             >
+                {/* Hamburger (mobile only) */}
+                <button
+                    onClick={() => setMobileMenuOpen(v => !v)}
+                    className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer flex-shrink-0"
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-primary)' }}
+                >
+                    {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </button>
+
                 {/* Logo — Techne SVG */}
                 <NavLink to="/" className="flex items-center gap-2 flex-shrink-0">
                     <img
@@ -61,7 +71,7 @@ export function Layout() {
                 </NavLink>
 
                 {/* Navigation */}
-                <nav className="flex items-center gap-0.5 overflow-x-auto hide-scrollbar mx-4">
+                <nav className="hidden md:flex items-center gap-0.5 overflow-x-auto hide-scrollbar mx-4">
                     {NAV_ITEMS.map(({ to, label, icon }) => (
                         <NavLink
                             key={to}
@@ -143,10 +153,57 @@ export function Layout() {
                 </div>
             </header>
 
+            {/* Mobile Navigation Drawer */}
+            <AnimatePresence>
+                {mobileMenuOpen && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="md:hidden overflow-hidden z-40 border-b"
+                        style={{
+                            background: 'rgba(10, 10, 15, 0.95)',
+                            backdropFilter: 'blur(16px)',
+                            borderColor: 'var(--color-gold-border)',
+                        }}
+                    >
+                        <nav className="grid grid-cols-2 gap-1 p-3">
+                            {NAV_ITEMS.map(({ to, label, icon }) => (
+                                <NavLink
+                                    key={to}
+                                    to={to}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="flex items-center gap-2 transition-colors"
+                                    style={({ isActive }) => ({
+                                        padding: '10px 12px',
+                                        borderRadius: '10px',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 500,
+                                        fontFamily: 'Outfit, sans-serif',
+                                        background: isActive ? 'var(--color-gold-dim)' : 'var(--color-glass)',
+                                        color: isActive ? 'var(--color-gold)' : 'var(--color-text-muted)',
+                                        border: isActive ? '1px solid var(--color-gold-border)' : '1px solid var(--color-glass-border)',
+                                    })}
+                                >
+                                    <img
+                                        src={icon}
+                                        alt=""
+                                        className="w-4 h-4"
+                                        style={{ filter: 'grayscale(100%) brightness(1.5)' }}
+                                    />
+                                    {label}
+                                </NavLink>
+                            ))}
+                        </nav>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Body */}
             <div className="flex flex-1 overflow-hidden">
                 {showSidebar && <Sidebar />}
-                <main className="flex-1 overflow-y-auto p-5">
+                <main className="flex-1 overflow-y-auto p-3 sm:p-5">
                     <Outlet />
                 </main>
             </div>

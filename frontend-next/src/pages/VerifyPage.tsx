@@ -292,14 +292,14 @@ export function VerifyPage() {
     const riskBadgeClass = riskClasses[riskColor] || 'bg-muted text-muted-foreground border-border'
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto px-1 sm:px-0">
             {/* Header */}
             <div className="flex items-center gap-3 mb-5">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary/10 border border-primary/30">
                     <Search className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                    <h1 className="font-heading text-2xl font-bold text-foreground">
+                    <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
                         Pool Verification
                     </h1>
                     <p className="text-sm text-muted-foreground">
@@ -416,7 +416,7 @@ export function VerifyPage() {
                                 </div>
 
                                 {/* Metrics */}
-                                <div className="grid grid-cols-4 gap-3 mb-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                                     {[
                                         { label: 'APY', value: formatApy(result.apy || 0), cls: 'text-green-500' },
                                         { label: 'TVL', value: formatUsd(result.tvl || 0), cls: 'text-foreground' },
