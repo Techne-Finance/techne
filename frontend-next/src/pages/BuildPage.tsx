@@ -389,6 +389,7 @@ export function BuildPage() {
                                     const autoResult = await setupAutoTrading({
                                         user_address: address,
                                         agent_id: result.agent_id!,
+                                        agent_address: result.agent_address!,
                                     })
                                     if (autoResult.transaction) {
                                         addLine('system', '> sign auto-trading setup in MetaMask...')

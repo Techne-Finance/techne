@@ -373,7 +373,7 @@ export function confirmDeploy(body: { user_address: string; agent_id: string; tx
     })
 }
 
-export function setupAutoTrading(body: { user_address: string; agent_id: string }) {
+export function setupAutoTrading(body: { user_address: string; agent_id: string; agent_address: string }) {
     return apiFetch<any>('/api/agent/setup-auto-trading', {
         method: 'POST', body: JSON.stringify(body)
     })
