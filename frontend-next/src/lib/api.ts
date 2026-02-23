@@ -346,6 +346,7 @@ export function pauseAllAgents(body: { user_address: string }) {
     })
 }
 
+
 export function fetchLpPositions(userAddress: string) {
     return apiFetch<any>(`/api/agent/lp-positions/${userAddress}`)
 }

@@ -100,6 +100,17 @@ export function useAgentManagement() {
         if (!address) return
         try {
             await apiDeleteAgent(address, agentId)
+            // Clear localStorage cache so deleted agent can't be resurrected by fallback
+            const key = `techne_agents_${address.toLowerCase()}`
+            const cached = localStorage.getItem(key)
+            if (cached) {
+                try {
+                    const agents = JSON.parse(cached).filter((a: any) => a.id !== agentId)
+                    localStorage.setItem(key, JSON.stringify(agents))
+                    localStorage.setItem('techne_deployed_agents', JSON.stringify(agents))
+                } catch { localStorage.removeItem(key); localStorage.removeItem('techne_deployed_agents') }
+            }
+            setSelectedAgentId(null)
             showToast('Agent deleted', 'success')
             refetchAgents()
         } catch { showToast('Failed to delete agent', 'error') }
