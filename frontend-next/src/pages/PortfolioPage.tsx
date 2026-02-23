@@ -403,7 +403,8 @@ export function PortfolioPage() {
                                     onToggle={toggleAgent} onEmergencyPause={emergencyPause}
                                     onCreateSessionKey={handleCreateSessionKey}
                                     onRevokeSessionKey={handleRevokeSessionKey}
-                                    sessionKeyLoading={sessionKeyLoading} />
+                                    sessionKeyLoading={sessionKeyLoading}
+                                    onDeleteAgent={selectedAgentId ? () => removeAgent(selectedAgentId) : undefined} />
                             </CardContent>
                         </Card>
                     </motion.div>

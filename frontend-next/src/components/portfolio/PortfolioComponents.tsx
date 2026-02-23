@@ -95,13 +95,17 @@ export function AgentSelector({ agents, selectedId, onSelect, onDelete, loading 
 }
 
 // ─── Agent Sidebar Info ───
-export function AgentSidebar({ agent, sessionData, trustData, onToggle, onEmergencyPause, onCreateSessionKey, onRevokeSessionKey, sessionKeyLoading }: {
+export function AgentSidebar({ agent, sessionData, trustData, onToggle, onEmergencyPause, onCreateSessionKey, onRevokeSessionKey, sessionKeyLoading, onDeleteAgent }: {
     agent: Agent | null; sessionData?: any; trustData?: any;
     onToggle: (active: boolean) => void; onEmergencyPause: () => void;
     onCreateSessionKey?: () => void; onRevokeSessionKey?: () => void; sessionKeyLoading?: boolean;
+    onDeleteAgent?: () => void;
 }) {
     const [copied, setCopied] = useState(false)
-    const [showKey, setShowKey] = useState(false)
+    const [copiedKey, setCopiedKey] = useState(false)
+    const [keyRevealStep, setKeyRevealStep] = useState<'idle' | 'warning' | 'revealed'>('idle')
+    const [keyWarningChecked, setKeyWarningChecked] = useState(false)
+    const [deleteConfirmStep, setDeleteConfirmStep] = useState<'idle' | 'confirming'>('idle')
     if (!agent) return (
         <div className="py-8 text-center text-xs text-muted-foreground">
             <Shield className="w-8 h-8 mx-auto mb-2 opacity-30" /> No agent selected
@@ -119,6 +123,23 @@ export function AgentSidebar({ agent, sessionData, trustData, onToggle, onEmerge
     }
     const copyAddr = () => {
         navigator.clipboard.writeText(addr); setCopied(true); setTimeout(() => setCopied(false), 1500)
+    }
+    const copySessionKey = () => {
+        if (sessionData?.session_key_address) {
+            navigator.clipboard.writeText(sessionData.session_key_address)
+            setCopiedKey(true); setTimeout(() => setCopiedKey(false), 1500)
+        }
+    }
+    const handleViewKey = () => {
+        if (keyRevealStep === 'idle') {
+            setKeyRevealStep('warning')
+            setKeyWarningChecked(false)
+        } else if (keyRevealStep === 'revealed') {
+            setKeyRevealStep('idle')
+        }
+    }
+    const confirmRevealKey = () => {
+        setKeyRevealStep('revealed')
     }
 
     return (
@@ -177,9 +198,9 @@ export function AgentSidebar({ agent, sessionData, trustData, onToggle, onEmerge
                     <div className="space-y-1.5">
                         <div className="flex gap-1.5">
                             <Button variant="ghost" size="sm"
-                                onClick={() => setShowKey(!showKey)}
+                                onClick={handleViewKey}
                                 className="text-xs h-7 px-2 text-primary hover:text-primary/80 flex-1">
-                                {showKey ? <><EyeOff className="w-3 h-3 mr-1" /> Hide</> : <><Eye className="w-3 h-3 mr-1" /> View Key</>}
+                                {keyRevealStep === 'revealed' ? <><EyeOff className="w-3 h-3 mr-1" /> Hide</> : <><Eye className="w-3 h-3 mr-1" /> View Key</>}
                             </Button>
                             <Button variant="ghost" size="sm"
                                 onClick={onRevokeSessionKey}
@@ -188,11 +209,71 @@ export function AgentSidebar({ agent, sessionData, trustData, onToggle, onEmerge
                                 {sessionKeyLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Revoke'}
                             </Button>
                         </div>
-                        {showKey && sessionData.session_key_address && (
-                            <div className="p-2 rounded-lg bg-secondary text-[10px] break-all text-muted-foreground font-mono">
-                                {sessionData.session_key_address}
-                            </div>
-                        )}
+
+                        {/* Step 1: Security Warning Modal */}
+                        <AnimatePresence>
+                            {keyRevealStep === 'warning' && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="overflow-hidden">
+                                    <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 space-y-2.5">
+                                        <div className="flex items-start gap-2">
+                                            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                            <div className="text-[11px] text-amber-200/90 leading-relaxed">
+                                                <span className="font-semibold text-amber-400">Security Warning</span>
+                                                <p className="mt-1">Your session key grants trading access to this agent's smart account. Never share it with anyone. Anyone with this key can execute transactions on your behalf.</p>
+                                            </div>
+                                        </div>
+                                        <label className="flex items-start gap-2 cursor-pointer group">
+                                            <input type="checkbox" checked={keyWarningChecked}
+                                                onChange={e => setKeyWarningChecked(e.target.checked)}
+                                                className="mt-0.5 rounded border-amber-500/50 bg-transparent accent-amber-500 w-3.5 h-3.5 cursor-pointer" />
+                                            <span className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
+                                                I understand the risks and will not share this key
+                                            </span>
+                                        </label>
+                                        <div className="flex gap-1.5">
+                                            <Button size="sm" variant="ghost"
+                                                onClick={() => setKeyRevealStep('idle')}
+                                                className="text-[11px] h-7 px-3 flex-1">
+                                                Cancel
+                                            </Button>
+                                            <Button size="sm"
+                                                onClick={confirmRevealKey}
+                                                disabled={!keyWarningChecked}
+                                                className="text-[11px] h-7 px-3 flex-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 disabled:opacity-30 disabled:cursor-not-allowed">
+                                                <Eye className="w-3 h-3 mr-1" /> Reveal Key
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Step 2: Revealed Key with Copy */}
+                        <AnimatePresence>
+                            {keyRevealStep === 'revealed' && sessionData.session_key_address && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="overflow-hidden">
+                                    <div className="p-2 rounded-lg bg-secondary border border-primary/10 space-y-1.5">
+                                        <div className="text-[10px] break-all text-muted-foreground font-mono select-all">
+                                            {sessionData.session_key_address}
+                                        </div>
+                                        <Button size="sm" variant="ghost" onClick={copySessionKey}
+                                            className="w-full text-[11px] h-6 text-primary hover:text-primary/80 hover:bg-primary/10">
+                                            {copiedKey
+                                                ? <><Check className="w-3 h-3 mr-1 text-green-500" /> Copied!</>
+                                                : <><Copy className="w-3 h-3 mr-1" /> Copy Session Key</>}
+                                        </Button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 ) : (
                     <Button variant="outline" size="sm"
@@ -237,6 +318,46 @@ export function AgentSidebar({ agent, sessionData, trustData, onToggle, onEmerge
                 className="w-full mt-2 bg-destructive/12 text-destructive border border-destructive/25 hover:bg-destructive/20">
                 <AlertTriangle className="w-3.5 h-3.5 mr-1.5" /> Emergency Pause All
             </Button>
+
+            {/* Delete Agent */}
+            {onDeleteAgent && (
+                <>
+                    <Separator />
+                    <AnimatePresence mode="wait">
+                        {deleteConfirmStep === 'idle' ? (
+                            <motion.div key="delete-idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                <Button variant="ghost" onClick={() => setDeleteConfirmStep('confirming')}
+                                    className="w-full text-xs h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                                    <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete Agent
+                                </Button>
+                            </motion.div>
+                        ) : (
+                            <motion.div key="delete-confirm" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+                                <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 space-y-2">
+                                    <div className="flex items-start gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                                        <p className="text-[11px] text-destructive/90 leading-relaxed">
+                                            This will permanently remove this agent and all its configuration. Active positions will NOT be closed automatically.
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-1.5">
+                                        <Button size="sm" variant="ghost"
+                                            onClick={() => setDeleteConfirmStep('idle')}
+                                            className="text-[11px] h-7 px-3 flex-1">
+                                            Cancel
+                                        </Button>
+                                        <Button size="sm" variant="destructive"
+                                            onClick={() => { onDeleteAgent(); setDeleteConfirmStep('idle') }}
+                                            className="text-[11px] h-7 px-3 flex-1">
+                                            <Trash2 className="w-3 h-3 mr-1" /> Confirm Delete
+                                        </Button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </>
+            )}
         </div>
     )
 }
