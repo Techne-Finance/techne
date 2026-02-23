@@ -11,6 +11,10 @@
         {
             "source": "/health",
             "destination": "https://techne-backend-516629447651.europe-west1.run.app/health"
+        },
+        {
+            "source": "/((?!api|ws|health|assets|_next).*)",
+            "destination": "/index.html"
         }
     ]
 }
