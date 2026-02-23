@@ -97,7 +97,7 @@ export function useAgentManagement() {
     const selectAgent = useCallback((id: string) => setSelectedAgentId(id), [])
 
     const removeAgent = useCallback(async (agentId: string) => {
-        if (!address || !confirm('Delete this agent? This cannot be undone.')) return
+        if (!address) return
         try {
             await apiDeleteAgent(address, agentId)
             showToast('Agent deleted', 'success')
