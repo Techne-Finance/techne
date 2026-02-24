@@ -97,9 +97,11 @@ export function useAgentManagement() {
     const selectAgent = useCallback((id: string) => setSelectedAgentId(id), [])
 
     const removeAgent = useCallback(async (agentId: string) => {
-        if (!address) return
+        if (!address) { console.error('[removeAgent] No wallet address'); return }
+        console.log('[removeAgent] Deleting:', { address, agentId })
         try {
-            await apiDeleteAgent(address, agentId)
+            const result = await apiDeleteAgent(address, agentId)
+            console.log('[removeAgent] API response:', result)
             // Clear localStorage cache so deleted agent can't be resurrected by fallback
             const key = `techne_agents_${address.toLowerCase()}`
             const cached = localStorage.getItem(key)
@@ -113,7 +115,10 @@ export function useAgentManagement() {
             setSelectedAgentId(null)
             showToast('Agent deleted', 'success')
             refetchAgents()
-        } catch { showToast('Failed to delete agent', 'error') }
+        } catch (err) {
+            console.error('[removeAgent] FAILED:', err, { address, agentId })
+            showToast('Failed to delete agent', 'error')
+        }
     }, [address, showToast, refetchAgents])
 
     const toggleAgent = useCallback(async (activate: boolean) => {
