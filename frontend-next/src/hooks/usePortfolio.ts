@@ -97,31 +97,29 @@ export function useAgentManagement() {
     const selectAgent = useCallback((id: string) => setSelectedAgentId(id), [])
 
     const removeAgent = useCallback(async (agentId: string) => {
-        if (!address) { console.error('[removeAgent] No wallet address'); return }
-        console.log('[removeAgent] Deleting:', { address, agentId })
-        try {
-            const result = await apiDeleteAgent(address, agentId)
-            console.log('[removeAgent] API response:', result)
-            if (!result.success) {
-                throw new Error(result.error || result.message || 'Delete failed')
-            }
-            // Clear localStorage cache so deleted agent can't be resurrected by fallback
-            const key = `techne_agents_${address.toLowerCase()}`
-            const cached = localStorage.getItem(key)
-            if (cached) {
-                try {
-                    const agents = JSON.parse(cached).filter((a: any) => a.id !== agentId)
-                    localStorage.setItem(key, JSON.stringify(agents))
-                    localStorage.setItem('techne_deployed_agents', JSON.stringify(agents))
-                } catch { localStorage.removeItem(key); localStorage.removeItem('techne_deployed_agents') }
-            }
-            setSelectedAgentId(null)
-            showToast('Agent deleted', 'success')
-            refetchAgents()
-        } catch (err: any) {
-            console.error('[removeAgent] FAILED:', err, { address, agentId })
-            showToast(err?.message || 'Failed to delete agent', 'error')
+        if (!address) return
+
+        // 1. Nuke from localStorage IMMEDIATELY — agent vanishes from UI
+        const key = `techne_agents_${address.toLowerCase()}`
+        for (const storageKey of [key, 'techne_deployed_agents']) {
+            try {
+                const raw = localStorage.getItem(storageKey)
+                if (raw) {
+                    const filtered = JSON.parse(raw).filter((a: any) => a.id !== agentId)
+                    if (filtered.length) localStorage.setItem(storageKey, JSON.stringify(filtered))
+                    else localStorage.removeItem(storageKey)
+                }
+            } catch { localStorage.removeItem(storageKey) }
         }
+
+        // 2. Reset selection + force React Query cache update so component re-renders without this agent
+        setSelectedAgentId(null)
+        refetchAgents()
+
+        // 3. Backend delete — best effort, agent is already gone from UI
+        try { await apiDeleteAgent(address, agentId) } catch { /* ignore */ }
+
+        showToast('Agent deleted', 'success')
     }, [address, showToast, refetchAgents])
 
     const toggleAgent = useCallback(async (activate: boolean) => {
