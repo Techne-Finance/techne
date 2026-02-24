@@ -102,6 +102,9 @@ export function useAgentManagement() {
         try {
             const result = await apiDeleteAgent(address, agentId)
             console.log('[removeAgent] API response:', result)
+            if (!result.success) {
+                throw new Error(result.error || result.message || 'Delete failed')
+            }
             // Clear localStorage cache so deleted agent can't be resurrected by fallback
             const key = `techne_agents_${address.toLowerCase()}`
             const cached = localStorage.getItem(key)
@@ -115,9 +118,9 @@ export function useAgentManagement() {
             setSelectedAgentId(null)
             showToast('Agent deleted', 'success')
             refetchAgents()
-        } catch (err) {
+        } catch (err: any) {
             console.error('[removeAgent] FAILED:', err, { address, agentId })
-            showToast('Failed to delete agent', 'error')
+            showToast(err?.message || 'Failed to delete agent', 'error')
         }
     }, [address, showToast, refetchAgents])
 
