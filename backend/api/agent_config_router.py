@@ -930,63 +930,6 @@ async def get_recommendations(user_address: str, agent_id: Optional[str] = None)
     }
 
 
-# ===========================================
-# DELETE AGENT
-# ===========================================
-
-@router.delete("/delete/{user_address}/{agent_id}")
-async def delete_agent(user_address: str, agent_id: str):
-    """
-    Delete an agent permanently.
-    Removes from in-memory storage and Supabase.
-    """
-    print(f"[AgentConfig] Delete request: user={user_address[:10]}..., agent={agent_id}")
-    
-    user_key = user_address.lower()
-    
-    # Check if agent exists
-    if user_key not in DEPLOYED_AGENTS:
-        return {"success": False, "error": "User has no agents"}
-    
-    user_agents = DEPLOYED_AGENTS[user_key]
-    original_count = len(user_agents)
-    
-    # Filter out the agent
-    agent_to_delete = next((a for a in user_agents if a.get("id") == agent_id), None)
-    
-    if not agent_to_delete:
-        return {"success": False, "error": "Agent not found"}
-    
-    # Remove from in-memory cache
-    DEPLOYED_AGENTS[user_key] = [a for a in user_agents if a.get("id") != agent_id]
-    
-    # Delete from Supabase
-    if supabase.is_available:
-        try:
-            agent_address = agent_to_delete.get("agent_address") or agent_to_delete.get("address")
-            if agent_address:
-                # Delete from agents_v2 table
-                await supabase.delete_agent(agent_address)
-                print(f"[AgentConfig] Deleted agent from Supabase: {agent_address[:10]}...")
-        except Exception as e:
-            print(f"[AgentConfig] Supabase delete warning: {e}")
-    
-    # Persist to file
-    try:
-        import json
-        with open(DEPLOYED_FILE, "w") as f:
-            json.dump(DEPLOYED_AGENTS, f, indent=2, default=str)
-    except Exception as e:
-        print(f"[AgentConfig] File persist warning: {e}")
-    
-    print(f"[AgentConfig] Agent deleted: {agent_id}, remaining: {len(DEPLOYED_AGENTS.get(user_key, []))}")
-    
-    return {
-        "success": True,
-        "message": f"Agent {agent_id[:8]}... deleted",
-        "remaining_agents": len(DEPLOYED_AGENTS.get(user_key, []))
-    }
-
 
 class HarvestRequest(BaseModel):
     wallet: str
