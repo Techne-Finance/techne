@@ -1079,3 +1079,9 @@ async def get_renewal_status(user_address: str = Query(...)):
             "renewal_cost_usdc": 99,
             "missing": [] if has_agent else ["deployed_agent"]
         }
+    except Exception as e:
+        return {
+            "auto_renewal_enabled": False,
+            "can_enable": False,
+            "error": str(e)
+        }
